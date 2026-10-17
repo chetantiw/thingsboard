@@ -97,7 +97,8 @@ export enum MenuId {
   api_usage = 'api_usage',
   trendz_settings = 'trendz_settings',
   ai_models = 'ai_models',
-  iot_hub = 'iot_hub'
+  iot_hub = 'iot_hub',
+  plant_overview = 'plant_overview'
 }
 
 declare type MenuFilter = (authState: AuthState) => boolean;
@@ -111,6 +112,16 @@ export const menuSectionMap = new Map<MenuId, MenuSection>([
       type: 'link',
       path: '/home',
       icon: 'home'
+    }
+  ],
+  [
+    MenuId.plant_overview,
+    {
+      id: MenuId.plant_overview,
+      name: 'mutech.plant-overview',
+      type: 'link',
+      path: '/overview',
+      icon: 'monitor_heart'
     }
   ],
   [
@@ -825,6 +836,7 @@ const defaultUserMenuMap = new Map<Authority, MenuReference[]>([
     Authority.TENANT_ADMIN,
     [
       {id: MenuId.home},
+      {id: MenuId.plant_overview},
       {
         id: MenuId.alarms_center,
         pages: [
@@ -930,6 +942,7 @@ const defaultUserMenuMap = new Map<Authority, MenuReference[]>([
     Authority.CUSTOMER_USER,
     [
       {id: MenuId.home},
+      {id: MenuId.plant_overview},
       {id: MenuId.alarms},
       {id: MenuId.dashboards},
       {

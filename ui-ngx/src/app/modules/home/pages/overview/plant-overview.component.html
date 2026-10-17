@@ -1,0 +1,142 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright MuTech Automation
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<div class="mt-overview">
+  <header class="mt-overview-header">
+    <div class="flex flex-col">
+      <span class="mt-eyebrow">{{ now | date:'EEEE · d MMM · HH:mm' }}</span>
+      <h1>{{ 'mutech.plant-overview' | translate }}</h1>
+    </div>
+    @if (data) {
+      <span class="mt-live-pill">
+        <span class="mt-live-dot"></span>
+        {{ 'mutech.live-online' | translate: {online: data.online, total: data.totalDevices} }}
+      </span>
+    }
+  </header>
+
+  @if (loading && !data) {
+    <div class="mt-overview-loading">{{ 'common.loading' | translate }}</div>
+  } @else if (data) {
+    <div class="mt-overview-grid">
+      <section class="mt-card mt-health">
+        <h2 class="mt-card-title">{{ 'mutech.plant-health' | translate }}</h2>
+        <svg viewBox="0 0 200 200" class="mt-ring" role="img"
+             [attr.aria-label]="'mutech.plant-health' | translate">
+          <circle cx="100" cy="100" [attr.r]="ringRadius" class="mt-ring-track"></circle>
+          @if (data.health !== null) {
+            <circle cx="100" cy="100" [attr.r]="ringRadius"
+                    class="mt-ring-value" [class]="'mt-ring-value mt-' + healthStatus(data.health)"
+                    [attr.stroke-dasharray]="ringCircumference"
+                    [attr.stroke-dashoffset]="ringOffset(data.health)"
+                    transform="rotate(-90 100 100)"></circle>
+          }
+          <text x="100" y="106" text-anchor="middle" class="mt-ring-number">{{ data.health ?? '—' }}</text>
+          <text x="100" y="134" text-anchor="middle" class="mt-ring-caption">{{ 'mutech.of-100' | translate }}</text>
+        </svg>
+        <div class="mt-health-stats">
+          <a routerLink="/entities/devices" class="mt-stat">
+            <span class="mt-stat-value mt-ok">{{ data.online }}</span>
+            <span class="mt-stat-label">{{ 'mutech.online' | translate }}</span>
+          </a>
+          <a routerLink="/entities/devices" class="mt-stat">
+            <span class="mt-stat-value mt-warn">{{ data.offline }}</span>
+            <span class="mt-stat-label">{{ 'mutech.offline' | translate }}</span>
+          </a>
+          <a routerLink="/alarms" class="mt-stat">
+            <span class="mt-stat-value mt-crit">{{ data.alarmed }}</span>
+            <span class="mt-stat-label">{{ 'mutech.in-alarm' | translate }}</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="mt-card mt-zones">
+        <div class="mt-card-header">
+          <h2 class="mt-card-title">{{ (data.zonesFromAssets ? 'mutech.zones' : 'mutech.device-groups') | translate }}</h2>
+          <span class="mt-card-hint">{{ (data.zonesFromAssets ? 'mutech.zones-hint' : 'mutech.zones-fallback-hint') | translate }}</span>
+        </div>
+        @if (data.zones.length) {
+          <div class="mt-zone-grid">
+            @for (zone of data.zones; track trackByName($index, zone)) {
+              <a class="mt-zone" [class]="'mt-zone mt-zone-' + zone.status" [routerLink]="zone.link">
+                <span class="mt-zone-name">
+                  <span class="mt-zone-dot"></span>{{ zone.name }}
+                </span>
+                <span class="mt-zone-metric mt-mono">{{ zone.online }}/{{ zone.total }}</span>
+                <span class="mt-zone-sub">
+                  @if (zone.alarms) {
+                    {{ 'mutech.zone-alarms' | translate: {count: zone.alarms} }}
+                  } @else if (zone.total === 0) {
+                    {{ 'mutech.zone-empty' | translate }}
+                  } @else if (zone.online < zone.total) {
+                    {{ 'mutech.zone-offline' | translate: {count: zone.total - zone.online} }}
+                  } @else {
+                    {{ 'mutech.zone-online' | translate }}
+                  }
+                </span>
+              </a>
+            }
+          </div>
+        } @else {
+          <div class="mt-empty">{{ 'mutech.no-devices' | translate }}</div>
+        }
+      </section>
+
+      <section class="mt-card mt-power">
+        <div class="mt-card-header">
+          <h2 class="mt-card-title">{{ 'mutech.power-draw' | translate }}</h2>
+          <label class="mt-key-field">
+            <span>{{ 'mutech.telemetry-key' | translate }}</span>
+            <input [formControl]="powerKey" spellcheck="false" aria-label="{{ 'mutech.telemetry-key' | translate }}">
+          </label>
+          <span class="flex-1"></span>
+          @if (data.powerTotal !== null) {
+            <span class="mt-power-total mt-mono">{{ formatValue(data.powerTotal) }}</span>
+            <span class="mt-card-hint">{{ 'mutech.power-devices' | translate: {count: data.powerDevices} }}</span>
+          }
+        </div>
+        @if (data.powerBars.length) {
+          <svg class="mt-power-chart" [attr.viewBox]="'0 0 ' + chartWidth + ' ' + chartHeight" preserveAspectRatio="none"
+               role="img" [attr.aria-label]="'mutech.power-draw' | translate">
+            @for (bar of data.powerBars; track $index) {
+              <rect [attr.x]="bar.x" [attr.y]="bar.y" [attr.width]="barWidth" [attr.height]="bar.height" rx="4"
+                    [class.mt-bar-current]="bar.current" class="mt-bar">
+                <title>{{ bar.label }}</title>
+              </rect>
+            }
+          </svg>
+          <div class="mt-power-axis"><span>-24h</span><span>-12h</span><span>{{ 'mutech.now' | translate }}</span></div>
+        } @else {
+          <div class="mt-empty">{{ 'mutech.no-power' | translate: {key: powerKey.value} }}</div>
+        }
+      </section>
+
+      <section class="mt-card mt-events">
+        <div class="mt-card-header">
+          <h2 class="mt-card-title">{{ 'mutech.event-stream' | translate }}</h2>
+          <span class="flex-1"></span>
+          <a routerLink="/alarms" class="mt-card-link">{{ 'mutech.view-all' | translate }}</a>
+        </div>
+        @if (data.events.length) {
+          <ol class="mt-event-list">
+            @for (event of data.events; track trackByAlarm($index, event)) {
+              <li class="mt-event" [class]="'mt-event mt-event-' + severityClass(event.severity)">
+                <span class="mt-event-time mt-mono">{{ event.createdTime | date:'HH:mm' }}</span>
+                <span class="mt-event-bar"></span>
+                <span class="mt-event-body">
+                  <span class="mt-event-title">{{ event.type }}</span>
+                  <span class="mt-event-source">{{ event.originatorName }} · {{ ('alarm.severity-' + event.severity.toLowerCase()) | translate }}{{ event.cleared ? ' · ' + ('alarm.search-status.CLEARED' | translate) : '' }}</span>
+                </span>
+              </li>
+            }
+          </ol>
+        } @else {
+          <div class="mt-empty">{{ 'mutech.no-events' | translate }}</div>
+        }
+      </section>
+    </div>
+  }
+</div>
