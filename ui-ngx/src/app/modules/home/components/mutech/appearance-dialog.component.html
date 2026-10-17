@@ -61,6 +61,18 @@
       </mat-slide-toggle>
     </section>
 
+    @if (startPageSupported) {
+      <section>
+        <h3>{{ 'mutech.start-page' | translate }}</h3>
+        <mat-button-toggle-group [value]="appearance.startPage" (change)="setStartPage($event.value)">
+          @for (page of startPages; track page.id) {
+            <mat-button-toggle [value]="page.id">{{ page.name | translate }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+        <span class="mt-appearance-note">{{ 'mutech.start-page-hint' | translate }}</span>
+      </section>
+    }
+
     <section>
       <h3>{{ 'mutech.density' | translate }}</h3>
       <mat-button-toggle-group [value]="appearance.density" (change)="setDensity($event.value)">

@@ -261,6 +261,14 @@ export class AuthService {
     return false;
   }
 
+  // Landing page chosen in the MuTech appearance settings (tenant admins and customer users only).
+  public startPage(authState: AuthState = getCurrentAuthState(this.store)): string {
+    const authUser = authState?.authUser;
+    const canUseOverview = (authUser?.authority === Authority.TENANT_ADMIN || authUser?.authority === Authority.CUSTOMER_USER)
+      && !authUser.isPublic;
+    return canUseOverview && authState.userSettings?.appearance?.startPage === 'overview' ? 'overview' : 'home';
+  }
+
   public defaultUrl(isAuthenticated: boolean, authState?: AuthState, path?: string, params?: any): UrlTree {
     let result: UrlTree = null;
     if (isAuthenticated) {
@@ -274,7 +282,7 @@ export class AuthService {
           this.redirectUrl = null;
           result = this.router.parseUrl(redirectUrl);
         } else {
-          result = this.router.parseUrl('home');
+          result = this.router.parseUrl(this.startPage(authState));
         }
         if (authState.authUser.authority === Authority.TENANT_ADMIN || authState.authUser.authority === Authority.CUSTOMER_USER) {
           if (this.userHasDefaultDashboard(authState)) {

@@ -2,11 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Component } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
+import { Store } from '@ngrx/store';
+import { AppState } from '@core/core.state';
+import { getCurrentAuthUser } from '@core/auth/auth.selectors';
+import { Authority } from '@shared/models/authority.enum';
 import { AppearanceService } from '@core/services/appearance.service';
 import {
   Appearance,
   AppearanceDensity,
   AppearanceLayout,
+  AppearanceStartPage,
   AppearanceTheme,
   appearanceThemes
 } from '@shared/models/appearance.models';
@@ -29,10 +34,24 @@ export class AppearanceDialogComponent {
     {id: 'compact', name: 'mutech.density-compact'}
   ];
 
+  readonly startPages: {id: AppearanceStartPage; name: string}[] = [
+    {id: 'home', name: 'mutech.start-home'},
+    {id: 'overview', name: 'mutech.plant-overview'}
+  ];
+
   readonly appearance$ = this.appearanceService.appearance$;
+  readonly startPageSupported: boolean;
 
   constructor(private dialogRef: MatDialogRef<AppearanceDialogComponent>,
-              private appearanceService: AppearanceService) {
+              private appearanceService: AppearanceService,
+              store: Store<AppState>) {
+    const authUser = getCurrentAuthUser(store);
+    this.startPageSupported = !authUser.isPublic &&
+      (authUser.authority === Authority.TENANT_ADMIN || authUser.authority === Authority.CUSTOMER_USER);
+  }
+
+  setStartPage(startPage: AppearanceStartPage) {
+    this.appearanceService.update({startPage});
   }
 
   setLayout(layout: AppearanceLayout) {

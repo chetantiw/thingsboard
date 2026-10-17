@@ -10,13 +10,12 @@ import { ActionPreferencesPutUserSettings } from '@core/auth/auth.actions';
 import { WINDOW } from '@core/services/window.service';
 import { isEqual } from '@core/utils';
 import {
+  APPEARANCE_STORAGE_KEY,
   Appearance,
   AppearanceTheme,
   appearanceThemes,
   defaultAppearance
 } from '@shared/models/appearance.models';
-
-const APPEARANCE_STORAGE_KEY = 'mt_appearance';
 
 @Injectable({
   providedIn: 'root'

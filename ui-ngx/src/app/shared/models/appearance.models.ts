@@ -4,12 +4,14 @@
 export type AppearanceLayout = 'classic' | 'control';
 export type AppearanceTheme = 'indigo' | 'arctic' | 'midnight' | 'carbon';
 export type AppearanceDensity = 'comfortable' | 'compact';
+export type AppearanceStartPage = 'home' | 'overview';
 
 export interface Appearance {
   layout: AppearanceLayout;
   theme: AppearanceTheme;
   density: AppearanceDensity;
   followSystem: boolean;
+  startPage: AppearanceStartPage;
 }
 
 export interface AppearanceThemeInfo {
@@ -30,9 +32,13 @@ export const appearanceThemes: AppearanceThemeInfo[] = [
   { id: 'carbon', name: 'Carbon Amber', dark: true, bg: '#0E0E0E', rail: '#181818', surface: '#191919', accent: '#F5A524' }
 ];
 
+// Browser-local copy of the appearance, used before the user's settings are loaded.
+export const APPEARANCE_STORAGE_KEY = 'mt_appearance';
+
 export const defaultAppearance: Appearance = {
   layout: 'classic',
   theme: 'indigo',
   density: 'comfortable',
-  followSystem: false
+  followSystem: false,
+  startPage: 'home'
 };
