@@ -1,6 +1,6 @@
 # Deploying MuTech-IoT on a ThingsBoard .deb server
 
-`mutech-iot-4.3.1.6-mutech1.deb` is the official ThingsBoard CE 4.3.1.6 package with the
+`mutech-iot-4.3.1.6-mutech2.deb` is the official ThingsBoard CE 4.3.1.6 package with the
 MuTech-IoT user interface. The server (Java) part is unchanged upstream ThingsBoard.
 
 `upgrade-mutech-iot.sh` upgrades an existing ThingsBoard 4.x `.deb` installation that uses
@@ -33,7 +33,7 @@ Run these on the server (as a user with sudo):
 # 1. Get the MuTech-IoT files (UI, build script, upgrade script)
 mkdir -p ~/mutech-iot && cd ~/mutech-iot
 BASE=https://raw.githubusercontent.com/chetantiw/thingsboard/mutech-v4.3.1.6-ui-redesign/packaging/mutech
-for f in ui-ngx-4.3.1.6-mutech1.jar build-mutech-deb.sh upgrade-mutech-iot.sh; do wget -q "$BASE/$f"; done
+for f in ui-ngx-4.3.1.6-mutech2.jar build-mutech-deb.sh upgrade-mutech-iot.sh; do wget -q "$BASE/$f"; done
 chmod +x build-mutech-deb.sh upgrade-mutech-iot.sh
 
 # 2. Build the MuTech-IoT package from the official ThingsBoard 4.3.1.6 package
@@ -42,7 +42,7 @@ sudo apt install -y python3 zip
 ./build-mutech-deb.sh
 
 # 3. Upgrade (shows the plan and asks before stopping anything)
-sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech1.deb
+sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech2.deb
 ```
 
 `build-mutech-deb.sh` verifies the result against the build that was tested, so the
@@ -68,6 +68,12 @@ the backup folder.
 Servers without internet access: download `thingsboard-4.1.deb`, `thingsboard-4.2.deb` and
 `thingsboard-4.2.2.6.deb` from https://github.com/thingsboard/thingsboard/releases into a
 folder and add `--packages <folder>`.
+
+## Updating an earlier MuTech-IoT build
+
+Servers that already run MuTech-IoT 4.3.1.6 (for example `4.3.1.6-1+mutech1`) are updated with
+the same three steps. The database is already on 4.3, so the script backs it up, installs the
+new package and restarts the service without migrating anything (about a minute).
 
 ## Roll back
 

@@ -3,10 +3,10 @@
 # SPDX-FileCopyrightText: Copyright MuTech Automation
 # SPDX-License-Identifier: Apache-2.0
 #
-# Builds mutech-iot-4.3.1.6-mutech1.deb from the official ThingsBoard 4.3.1.6 package by
-# replacing its user interface with the MuTech-IoT UI (ui-ngx-4.3.1.6-mutech1.jar).
+# Builds mutech-iot-4.3.1.6-mutech2.deb from the official ThingsBoard 4.3.1.6 package by
+# replacing its user interface with the MuTech-IoT UI (ui-ngx-4.3.1.6-mutech2.jar).
 #
-#   ./build-mutech-deb.sh [--ui-jar ui-ngx-4.3.1.6-mutech1.jar] [--official-deb thingsboard-4.3.1.6.deb]
+#   ./build-mutech-deb.sh [--ui-jar ui-ngx-4.3.1.6-mutech2.jar] [--official-deb thingsboard-4.3.1.6.deb]
 #
 # Needs: curl, dpkg-deb, python3, zip, sha256sum, md5sum.
 #
@@ -14,14 +14,14 @@ set -euo pipefail
 
 OFFICIAL_URL=https://github.com/thingsboard/thingsboard/releases/download/v4.3.1.6/thingsboard-4.3.1.6.deb
 OFFICIAL_SHA256=0f252b842f0dfacae2c26bf49a5717c30682cafbfb81eaf4b52d8b03c16d5c4b
-UI_JAR_SHA256=9109d1df832861303430419e1175d6b7356cef410d03051d37ce3d930684546d
+UI_JAR_SHA256=e448b92ecb387987cd2dac16d54cbc2f2e5bfe45e2d8008a7568470eca6f1822
 # thingsboard.jar produced from the two inputs above (the build that was tested).
-EXPECTED_JAR_MD5=cb353cdd03dda71984ad463021e861b2
-VERSION=4.3.1.6-1+mutech1
-OUT=mutech-iot-4.3.1.6-mutech1.deb
+EXPECTED_JAR_MD5=1f323eb4e152d75b232b18dcd8941cc7
+VERSION=4.3.1.6-1+mutech2
+OUT=mutech-iot-4.3.1.6-mutech2.deb
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-UI_JAR="$HERE/ui-ngx-4.3.1.6-mutech1.jar"
+UI_JAR="$HERE/ui-ngx-4.3.1.6-mutech2.jar"
 OFFICIAL_DEB=""
 
 while [ $# -gt 0 ]; do

@@ -6,7 +6,7 @@
 # Upgrades a ThingsBoard 4.x .deb installation (PostgreSQL) to the MuTech-IoT build,
 # with a database + configuration backup and a rollback mode.
 #
-#   Upgrade:   sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech1.deb
+#   Upgrade:   sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech2.deb
 #   Rollback:  sudo ./upgrade-mutech-iot.sh --rollback /var/backups/mutech-iot/<timestamp> --old-deb ./thingsboard-<old>.deb
 #
 # Options:   -y / --yes          do not ask for confirmation
@@ -147,15 +147,21 @@ fetch_hop_package() {
   echo "$path"
 }
 
-# Installs a package, keeps this server's thingsboard.conf, and migrates the database.
+# Installs a package, keeps this server's thingsboard.conf, and migrates the database if needed.
 install_and_migrate() {
   local deb="$1" label="$2" logfile="$BACKUP_DIR/upgrade-$2.log"
   log "Installing $label ($(dpkg-deb -f "$deb" Version)) ..."
   dpkg -i --force-confnew "$deb" > "$BACKUP_DIR/dpkg-$label.log" 2>&1 || { cat "$BACKUP_DIR/dpkg-$label.log"; return 1; }
   cp -a "$BACKUP_DIR/conf/thingsboard.conf" "$TB_CONF"
   chown -R thingsboard: "$TB_HOME"
+  # A database already on 4.3 (an earlier MuTech-IoT build) needs no migration.
+  if [ "$label" = "mutech-iot" ] && [ "$(schema_version | cut -d' ' -f1-2)" = "4 3" ]; then
+    log "Database is already at schema $(schema_version | tr ' ' '.'): no migration needed."
+    return 0
+  fi
   log "Migrating the database with $label (this can take a while on large databases) ..."
-  "$TB_HOME/bin/install/upgrade.sh" > "$logfile" 2>&1 || true
+  # upgrade.sh runs Java as the thingsboard user, which needs a working directory it can read.
+  (cd "$TB_HOME" && "$TB_HOME/bin/install/upgrade.sh") > "$logfile" 2>&1 || true
   # upgrade.sh exits with 0 even when the migration fails, so check its output.
   if ! grep -q "ThingsBoard upgraded successfully!" "$logfile"; then
     grep -E "not supported|Supported versions|ERROR|Exception" "$logfile" | head -5 >&2 || true
