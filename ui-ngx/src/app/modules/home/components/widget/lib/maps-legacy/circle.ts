@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import L, { LeafletMouseEvent } from 'leaflet';
 import { CircleData, WidgetCircleSettings } from '@home/components/widget/lib/maps-legacy/map-models';
 import { functionValueCalculator, parseWithTranslation } from '@home/components/widget/lib/maps-legacy/common-maps-utils';
@@ -83,7 +84,7 @@ export class Circle {
         this.map.replaceInfoTooltipCircle = processDataPattern(this.map.circleLabelText, this.data);
       }
       const circleLabelText = fillDataPattern(this.map.circleLabelText, this.map.replaceInfoTooltipCircle, this.data);
-      const labelColor = this.map.ctx.widgetConfig.color;
+      const labelColor = mtColor(this.map.ctx.widgetConfig.color);
       this.leafletCircle.bindTooltip(`<div style="color: ${labelColor};"><b>${circleLabelText}</b></div>`,
         { className: 'tb-polygon-label', permanent: true, direction: 'center'})
         .openTooltip(this.leafletCircle.getLatLng());

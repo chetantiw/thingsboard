@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -102,7 +103,7 @@ export class ValueChartCardWidgetComponent implements OnInit, AfterViewInit, OnD
 
   ngOnInit(): void {
     this.ctx.$scope.valueChartCardWidget = this;
-    this.settings = {...valueChartCardDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...valueChartCardDefaultSettings, ...this.ctx.settings});
 
     if (this.showValue) {
       let decimals = this.ctx.decimals ?? 0;

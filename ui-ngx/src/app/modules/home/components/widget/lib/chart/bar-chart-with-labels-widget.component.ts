@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -70,7 +71,7 @@ export class BarChartWithLabelsWidgetComponent implements OnInit, OnDestroy, Aft
 
   ngOnInit(): void {
     this.ctx.$scope.barChartWidget = this;
-    this.settings = {...barChartWithLabelsDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...barChartWithLabelsDefaultSettings, ...this.ctx.settings});
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);

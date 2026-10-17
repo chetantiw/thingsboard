@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import {
   calculateInterpolationRatio,
   calculateLastPoints, DataLayerColorSettings, DataLayerColorType,
@@ -313,7 +314,7 @@ class TbTripDataItem extends TbDataLayerItem<TripsDataLayerSettings, TbTripsData
     if (this.settings.label.show) {
       this.marker.unbindTooltip();
       const label = this.dataLayer.dataLayerLabelProcessor.processPattern(data, dsData);
-      const labelColor = this.dataLayer.getCtx().widgetConfig.color;
+      const labelColor = mtColor(this.dataLayer.getCtx().widgetConfig.color);
       const content: L.Content = `<div style="color: ${labelColor};"><b>${label}</b></div>`;
       this.marker.bindTooltip(content, { className: 'tb-marker-label', permanent: true, direction: 'top', offset: this.labelOffset });
     }

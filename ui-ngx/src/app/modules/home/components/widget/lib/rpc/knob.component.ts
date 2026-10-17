@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { ChangeDetectorRef, Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { WidgetContext } from '@home/models/widget-component.models';
 import { deepClone, isDefined } from '@core/utils';
@@ -111,7 +112,7 @@ export class KnobComponent extends BasicActionWidgetComponent implements OnInit,
   }
 
   private init() {
-    const settings: KnobSettings = prepareKnobSettings({...deepClone(knobWidgetDefaultSettings), ...this.ctx.settings});
+    const settings: KnobSettings = prepareKnobSettings(mtThemedSettings({...deepClone(knobWidgetDefaultSettings), ...this.ctx.settings}));
 
     let initialValue = isDefined(settings.initialValue) ? settings.initialValue : this.minValue;
 

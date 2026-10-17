@@ -294,10 +294,27 @@
     color: var(--mt-text) !important;
   }
 
-  // Dashboard widgets are authored for light surfaces, so they keep the light
-  // palette inside dark themes and render exactly as they were designed.
-  .tb-widget {
+  // With the original widget style, widgets keep the light palette inside dark
+  // themes and render exactly as ThingsBoard designed them.
+  &.mt-widgets-original .tb-widget {
     @include mt-indigo-tokens;
     color-scheme: light;
+  }
+}
+
+// Progress bars and spinners use the theme accent with a soft track, whatever color the
+// component asks for (ThingsBoard uses "warn" orange for page loading).
+.tb-default {
+  .mat-mdc-progress-bar {
+    --mat-progress-bar-active-indicator-color: var(--mt-accent);
+    --mat-progress-bar-track-color: color-mix(in srgb, var(--mt-accent) 14%, transparent);
+    --mat-progress-bar-track-height: 3px;
+    --mat-progress-bar-active-indicator-height: 3px;
+    .mdc-linear-progress__bar-inner {
+      border-image: linear-gradient(90deg, var(--mt-indicator), var(--mt-accent)) 1;
+    }
+  }
+  .mat-mdc-progress-spinner {
+    --mat-progress-spinner-active-indicator-color: var(--mt-accent);
   }
 }

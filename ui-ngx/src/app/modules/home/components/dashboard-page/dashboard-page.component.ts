@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtDarkTheme } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -164,6 +165,9 @@ export class DashboardPageComponent extends PageComponent implements IDashboardC
   authState: AuthState = getCurrentAuthState(this.store);
 
   authUser: AuthUser = this.authState.authUser;
+
+  // Charts switch to their dark palette when the page carries the 'dark' class.
+  readonly mtDark = mtDarkTheme;
 
   @HostBinding('class')
   dashboardPageClass: string;

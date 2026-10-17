@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -98,7 +99,7 @@ export class ProgressBarWidgetComponent implements OnInit, OnDestroy, AfterViewI
 
   ngOnInit(): void {
     this.ctx.$scope.progressBarWidget = this;
-    this.settings = {...progressBarDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...progressBarDefaultSettings, ...this.ctx.settings});
 
     this.valueFormat = createValueFormatterFromSettings(this.ctx);
 

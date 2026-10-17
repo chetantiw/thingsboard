@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtWidgetThemeChanged$ } from '@shared/models/mutech-widget-theme';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -706,6 +707,12 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
   private initialize(): Observable<any> {
 
     const initSubject = new ReplaySubject<void>();
+
+    // Repaint with the new theme colors when the user switches theme or widget style.
+    this.rxSubscriptions.push(mtWidgetThemeChanged$.subscribe(() => {
+      this.dashboardWidget?.updateWidgetParams();
+      this.reInit();
+    }));
 
     this.rxSubscriptions.push(this.widgetContext.aliasController.entityAliasesChanged.subscribe(
       (aliasIds) => {

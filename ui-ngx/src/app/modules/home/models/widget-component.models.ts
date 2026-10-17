@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { IDashboardComponent } from '@home/models/dashboard-component.models';
 import {
   DataSet,
@@ -172,7 +173,7 @@ export class WidgetContext {
   }
 
   get settings(): any {
-    return this.widget.config.settings;
+    return mtThemedSettings(this.widget.config.settings);
   }
 
   get units(): TbUnit {

@@ -12,6 +12,7 @@ $mt-emit-presets: true;
 @import './scss/fonts';
 @import './theme/mutech-tokens';
 @import './theme/mutech-components';
+@import './theme/mutech-widgets';
 
 body, html {
   height: 100%;

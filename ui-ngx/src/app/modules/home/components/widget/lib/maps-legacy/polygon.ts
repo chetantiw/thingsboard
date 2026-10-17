@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import L, { LatLngExpression, LeafletMouseEvent } from 'leaflet';
 import { createTooltip, isCutPolygon } from './maps-utils';
 import { functionValueCalculator, parseWithTranslation } from './common-maps-utils';
@@ -91,7 +92,7 @@ export class Polygon {
                 this.map.replaceInfoLabelPolygon = processDataPattern(this.map.polygonLabelText, this.data);
             }
             const polygonLabelText = fillDataPattern(this.map.polygonLabelText, this.map.replaceInfoLabelPolygon, this.data);
-            const labelColor = this.map.ctx.widgetConfig.color;
+            const labelColor = mtColor(this.map.ctx.widgetConfig.color);
             this.leafletPoly.bindTooltip(`<div style="color: ${labelColor};"><b>${polygonLabelText}</b></div>`,
               { className: 'tb-polygon-label', permanent: true, direction: 'center' })
               .openTooltip(this.leafletPoly.getBounds().getCenter());

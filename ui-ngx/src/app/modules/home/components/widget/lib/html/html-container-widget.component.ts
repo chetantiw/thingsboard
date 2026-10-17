@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   ChangeDetectorRef,
   Component, ComponentRef,
@@ -88,7 +89,7 @@ export class HtmlContainerWidgetComponent implements OnInit {
               private resources: ResourcesService) {}
 
   ngOnInit(): void {
-    this.settings = {...htmlContainerDefaultSettings, ...(this.ctx.settings || {})};
+    this.settings = mtThemedSettings({...htmlContainerDefaultSettings, ...(this.ctx.settings || {})});
     this.loadWidgetResources().subscribe(
       {
         next: () => {

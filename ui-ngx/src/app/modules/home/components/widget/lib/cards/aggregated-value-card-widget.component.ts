@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -112,7 +113,7 @@ export class AggregatedValueCardWidgetComponent implements OnInit, AfterViewInit
 
   ngOnInit(): void {
     this.ctx.$scope.aggregatedValueCardWidget = this;
-    this.settings = {...aggregatedValueCardDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...aggregatedValueCardDefaultSettings, ...this.ctx.settings});
     this.showSubtitle = this.settings.showSubtitle && this.ctx.datasources?.length > 0;
     const subtitle = this.settings.subtitle;
     this.subtitle$ = this.ctx.registerLabelPattern(subtitle, this.subtitle$);

@@ -74,6 +74,16 @@
     }
 
     <section>
+      <h3>{{ 'mutech.widget-style' | translate }}</h3>
+      <mat-button-toggle-group [value]="appearance.widgetStyle" (change)="setWidgetStyle($event.value)">
+        @for (style of widgetStyles; track style.id) {
+          <mat-button-toggle [value]="style.id">{{ style.name | translate }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+      <span class="mt-appearance-note">{{ 'mutech.widget-style-hint' | translate }}</span>
+    </section>
+
+    <section>
       <h3>{{ 'mutech.density' | translate }}</h3>
       <mat-button-toggle-group [value]="appearance.density" (change)="setDensity($event.value)">
         @for (density of densities; track density.id) {

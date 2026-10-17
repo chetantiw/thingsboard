@@ -21,77 +21,148 @@
     body, html {
       height: 100%;
       overflow: hidden;
-      background-color: #eee;
+      background-color: var(--mt-boot-bg);
     }
 
-    .tb-loading-spinner {
-      margin: auto;
+    /* MuTech-IoT start-up screen, shown until the first page renders. */
+    :root {
+      --mt-boot-bg: #F4F5FA;
+      --mt-boot-text: #15142B;
+      --mt-boot-accent: #4F46E5;
+      --mt-boot-accent-2: #13B5C9;
+      --mt-boot-track: rgba(79, 70, 229, 0.14);
+      --mt-boot-glow: rgba(79, 70, 229, 0.10);
+    }
+
+    .mt-boot {
+      position: fixed;
+      inset: 0;
       z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      background: radial-gradient(circle at 50% 42%, var(--mt-boot-glow), transparent 46%), var(--mt-boot-bg);
+      color: var(--mt-boot-text);
+      font-family: Manrope, Roboto, "Helvetica Neue", sans-serif;
+      animation: mt-boot-in .4s ease-out both;
+    }
+    .mt-boot-mark {
+      position: relative;
+      width: 112px;
+      height: 112px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mt-boot-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 0 18%, var(--mt-boot-accent-2) 45%, var(--mt-boot-accent) 75%, transparent 76%);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+      animation: mt-boot-spin 1.1s linear infinite;
+    }
+    .mt-boot-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 4px solid var(--mt-boot-track);
+    }
+    .mt-boot-mark img {
+      width: 72px;
+      height: 67px;
+      filter: drop-shadow(0 6px 14px rgba(15, 13, 58, 0.28));
+      animation: mt-boot-breathe 2.2s ease-in-out infinite;
+    }
+    .mt-boot-name {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .mt-boot-name span {
+      color: var(--mt-boot-accent);
+    }
+    .mt-boot-bar {
+      position: relative;
+      width: 168px;
+      height: 3px;
+      border-radius: 3px;
+      overflow: hidden;
+      background: var(--mt-boot-track);
+    }
+    .mt-boot-bar i {
       position: absolute;
       top: 0;
       bottom: 0;
-      left: 0;
-      right: 0;
-      width: 136px;
-      height: 30px;
-      text-align: center;
+      width: 40%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--mt-boot-accent-2), var(--mt-boot-accent));
+      animation: mt-boot-sweep 1.4s cubic-bezier(.65, .05, .36, 1) infinite;
     }
 
-    .tb-loading-spinner > div {
-      width: 30px;
-      height: 30px;
-      margin-right: 10px;
-      background-color: rgb(43,160,199);
-
-      border-radius: 100%;
-      display: inline-block;
-      -webkit-animation: tb-bouncedelay 1.4s infinite ease-in-out both;
-      -moz-animation: tb-bouncedelay 1.4s infinite ease-in-out both;
-      animation: tb-bouncedelay 1.4s infinite ease-in-out both;
+    @keyframes mt-boot-spin {
+      to { transform: rotate(360deg); }
     }
-
-    .tb-loading-spinner .tb-bounce1 {
-      -webkit-animation-delay: -0.32s;
-      -moz-animation-delay: -0.32s;
-      animation-delay: -0.32s;
+    @keyframes mt-boot-breathe {
+      0%, 100% { transform: scale(0.94); }
+      50% { transform: scale(1); }
     }
-
-    .tb-loading-spinner .tb-bounce2 {
-      -webkit-animation-delay: -0.16s;
-      -moz-animation-delay: -0.16s;
-      animation-delay: -0.16s;
+    @keyframes mt-boot-sweep {
+      0% { left: -40%; }
+      100% { left: 100%; }
     }
-
-    @-webkit-keyframes tb-bouncedelay {
-      0%, 80%, 100% { -webkit-transform: scale(0) }
-      40% { -webkit-transform: scale(1.0) }
+    @keyframes mt-boot-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
-
-    @-moz-keyframes tb-bouncedelay {
-      0%, 80%, 100% { -moz-transform: scale(0) }
-      40% { -moz-transform: scale(1.0) }
-    }
-
-    @keyframes tb-bouncedelay {
-      0%, 80%, 100% {
-        -webkit-transform: scale(0);
-        -moz-transform: scale(0);
-        transform: scale(0);
-      } 40% {
-          -webkit-transform: scale(1.0);
-          -moz-transform: scale(1.0);
-          transform: scale(1.0);
-        }
+    @media (prefers-reduced-motion: reduce) {
+      .mt-boot-ring { animation-duration: 3s; }
+      .mt-boot-mark img, .mt-boot-bar i { animation: none; }
+      .mt-boot-bar i { left: 30%; }
     }
 
   </style>
 </head>
 <body class="tb-default">
   <tb-root></tb-root>
-  <div id="tb-loading-spinner" class="tb-loading-spinner">
-    <div class="tb-bounce1"></div>
-    <div class="tb-bounce2"></div>
-    <div class="tb-bounce3"></div>
+  <div id="tb-loading-spinner" class="mt-boot" role="progressbar" aria-label="Loading MuTech-IoT">
+    <div class="mt-boot-mark">
+      <div class="mt-boot-track"></div>
+      <div class="mt-boot-ring"></div>
+      <img src="assets/mutech-emblem.png" alt="">
+    </div>
+    <div class="mt-boot-name">MuTech<span>-IoT</span></div>
+    <div class="mt-boot-bar"><i></i></div>
   </div>
+  <script>
+    // Paint the start-up screen in the theme the user picked last time (see AppearanceService).
+    (function () {
+      var themes = {
+        indigo: ['#F4F5FA', '#15142B', '#4F46E5', '#13B5C9', 'rgba(79,70,229,0.14)', 'rgba(79,70,229,0.10)'],
+        arctic: ['#E8F1F4', '#0D2A33', '#0E7490', '#F59E0B', 'rgba(14,116,144,0.16)', 'rgba(14,116,144,0.10)'],
+        midnight: ['#0B0A1F', '#ECEBFF', '#8B87FF', '#22D3EE', 'rgba(139,135,255,0.18)', 'rgba(139,135,255,0.16)'],
+        carbon: ['#0E0E0E', '#F2F2F2', '#F5A524', '#38BDF8', 'rgba(245,165,36,0.18)', 'rgba(245,165,36,0.10)']
+      };
+      var theme = 'indigo';
+      try {
+        var appearance = JSON.parse(localStorage.getItem('mt_appearance')) || {};
+        theme = themes[appearance.theme] ? appearance.theme : 'indigo';
+        if (appearance.followSystem && window.matchMedia) {
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var themeDark = theme === 'midnight' || theme === 'carbon';
+          if (systemDark && !themeDark) { theme = 'midnight'; }
+          if (!systemDark && themeDark) { theme = 'indigo'; }
+        }
+      } catch (e) {}
+      var colors = themes[theme];
+      var names = ['bg', 'text', 'accent', 'accent-2', 'track', 'glow'];
+      for (var i = 0; i < names.length; i++) {
+        document.documentElement.style.setProperty('--mt-boot-' + names[i], colors[i]);
+      }
+    })();
+  </script>
 </body>
 </html>

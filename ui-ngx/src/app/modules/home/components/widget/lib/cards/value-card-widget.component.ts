@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -101,7 +102,7 @@ export class ValueCardWidgetComponent implements OnInit, AfterViewInit, OnDestro
     const params = this.widgetComponent.typeParameters as any;
     this.horizontal  = isDefinedAndNotNull(params.horizontal) ? params.horizontal : false;
     this.ctx.$scope.valueCardWidget = this;
-    this.settings = {...valueCardDefaultSettings(this.horizontal), ...this.ctx.settings};
+    this.settings = mtThemedSettings({...valueCardDefaultSettings(this.horizontal), ...this.ctx.settings});
 
     this.valueFormat = createValueFormatterFromSettings(this.ctx);
 

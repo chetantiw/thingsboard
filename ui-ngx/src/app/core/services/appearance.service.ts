@@ -16,6 +16,7 @@ import {
   appearanceThemes,
   defaultAppearance
 } from '@shared/models/appearance.models';
+import { MT_ORIGINAL_WIDGETS_CLASS, notifyMtWidgetThemeChanged } from '@shared/models/mutech-widget-theme';
 
 @Injectable({
   providedIn: 'root'
@@ -24,6 +25,7 @@ export class AppearanceService {
 
   private appearanceSubject = new BehaviorSubject<Appearance>(this.loadLocal());
   private systemDarkQuery: MediaQueryList;
+  private widgetThemeKey: string;
 
   readonly appearance$: Observable<Appearance> = this.appearanceSubject.asObservable();
   readonly compactNavigation$: Observable<boolean> = this.appearance$.pipe(
@@ -88,6 +90,12 @@ export class AppearanceService {
     const theme = this.effectiveTheme(appearance);
     classList.add(`mt-theme-${theme}`, `mt-layout-${appearance.layout}`, `mt-density-${appearance.density}`);
     classList.toggle('mt-dark', appearanceThemes.find(t => t.id === theme)?.dark ?? false);
+    classList.toggle(MT_ORIGINAL_WIDGETS_CLASS, appearance.widgetStyle === 'original');
+    const widgetThemeKey = `${theme}|${appearance.layout}|${appearance.widgetStyle}`;
+    if (this.widgetThemeKey && this.widgetThemeKey !== widgetThemeKey) {
+      notifyMtWidgetThemeChanged();
+    }
+    this.widgetThemeKey = widgetThemeKey;
   }
 
   private loadLocal(): Appearance {

@@ -210,7 +210,7 @@ $tb-dark-theme: mt-theme(#8B87FF, #22D3EE, true, mt-surfaces(#0B0A1F, #15133A, #
     &.mt-density-compact {
       @include mat.all-component-densities(-1);
     }
-    &.mt-dark .tb-widget {
+    &.mt-dark.mt-widgets-original .tb-widget {
       @include mat.all-component-colors($tb-theme);
     }
   }

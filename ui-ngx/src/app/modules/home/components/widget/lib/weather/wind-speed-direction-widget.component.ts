@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -108,7 +109,7 @@ export class WindSpeedDirectionWidgetComponent implements OnInit, OnDestroy, Aft
 
   ngOnInit(): void {
     this.ctx.$scope.windSpeedDirectionWidget = this;
-    this.settings = {...windSpeedDirectionDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...windSpeedDirectionDefaultSettings, ...this.ctx.settings});
 
     this.windDirectionDataKey = getDataKey(this.ctx.datasources, 0);
     this.centerValueDataKey = getDataKey(this.ctx.datasources, 1);

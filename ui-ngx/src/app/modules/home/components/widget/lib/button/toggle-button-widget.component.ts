@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import { BasicActionWidgetComponent, ValueSetter } from '@home/components/widget/lib/action/action-widget.models';
 import { ImagePipe } from '@shared/pipe/image.pipe';
@@ -48,7 +49,7 @@ export class ToggleButtonWidgetComponent extends
 
   ngOnInit(): void {
     super.ngOnInit();
-    this.settings = {...toggleButtonDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...toggleButtonDefaultSettings, ...this.ctx.settings});
 
     this.autoScale = this.settings.autoScale;
     this.horizontalFill = this.settings.horizontalFill;

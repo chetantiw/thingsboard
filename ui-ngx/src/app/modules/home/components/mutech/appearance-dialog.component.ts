@@ -13,7 +13,8 @@ import {
   AppearanceLayout,
   AppearanceStartPage,
   AppearanceTheme,
-  appearanceThemes
+  appearanceThemes,
+  AppearanceWidgetStyle
 } from '@shared/models/appearance.models';
 
 @Component({
@@ -39,6 +40,11 @@ export class AppearanceDialogComponent {
     {id: 'overview', name: 'mutech.plant-overview'}
   ];
 
+  readonly widgetStyles: {id: AppearanceWidgetStyle; name: string}[] = [
+    {id: 'mutech', name: 'mutech.widget-style-mutech'},
+    {id: 'original', name: 'mutech.widget-style-original'}
+  ];
+
   readonly appearance$ = this.appearanceService.appearance$;
   readonly startPageSupported: boolean;
 
@@ -52,6 +58,10 @@ export class AppearanceDialogComponent {
 
   setStartPage(startPage: AppearanceStartPage) {
     this.appearanceService.update({startPage});
+  }
+
+  setWidgetStyle(widgetStyle: AppearanceWidgetStyle) {
+    this.appearanceService.update({widgetStyle});
   }
 
   setLayout(layout: AppearanceLayout) {

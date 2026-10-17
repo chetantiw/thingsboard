@@ -1,0 +1,165 @@
+// SPDX-FileCopyrightText: Copyright MuTech Automation
+// SPDX-License-Identifier: Apache-2.0
+//
+// MuTech-IoT look of dashboard widgets. Default widget colors and fonts are mapped to the
+// theme in mutech-widget-theme.ts; this file restyles the widget frame and the parts of the
+// widget library that use fixed colors in their own styles.
+// None of it applies when the user picks the original widget style.
+
+body.tb-default:not(.mt-widgets-original) {
+
+  // Widget frame: theme surface, hairline border and soft shadow instead of the Material elevation.
+  .tb-widget {
+    font-family: var(--mt-font);
+    transition: box-shadow .2s ease-in-out, transform .2s ease-in-out;
+
+    &.mat-elevation-z4 {
+      box-shadow: 0 0 0 1px var(--mt-border), var(--mt-shadow);
+    }
+
+    &.mat-elevation-z4:not(.tb-edit):hover {
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--mt-accent) 35%, var(--mt-border)), var(--mt-shadow);
+    }
+
+    .tb-widget-title {
+      padding-top: 8px;
+      padding-left: 8px;
+
+      .title {
+        font-family: var(--mt-font);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      tb-timewindow {
+        color: var(--mt-muted);
+      }
+    }
+
+    .tb-widget-actions {
+      .mat-mdc-icon-button .mat-icon {
+        color: var(--mt-muted);
+      }
+      .mat-mdc-icon-button:hover .mat-icon {
+        color: var(--mt-accent);
+      }
+    }
+
+    .tb-widget-loading .mat-mdc-progress-spinner {
+      --mat-progress-spinner-active-indicator-color: var(--mt-accent);
+    }
+
+    .tb-widget-no-data {
+      color: var(--mt-muted);
+      font-family: var(--mt-font);
+    }
+
+    // Tables inside widgets (entities, alarms, time series, latest values).
+    .mat-mdc-table {
+      background: transparent;
+    }
+    .mat-mdc-header-row {
+      background: var(--mt-surface-2);
+    }
+    .mat-mdc-header-cell {
+      color: var(--mt-muted);
+      font-family: var(--mt-font);
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    .mat-mdc-cell, .mat-mdc-footer-cell {
+      color: var(--mt-text);
+      border-bottom-color: var(--mt-border);
+    }
+    .mat-mdc-header-cell {
+      border-bottom-color: var(--mt-border);
+    }
+    .mat-mdc-row:hover .mat-mdc-cell {
+      background: color-mix(in srgb, var(--mt-accent) 6%, transparent);
+    }
+    .mat-mdc-paginator {
+      background: transparent;
+      color: var(--mt-muted);
+    }
+    .mat-mdc-table-sticky {
+      background: var(--mt-surface);
+    }
+    .mat-mdc-header-row .mat-mdc-table-sticky {
+      background: var(--mt-surface-2);
+    }
+
+    // Toolbars of table widgets (search, column chooser).
+    .mat-toolbar.mat-mdc-table-toolbar, mat-toolbar.mat-mdc-table-toolbar {
+      background: transparent;
+      color: var(--mt-text);
+    }
+
+    // Map controls (zoom, layers, toolbar), labels and popups.
+    .tb-map, .leaflet-container {
+      --tb-map-control-color: var(--mt-muted);
+      --tb-map-control-active-color: var(--mt-accent);
+      --tb-map-control-hover-background-color: var(--mt-accent);
+      --tb-map-control-disable-color: color-mix(in srgb, var(--mt-muted) 40%, transparent);
+      font-family: var(--mt-font);
+    }
+    .leaflet-container {
+      background: var(--mt-surface-2);
+    }
+    .tb-map.leaflet-touch .leaflet-bar, .leaflet-bar {
+      background-color: var(--mt-surface);
+      border: 1px solid var(--mt-border);
+      border-radius: var(--mt-radius);
+      box-shadow: var(--mt-shadow);
+    }
+    .leaflet-control-layers {
+      background: var(--mt-surface);
+      color: var(--mt-text);
+      border: 1px solid var(--mt-border);
+      border-radius: var(--mt-radius);
+    }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+      background: var(--mt-surface);
+      color: var(--mt-text);
+      box-shadow: var(--mt-shadow);
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: var(--mt-radius);
+      border: 1px solid var(--mt-border);
+    }
+    .tb-map .leaflet-control-attribution, .leaflet-control-attribution {
+      background: color-mix(in srgb, var(--mt-surface) 70%, transparent);
+      color: var(--mt-muted);
+      a {
+        color: var(--mt-muted);
+      }
+    }
+    .leaflet-tooltip.tb-marker-label {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--mt-surface) 88%, transparent);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 0 0 1px var(--mt-border), var(--mt-shadow);
+      &::before {
+        display: none;
+      }
+    }
+
+    // Legacy chart legends (flot) and markdown/HTML card default text.
+    .tb-legend, .flot-x-axis, .flot-y-axis, .legend {
+      color: var(--mt-muted);
+      font-family: var(--mt-font);
+    }
+  }
+
+  // The map and chart tooltips are appended to the body.
+  .tb-map-tooltip, .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: var(--mt-surface);
+    color: var(--mt-text);
+  }
+
+  // Dark themes: map tiles of the light base layers are dimmed so maps sit in the dark UI.
+  &.mt-dark .tb-widget .leaflet-tile-pane {
+    filter: brightness(0.82) contrast(1.05) saturate(0.85);
+  }
+}

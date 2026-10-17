@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtBackdropColor, mtWidgetThemeChanged$ } from '@shared/models/mutech-widget-theme';
 import { Component, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ILayoutController } from '@home/components/dashboard-page/layout/layout.models';
 import { DashboardContext, DashboardPageLayoutContext } from '@home/components/dashboard-page/dashboard-page.models';
@@ -149,6 +150,10 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
         this.dashboardCtx.runChangeDetection();
       })
     );
+    this.rxSubscriptions.push(mtWidgetThemeChanged$.subscribe(() => {
+      this.loadDashboardStyle();
+      this.dashboardCtx.runChangeDetection();
+    }));
   }
 
   ngOnDestroy(): void {
@@ -231,7 +236,7 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
   }
 
   private loadDashboardStyle() {
-    this.dashboardStyle = {'background-color': this.layoutCtx.gridSettings.backgroundColor,
+    this.dashboardStyle = {'background-color': mtBackdropColor(this.layoutCtx.gridSettings.backgroundColor),
       'background-repeat': 'no-repeat',
       'background-attachment': 'scroll',
       'background-size': this.layoutCtx.gridSettings.backgroundSizeMode || '100%',

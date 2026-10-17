@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -133,7 +134,7 @@ export class BatteryLevelWidgetComponent implements OnInit, OnDestroy, AfterView
 
   ngOnInit(): void {
     this.ctx.$scope.batteryLevelWidget = this;
-    this.settings = {...batteryLevelDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...batteryLevelDefaultSettings, ...this.ctx.settings});
 
     this.valueFormat = createValueFormatterFromSettings(this.ctx);
 

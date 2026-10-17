@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { Component, Input, OnInit, TemplateRef, ViewChild, ViewEncapsulation } from '@angular/core';
 import { WidgetContext } from '@home/models/widget-component.models';
 import { WidgetComponent } from '@home/components/widget/widget.component';
@@ -43,7 +44,7 @@ export class PieChartWidgetComponent implements OnInit {
 
   ngOnInit(): void {
     this.ctx.$scope.pieChartWidget = this;
-    this.settings = {...pieChartWidgetDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...pieChartWidgetDefaultSettings, ...this.ctx.settings});
     this.callbacks = {
       createChart: (chartShape, renderer) => {
         const settings = pieChartWidgetPieChartSettings(this.settings);

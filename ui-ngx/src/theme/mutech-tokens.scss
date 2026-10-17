@@ -58,6 +58,7 @@
 
 // Indigo Day (default) values, also used to keep dashboard widgets light.
 @mixin mt-indigo-tokens {
+  --mt-accent: #4F46E5;
   --mt-bg: #F4F5FA;
   --mt-surface: #FFFFFF;
   --mt-surface-2: #F3F4FA;
@@ -95,6 +96,7 @@
 }
 
 body.mt-theme-arctic {
+  --mt-accent: #0E7490;
   --mt-bg: #E8F1F4;
   --mt-surface: #FFFFFF;
   --mt-surface-2: #EEF6F8;
@@ -114,6 +116,7 @@ body.mt-theme-arctic {
 }
 
 body.mt-theme-midnight {
+  --mt-accent: #8B87FF;
   --mt-bg: #0B0A1F;
   --mt-surface: #15133A;
   --mt-surface-2: #1E1B4B;
@@ -139,6 +142,7 @@ body.mt-theme-midnight {
 }
 
 body.mt-theme-carbon {
+  --mt-accent: #F5A524;
   --mt-bg: #0E0E0E;
   --mt-surface: #191919;
   --mt-surface-2: #242424;

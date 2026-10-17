@@ -4,7 +4,7 @@
     SPDX-License-Identifier: Apache-2.0
 
 -->
-<div class="tb-dashboard-page mat-content flex-1" [class.mobile-app]="isMobileApp && !isEdit" tb-toast
+<div class="tb-dashboard-page mat-content flex-1" [class.mobile-app]="isMobileApp && !isEdit" [class.dark]="mtDark()" tb-toast
      tb-fullscreen [fullscreenElement]="elRef.nativeElement" [fullscreen]="widgetEditMode || iframeMode || forceFullscreen || isFullscreen">
   <tb-hotkeys-cheatsheet #cheatSheetComponent></tb-hotkeys-cheatsheet>
   <section class="tb-dashboard-toolbar"

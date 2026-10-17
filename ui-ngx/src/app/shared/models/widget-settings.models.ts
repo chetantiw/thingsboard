@@ -32,6 +32,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { AVG_MONTH, DAY, HOUR, Interval, IntervalMath, MINUTE, SECOND, YEAR } from '@shared/models/time/time.models';
 import moment from 'moment';
 import tinycolor from 'tinycolor2';
+import { mtColor, mtFontFamily } from '@shared/models/mutech-widget-theme';
 import { WidgetContext } from '@home/models/widget-component.models';
 import { DataKeyType } from '@shared/models/telemetry/telemetry.models';
 import {
@@ -389,7 +390,7 @@ export abstract class ColorProcessor {
   colorUpdated?: EventEmitter<void>;
 
   protected constructor(protected settings: ColorSettings) {
-    this.color = settings.color;
+    this.color = mtColor(settings.color);
   }
 
   abstract update(value: any): void;
@@ -415,7 +416,7 @@ class FunctionColorProcessor extends ColorProcessor {
 
   update(value: any): void {
     if (this.colorFunction) {
-      this.color = this.colorFunction(value) || this.settings.color;
+      this.color = mtColor(this.colorFunction(value) || this.settings.color);
     }
   }
 }
@@ -480,7 +481,7 @@ class RangeColorProcessor extends AdvancedModeColorProcessor {
 
   update(value: any): void {
     super.update(value);
-    this.color = this.computeFromRange(value);
+    this.color = mtColor(this.computeFromRange(value));
   }
 
   updatedAdvancedData(data: Array<DatasourceData>) {
@@ -1073,8 +1074,9 @@ export const textStyle = (font?: Font, letterSpacing = 'normal'): ComponentStyle
     style.fontSize = (font.size + (font.sizeUnit || 'px'));
   }
   if (font?.family) {
-    style.fontFamily = font.family +
-      (font.family !== 'Roboto' ? ', Roboto' : '');
+    const family = mtFontFamily(font.family);
+    style.fontFamily = family +
+      (family !== 'Roboto' ? ', Roboto' : '');
   }
   return style;
 };
@@ -1096,8 +1098,9 @@ export const inlineTextStyle = (font?: Font, letterSpacing = 'normal'): Componen
     style['font-size'] = (font.size + (font.sizeUnit || 'px'));
   }
   if (font?.family) {
-    style['font-family'] = font.family +
-      (font.family !== 'Roboto' ? ', Roboto' : '');
+    const family = mtFontFamily(font.family);
+    style['font-family'] = family +
+      (family !== 'Roboto' ? ', Roboto' : '');
   }
   return style;
 };
@@ -1128,7 +1131,7 @@ export const backgroundStyle = (background: BackgroundSettings, imagePipe: Image
   background = validateAndUpdateBackgroundSettings(background);
   if (background.type === BackgroundType.color) {
     return of({
-      background: background.color
+      background: mtColor(background.color)
     });
   } else {
     const imageUrl = background.imageUrl;
@@ -1147,7 +1150,7 @@ export const backgroundStyle = (background: BackgroundSettings, imagePipe: Image
 export const overlayStyle = (overlay: OverlaySettings): ComponentStyle => (
   {
     display: overlay.enabled ? 'block' : 'none',
-    background: overlay.color,
+    background: mtColor(overlay.color),
     backdropFilter: `blur(${overlay.blur}px)`
   }
 );

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -367,7 +368,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
       noDataMessage(this.widgetConfig.noDataDisplayMessage, 'widget.no-data-found', this.utils, this.translate);
     let cssString = constructTableCssString(this.widgetConfig, true);
 
-    const origBackgroundColor = this.widgetConfig.backgroundColor || 'rgb(255, 255, 255)';
+    const origBackgroundColor = mtColor(this.widgetConfig.backgroundColor || 'rgb(255, 255, 255)');
     cssString += '.tb-table-widget mat-toolbar.mat-mdc-table-toolbar:not([color=primary]) {\n' +
     'background-color: ' + origBackgroundColor + ' !important;\n' +
     '}\n';

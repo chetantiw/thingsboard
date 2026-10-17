@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor, mtToken, mtWidgetThemeEnabled } from '@shared/models/mutech-widget-theme';
 import { EntityId } from '@shared/models/id/entity-id';
 import { DataKey, FormattedData, WidgetActionDescriptor, WidgetConfig } from '@shared/models/widget.models';
 import { getDescendantProp, isDefined, isNotEmptyStr } from '@core/utils';
@@ -420,17 +421,17 @@ export function noDataMessage(noDataDisplayMessage: string, defaultMessage: stri
 }
 
 export function constructTableCssString(widgetConfig: WidgetConfig, isTabsEnabled = false): string {
-  const origColor = widgetConfig.color || 'rgba(0, 0, 0, 0.87)';
-  const origBackgroundColor = widgetConfig.backgroundColor || 'rgb(255, 255, 255)';
-  const currentEntityColor = 'rgba(221, 221, 221, 0.65)';
+  const origColor = mtColor(widgetConfig.color || 'rgba(0, 0, 0, 0.87)');
+  const origBackgroundColor = mtColor(widgetConfig.backgroundColor || 'rgb(255, 255, 255)');
+  const currentEntityColor = mtWidgetThemeEnabled() ? tinycolor(mtToken('accent')).setAlpha(0.16).toRgbString() : 'rgba(221, 221, 221, 0.65)';
   const currentEntityStickyColor = tinycolor.mix(origBackgroundColor,
-    tinycolor(currentEntityColor).setAlpha(1),  65).toRgbString();
-  const selectedColor = 'rgba(221, 221, 221, 0.5)';
+    tinycolor(currentEntityColor).setAlpha(1), tinycolor(currentEntityColor).getAlpha() * 100).toRgbString();
+  const selectedColor = mtWidgetThemeEnabled() ? tinycolor(mtToken('accent')).setAlpha(0.12).toRgbString() : 'rgba(221, 221, 221, 0.5)';
   const selectedStickyColor = tinycolor.mix(origBackgroundColor,
-    tinycolor(selectedColor).setAlpha(1),  50).toRgbString();
-  const hoverColor = 'rgba(221, 221, 221, 0.3)';
+    tinycolor(selectedColor).setAlpha(1), tinycolor(selectedColor).getAlpha() * 100).toRgbString();
+  const hoverColor = mtWidgetThemeEnabled() ? tinycolor(mtToken('accent')).setAlpha(0.07).toRgbString() : 'rgba(221, 221, 221, 0.3)';
   const hoverStickyColor = tinycolor.mix(origBackgroundColor,
-    tinycolor(hoverColor).setAlpha(1),  30).toRgbString();
+    tinycolor(hoverColor).setAlpha(1), tinycolor(hoverColor).getAlpha() * 100).toRgbString();
   const defaultColor = tinycolor(origColor);
   const mdDark = defaultColor.setAlpha(0.87).toRgbString();
   const mdDarkSecondary = defaultColor.setAlpha(0.54).toRgbString();

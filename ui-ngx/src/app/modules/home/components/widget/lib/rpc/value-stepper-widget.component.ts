@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -122,7 +123,7 @@ export class ValueStepperWidgetComponent extends
 
   ngOnInit(): void {
     super.ngOnInit();
-    this.settings = {...valueStepperDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...valueStepperDefaultSettings, ...this.ctx.settings});
 
     this.autoScale = this.settings.appearance.autoScale;
 

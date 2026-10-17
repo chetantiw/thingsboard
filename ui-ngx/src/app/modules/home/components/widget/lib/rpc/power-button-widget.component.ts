@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -69,7 +70,7 @@ export class PowerButtonWidgetComponent extends
 
   ngOnInit(): void {
     super.ngOnInit();
-    this.settings = {...powerButtonDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...powerButtonDefaultSettings, ...this.ctx.settings});
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);

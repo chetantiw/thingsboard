@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import _ from 'lodash';
 import tinycolor from 'tinycolor2';
 
@@ -87,7 +88,7 @@ export class TripAnimationComponent implements OnInit, AfterViewInit, OnDestroy 
   ngOnInit(): void {
     this.widgetConfig = this.ctx.widgetConfig;
     this.settings = {
-      buttonColor: tinycolor(this.widgetConfig.color).setAlpha(0.54).toRgbString(),
+      buttonColor: tinycolor(mtColor(this.widgetConfig.color)).setAlpha(0.54).toRgbString(),
       ...defaultTripAnimationSettings,
       ...this.ctx.settings
     };

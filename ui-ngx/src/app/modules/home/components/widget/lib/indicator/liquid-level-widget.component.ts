@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   ChangeDetectorRef,
   Component,
@@ -120,7 +121,7 @@ export class LiquidLevelWidgetComponent implements OnInit {
 
   ngOnInit(): void {
     this.ctx.$scope.liquidLevelWidget = this;
-    this.settings = {...levelCardDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...levelCardDefaultSettings, ...this.ctx.settings});
     this.declareStyles();
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);

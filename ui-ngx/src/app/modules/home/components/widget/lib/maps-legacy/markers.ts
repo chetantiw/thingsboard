@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import L, { LeafletMouseEvent } from 'leaflet';
 import { MarkerIconInfo, MarkerIconReadyFunction, MarkerImageInfo, WidgetMarkersSettings, } from './map-models';
 import { bindPopupActions, createTooltip } from './maps-utils';
@@ -120,7 +121,7 @@ export class Marker {
               this.map.replaceInfoLabelMarker = processDataPattern(this.map.markerLabelText, this.data);
             }
             const labelText = fillDataPattern(this.map.markerLabelText, this.map.replaceInfoLabelMarker, this.data);
-            const labelColor = this.map.ctx.widgetConfig.color;
+            const labelColor = mtColor(this.map.ctx.widgetConfig.color);
             this.leafletMarker.bindTooltip(`<div style="color: ${labelColor};"><b>${labelText}</b></div>`,
                 { className: 'tb-marker-label', permanent: true, direction: 'top', offset: this.labelOffset });
         }

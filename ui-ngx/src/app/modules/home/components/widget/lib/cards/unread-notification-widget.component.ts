@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   ChangeDetectorRef,
   Component,
@@ -129,7 +130,7 @@ export class UnreadNotificationWidgetComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.ctx.$scope.unreadNotificationWidget = this;
-    this.settings = {...unreadNotificationDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...unreadNotificationDefaultSettings, ...this.ctx.settings});
 
     this.showCounter = this.settings.showCounter;
     this.counterValueStyle = textStyle(this.settings.counterValueFont);

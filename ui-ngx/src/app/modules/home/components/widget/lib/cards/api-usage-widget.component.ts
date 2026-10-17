@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { ChangeDetectorRef, Component, Input, OnDestroy, OnInit, TemplateRef, ViewEncapsulation } from '@angular/core';
 import { WidgetContext } from '@home/models/widget-component.models';
 import { backgroundStyle, ComponentStyle, overlayStyle } from '@shared/models/widget-settings.models';
@@ -54,7 +55,7 @@ export class ApiUsageWidgetComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.ctx.$scope.apiUsageWidget = this;
-    this.settings = {...apiUsageDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...apiUsageDefaultSettings, ...this.ctx.settings});
 
     this.parseApiUsages();
 

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   ChangeDetectorRef,
   Component,
@@ -59,7 +60,7 @@ export class MapWidgetComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.ctx.$scope.mapWidget = this;
-    this.settings = {...mapWidgetDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...mapWidgetDefaultSettings, ...this.ctx.settings});
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);

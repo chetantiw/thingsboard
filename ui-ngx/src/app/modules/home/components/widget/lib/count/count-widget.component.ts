@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -97,7 +98,7 @@ export class CountWidgetComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.ctx.$scope.countWidget = this;
-    this.settings = {...countDefaultSettings(this.alarmElseEntity), ...this.ctx.settings};
+    this.settings = mtThemedSettings({...countDefaultSettings(this.alarmElseEntity), ...this.ctx.settings});
 
     this.layout = this.settings.layout;
 

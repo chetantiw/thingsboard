@@ -5,6 +5,8 @@ export type AppearanceLayout = 'classic' | 'control';
 export type AppearanceTheme = 'indigo' | 'arctic' | 'midnight' | 'carbon';
 export type AppearanceDensity = 'comfortable' | 'compact';
 export type AppearanceStartPage = 'home' | 'overview';
+// 'mutech' paints dashboard widgets with the theme; 'original' keeps the stock widget look.
+export type AppearanceWidgetStyle = 'mutech' | 'original';
 
 export interface Appearance {
   layout: AppearanceLayout;
@@ -12,6 +14,7 @@ export interface Appearance {
   density: AppearanceDensity;
   followSystem: boolean;
   startPage: AppearanceStartPage;
+  widgetStyle: AppearanceWidgetStyle;
 }
 
 export interface AppearanceThemeInfo {
@@ -40,5 +43,6 @@ export const defaultAppearance: Appearance = {
   theme: 'indigo',
   density: 'comfortable',
   followSystem: false,
-  startPage: 'home'
+  startPage: 'home',
+  widgetStyle: 'mutech'
 };

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -86,7 +87,7 @@ export class RangeChartWidgetComponent implements OnInit, OnDestroy, AfterViewIn
 
   ngOnInit(): void {
     this.ctx.$scope.rangeChartWidget = this;
-    this.settings = {...rangeChartDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...rangeChartDefaultSettings, ...this.ctx.settings});
     const unitService = this.ctx.$injector.get(UnitService);
 
     this.decimals = this.ctx.decimals;

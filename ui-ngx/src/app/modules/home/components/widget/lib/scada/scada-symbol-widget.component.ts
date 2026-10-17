@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -71,7 +72,7 @@ export class ScadaSymbolWidgetComponent implements OnInit, AfterViewInit, OnDest
 
   ngOnInit(): void {
     this.ctx.$scope.actionWidget = this;
-    this.settings = mergeDeep({} as ScadaSymbolWidgetSettings, scadaSymbolWidgetDefaultSettings, this.ctx.settings || {});
+    this.settings = mtThemedSettings(mergeDeep({} as ScadaSymbolWidgetSettings, scadaSymbolWidgetDefaultSettings, this.ctx.settings || {}));
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);

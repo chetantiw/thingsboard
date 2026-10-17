@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -127,7 +128,7 @@ export class SignalStrengthWidgetComponent implements OnInit, OnDestroy, AfterVi
 
   ngOnInit(): void {
     this.ctx.$scope.signalStrengthWidget = this;
-    this.settings = {...signalStrengthDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...signalStrengthDefaultSettings, ...this.ctx.settings});
     this.layout = this.settings.layout;
 
     this.showDate = this.settings.showDate;

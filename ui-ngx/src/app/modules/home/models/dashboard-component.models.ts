@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor, mtThemedSettings, mtToken, mtWidgetThemeEnabled } from '@shared/models/mutech-widget-theme';
 import { GridsterComponent, GridsterConfig, GridsterItem, GridsterItemComponentInterface } from 'angular-gridster2';
 import { FormattedData, Widget, WidgetPosition, widgetType } from '@app/shared/models/widget.models';
 import { WidgetLayout, WidgetLayouts } from '@app/shared/models/dashboard.models';
@@ -20,7 +21,7 @@ import { IAliasController, IStateController } from '@app/core/api/widget-api.mod
 import { enumerable } from '@shared/decorators/enumerable';
 import { UtilsService } from '@core/services/utils.service';
 import { TbPopoverComponent } from '@shared/components/popover.component';
-import { ComponentStyle, iconStyle, textStyle } from '@shared/models/widget-settings.models';
+import { ComponentStyle, iconStyle, textStyle, TimewindowStyle } from '@shared/models/widget-settings.models';
 import { TbContextMenuEvent } from '@shared/models/jquery-event.models';
 import {
   widgetDatasourcesHasAggregation,
@@ -573,12 +574,19 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
     }
   }
 
+  get timewindowStyle(): TimewindowStyle {
+    return mtThemedSettings(this.widget.config.timewindowStyle);
+  }
+
   updateWidgetParams(detectChanges = true) {
-    this.color = this.widget.config.color || 'rgba(0, 0, 0, 0.87)';
-    this.backgroundColor = this.widget.config.backgroundColor || '#fff';
+    this.color = mtColor(this.widget.config.color || 'rgba(0, 0, 0, 0.87)');
+    this.backgroundColor = mtColor(this.widget.config.backgroundColor || '#fff');
     this.padding = this.widget.config.padding || '8px';
     this.margin = this.widget.config.margin || '0px';
     this.borderRadius = this.widget.config.borderRadius;
+    if (mtWidgetThemeEnabled() && (!this.borderRadius || /^0(px)?$/.test(this.borderRadius.trim()))) {
+      this.borderRadius = mtToken('radius-lg');
+    }
 
     const title = isDefined(this.widgetContext.widgetTitle)
       && this.widgetContext.widgetTitle.length ? this.widgetContext.widgetTitle : this.widget.config.title;
@@ -589,13 +597,13 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
     this.showTitle = isDefined(this.widget.config.showTitle) ? this.widget.config.showTitle : true;
     this.titleStyle = {...(this.widget.config.titleStyle || {}), ...textStyle(this.widget.config.titleFont)};
     if (this.widget.config.titleColor) {
-      this.titleStyle.color = this.widget.config.titleColor;
+      this.titleStyle.color = mtColor(this.widget.config.titleColor);
     }
     this.titleIcon = isDefined(this.widget.config.titleIcon) ? this.widget.config.titleIcon : '';
     this.showTitleIcon = isDefined(this.widget.config.showTitleIcon) ? this.widget.config.showTitleIcon : false;
     this.titleIconStyle = this.widget.config.iconSize ? iconStyle(this.widget.config.iconSize) : {};
     if (this.widget.config.iconColor) {
-      this.titleIconStyle.color = this.widget.config.iconColor;
+      this.titleIconStyle.color = mtColor(this.widget.config.iconColor);
     }
     this.dropShadow = isDefined(this.widget.config.dropShadow) ? this.widget.config.dropShadow : true;
     this.enableFullscreen = isDefined(this.widget.config.enableFullscreen) ? this.widget.config.enableFullscreen : true;

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import {
   DataLayerEditAction,
   MapDataLayerSettings,
@@ -186,7 +187,7 @@ export abstract class TbLatestDataLayerItem<S extends MapDataLayerSettings = Map
     if (this.settings.label.show) {
       this.unbindLabel();
       const label = this.dataLayer.dataLayerLabelProcessor.processPattern(data, dsData);
-      const labelColor = this.dataLayer.getCtx().widgetConfig.color;
+      const labelColor = mtColor(this.dataLayer.getCtx().widgetConfig.color);
       const content: L.Content = `<div style="color: ${labelColor};"><b>${label}</b></div>`;
       this.bindLabel(content);
     }

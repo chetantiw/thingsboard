@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -81,7 +82,7 @@ export class TimeSeriesChartWidgetComponent implements OnInit, OnDestroy, AfterV
 
   ngOnInit(): void {
     this.ctx.$scope.timeSeriesChartWidget = this;
-    this.settings = {...timeSeriesChartWidgetDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...timeSeriesChartWidgetDefaultSettings, ...this.ctx.settings});
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);
