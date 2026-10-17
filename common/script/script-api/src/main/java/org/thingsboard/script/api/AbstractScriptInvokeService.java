@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.script.api;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -134,19 +121,29 @@ public abstract class AbstractScriptInvokeService implements ScriptInvokeService
         }
     }
 
-    @Override
-    public ListenableFuture<UUID> eval(TenantId tenantId, ScriptType scriptType, String scriptBody, String... argNames) {
+    public String validate(TenantId tenantId, String scriptBody) {
         if (isExecEnabled(tenantId)) {
             if (scriptBodySizeExceeded(scriptBody)) {
-                return error(format("Script body exceeds maximum allowed size of %s symbols", getMaxScriptBodySize()));
+                return format("Script body exceeds maximum allowed size of %s symbols", getMaxScriptBodySize());
             }
-            UUID scriptId = UUID.randomUUID();
-            requestsCounter.increment();
-            return withTimeoutAndStatsCallback(scriptId, null,
-                    doEvalScript(tenantId, scriptType, scriptBody, scriptId, argNames), evalCallback, getMaxEvalRequestsTimeout());
         } else {
-            return error("Script Execution is disabled due to API limits!");
+            return "Script Execution is disabled due to API limits!";
         }
+
+        return null;
+    }
+
+    @Override
+    public ListenableFuture<UUID> eval(TenantId tenantId, ScriptType scriptType, String scriptBody, String... argNames) {
+        String validationError = validate(tenantId, scriptBody);
+        if (validationError != null) {
+            return error(validationError);
+        }
+
+        UUID scriptId = UUID.randomUUID();
+        requestsCounter.increment();
+        return withTimeoutAndStatsCallback(scriptId, null,
+                doEvalScript(tenantId, scriptType, scriptBody, scriptId, argNames), evalCallback, getMaxEvalRequestsTimeout());
     }
 
     @Override
@@ -269,7 +266,7 @@ public abstract class AbstractScriptInvokeService implements ScriptInvokeService
         }
     }
 
-    private boolean scriptBodySizeExceeded(String scriptBody) {
+    public boolean scriptBodySizeExceeded(String scriptBody) {
         if (getMaxScriptBodySize() <= 0) return false;
         return scriptBody.length() > getMaxScriptBodySize();
     }
@@ -297,7 +294,7 @@ public abstract class AbstractScriptInvokeService implements ScriptInvokeService
         return result != null && result.length() > getMaxResultSize();
     }
 
-    private <T> ListenableFuture<T> error(String message) {
+    public <T> ListenableFuture<T> error(String message) {
         return Futures.immediateFailedFuture(new RuntimeException(message));
     }
 

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 syntax = "proto3";
 
 option java_package = "org.thingsboard.server.gen.edge.v1";
@@ -42,8 +29,27 @@ enum EdgeVersion {
   V_3_8_0 = 8;
   V_3_9_0 = 9;
   V_4_0_0 = 10;
+  V_4_1_0 = 11;
+  V_4_2_0 = 12;
+  V_4_3_0 = 13;
+  V_4_2_1_2 = 14;
+  V_4_2_2 = 4220;
+  V_4_2_2_1 = 4221;
+  V_4_2_2_2 = 4222;
+  V_4_2_2_3 = 4223;
+  V_4_2_2_4 = 4224;
+  V_4_2_2_5 = 4225;
+  V_4_2_2_6 = 4226;
+  V_4_3_0_1 = 15;
+  V_4_3_1 = 4310;
+  V_4_3_1_1 = 4311;
+  V_4_3_1_2 = 4312;
+  V_4_3_1_3 = 4313;
+  V_4_3_1_4 = 4314;
+  V_4_3_1_5 = 4315;
+  V_4_3_1_6 = 4316;
 
-  V_LATEST = 999;
+  V_LATEST = 99999;
 }
 
 /**
@@ -122,6 +128,27 @@ enum UpdateMsgType {
   ALARM_ACK_RPC_MESSAGE = 3;
   ALARM_CLEAR_RPC_MESSAGE = 4;
   // use 6 as a next number
+}
+
+message CalculatedFieldUpdateMsg{
+  UpdateMsgType msgType = 1;
+  int64 idMSB = 2;
+  int64 idLSB = 3;
+  string entity = 4;
+}
+
+message AiModelUpdateMsg{
+  UpdateMsgType msgType = 1;
+  int64 idMSB = 2;
+  int64 idLSB = 3;
+  string entity = 4;
+}
+
+message ApiKeyUpdateMsg{
+  UpdateMsgType msgType = 1;
+  int64 idMSB = 2;
+  int64 idLSB = 3;
+  string entity = 4;
 }
 
 message EntityDataProto {
@@ -325,6 +352,12 @@ message RelationRequestMsg {
   string entityType = 3;
 }
 
+message CalculatedFieldRequestMsg {
+  int64 entityIdMSB = 1;
+  int64 entityIdLSB = 2;
+  string entityType = 3;
+}
+
 // DEPRECATED. FOR REMOVAL
 message UserCredentialsRequestMsg {
   option deprecated = true;
@@ -423,6 +456,12 @@ message UplinkMsg {
   repeated AlarmCommentUpdateMsg alarmCommentUpdateMsg = 22;
   repeated RuleChainUpdateMsg ruleChainUpdateMsg = 23;
   repeated RuleChainMetadataUpdateMsg ruleChainMetadataUpdateMsg = 24;
+  repeated CalculatedFieldUpdateMsg calculatedFieldUpdateMsg = 25;
+  repeated CalculatedFieldRequestMsg calculatedFieldRequestMsg = 26;
+  repeated AiModelUpdateMsg aiModelUpdateMsg = 27;
+  repeated UserUpdateMsg userUpdateMsg = 28;
+  repeated UserCredentialsUpdateMsg userCredentialsUpdateMsg = 29;
+  repeated ApiKeyUpdateMsg apiKeyUpdateMsg = 30;
 }
 
 message UplinkResponseMsg {
@@ -472,4 +511,7 @@ message DownlinkMsg {
   repeated NotificationTargetUpdateMsg notificationTargetUpdateMsg = 32;
   repeated NotificationTemplateUpdateMsg notificationTemplateUpdateMsg = 33;
   repeated OAuth2DomainUpdateMsg oAuth2DomainUpdateMsg = 34;
+  repeated CalculatedFieldUpdateMsg calculatedFieldUpdateMsg = 35;
+  repeated AiModelUpdateMsg aiModelUpdateMsg = 36;
+  repeated ApiKeyUpdateMsg apiKeyUpdateMsg = 37;
 }

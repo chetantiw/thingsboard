@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.security.system;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -50,7 +37,7 @@ import org.thingsboard.server.common.data.security.model.SecuritySettings;
 import org.thingsboard.server.common.data.security.model.UserPasswordPolicy;
 import org.thingsboard.server.common.data.security.model.mfa.PlatformTwoFaSettings;
 import org.thingsboard.server.dao.audit.AuditLogService;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.dao.settings.AdminSettingsService;
 import org.thingsboard.server.dao.settings.SecuritySettingsService;
 import org.thingsboard.server.dao.user.UserService;
@@ -80,20 +67,20 @@ public class DefaultSystemSecurityService implements SystemSecurityService {
 
     @Override
     public void validateUserCredentials(TenantId tenantId, UserCredentials userCredentials, String username, String password) throws AuthenticationException {
+        if (!userCredentials.isEnabled()) {
+            throw new DisabledException("User is not active");
+        }
+
         if (!encoder.matches(password, userCredentials.getPassword())) {
             int failedLoginAttempts = userService.increaseFailedLoginAttempts(tenantId, userCredentials.getUserId());
             SecuritySettings securitySettings = securitySettingsService.getSecuritySettings();
             if (securitySettings.getMaxFailedLoginAttempts() != null && securitySettings.getMaxFailedLoginAttempts() > 0) {
-                if (failedLoginAttempts > securitySettings.getMaxFailedLoginAttempts() && userCredentials.isEnabled()) {
+                if (failedLoginAttempts > securitySettings.getMaxFailedLoginAttempts()) {
                     lockAccount(userCredentials.getUserId(), username, securitySettings.getUserLockoutNotificationEmail(), securitySettings.getMaxFailedLoginAttempts());
                     throw new LockedException("Authentication Failed. Username was locked due to security policy.");
                 }
             }
             throw new BadCredentialsException("Authentication Failed. Username or Password not valid.");
-        }
-
-        if (!userCredentials.isEnabled()) {
-            throw new DisabledException("User is not active");
         }
 
         userService.resetFailedLoginAttempts(tenantId, userCredentials.getUserId());

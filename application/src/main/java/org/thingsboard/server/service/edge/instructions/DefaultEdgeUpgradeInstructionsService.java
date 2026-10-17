@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.edge.instructions;
 
 import lombok.extern.slf4j.Slf4j;
@@ -52,12 +39,11 @@ public class DefaultEdgeUpgradeInstructionsService extends BaseEdgeInstallUpgrad
 
     @Override
     public EdgeInstructions getUpgradeInstructions(String edgeVersion, String upgradeMethod) {
-        String tbVersion = appVersion.replace("-SNAPSHOT", "");
         String currentEdgeVersion = convertEdgeVersionToDocsFormat(edgeVersion);
         return switch (upgradeMethod.toLowerCase()) {
-            case "docker" -> getDockerUpgradeInstructions(tbVersion, currentEdgeVersion);
+            case "docker" -> getDockerUpgradeInstructions(this.platformEdgeVersion, currentEdgeVersion);
             case "ubuntu", "centos" ->
-                    getLinuxUpgradeInstructions(tbVersion, currentEdgeVersion, upgradeMethod.toLowerCase());
+                    getLinuxUpgradeInstructions(this.platformEdgeVersion, currentEdgeVersion, upgradeMethod.toLowerCase());
             default -> throw new IllegalArgumentException("Unsupported upgrade method for Edge: " + upgradeMethod);
         };
     }
@@ -74,8 +60,7 @@ public class DefaultEdgeUpgradeInstructionsService extends BaseEdgeInstallUpgrad
         Optional<AttributeKvEntry> attributeKvEntryOpt = attributesService.find(tenantId, edgeId, AttributeScope.SERVER_SCOPE, DataConstants.EDGE_VERSION_ATTR_KEY).get();
         if (attributeKvEntryOpt.isPresent()) {
             String edgeVersionFormatted = convertEdgeVersionToDocsFormat(attributeKvEntryOpt.get().getValueAsString());
-            String appVersionFormatted = appVersion.replace("-SNAPSHOT", "");
-            return isVersionGreaterOrEqualsThan(edgeVersionFormatted, "3.6.0") && !isVersionGreaterOrEqualsThan(edgeVersionFormatted, appVersionFormatted);
+            return isVersionGreaterOrEqualsThan(edgeVersionFormatted, "3.6.0") && !isVersionGreaterOrEqualsThan(edgeVersionFormatted, platformEdgeVersion);
         }
         return false;
     }
@@ -98,13 +83,13 @@ public class DefaultEdgeUpgradeInstructionsService extends BaseEdgeInstallUpgrad
         return true;
     }
 
-    private EdgeInstructions getDockerUpgradeInstructions(String tbVersion, String currentEdgeVersion) {
+    private EdgeInstructions getDockerUpgradeInstructions(String platformEdgeVersion, String currentEdgeVersion) {
         EdgeUpgradeInfo edgeUpgradeInfo = upgradeVersionHashMap.get(currentEdgeVersion);
-        if (edgeUpgradeInfo == null || edgeUpgradeInfo.getNextEdgeVersion() == null || tbVersion.equals(currentEdgeVersion)) {
+        if (edgeUpgradeInfo == null || edgeUpgradeInfo.getNextEdgeVersion() == null || platformEdgeVersion.equals(currentEdgeVersion)) {
             return new EdgeInstructions("Edge upgrade instruction for " + currentEdgeVersion + "EDGE is not available.");
         }
         StringBuilder result = new StringBuilder(readFile(resolveFile("docker", "upgrade_preparing.md")));
-        while (edgeUpgradeInfo.getNextEdgeVersion() != null && !tbVersion.equals(currentEdgeVersion)) {
+        while (edgeUpgradeInfo.getNextEdgeVersion() != null && !platformEdgeVersion.equals(currentEdgeVersion)) {
             String edgeVersion = edgeUpgradeInfo.getNextEdgeVersion();
             String dockerUpgradeInstructions = readFile(resolveFile("docker", "instructions.md"));
             if (edgeUpgradeInfo.isRequiresUpdateDb()) {
@@ -125,15 +110,15 @@ public class DefaultEdgeUpgradeInstructionsService extends BaseEdgeInstallUpgrad
         return new EdgeInstructions(result.toString());
     }
 
-    private EdgeInstructions getLinuxUpgradeInstructions(String tbVersion, String currentEdgeVersion, String os) {
+    private EdgeInstructions getLinuxUpgradeInstructions(String platformEdgeVersion, String currentEdgeVersion, String os) {
         EdgeUpgradeInfo edgeUpgradeInfo = upgradeVersionHashMap.get(currentEdgeVersion);
-        if (edgeUpgradeInfo == null || edgeUpgradeInfo.getNextEdgeVersion() == null || tbVersion.equals(currentEdgeVersion)) {
+        if (edgeUpgradeInfo == null || edgeUpgradeInfo.getNextEdgeVersion() == null || platformEdgeVersion.equals(currentEdgeVersion)) {
             return new EdgeInstructions("Edge upgrade instruction for " + currentEdgeVersion + "EDGE is not available.");
         }
         String upgrade_preparing = readFile(resolveFile("upgrade_preparing.md"));
         upgrade_preparing = upgrade_preparing.replace("${OS}", os.equals("centos") ? "RHEL/CentOS 7/8" : "Ubuntu");
         StringBuilder result = new StringBuilder(upgrade_preparing);
-        while (edgeUpgradeInfo.getNextEdgeVersion() != null && !tbVersion.equals(currentEdgeVersion)) {
+        while (edgeUpgradeInfo.getNextEdgeVersion() != null && !platformEdgeVersion.equals(currentEdgeVersion)) {
             String edgeVersion = edgeUpgradeInfo.getNextEdgeVersion();
             String linuxUpgradeInstructions = readFile(resolveFile(os, "instructions.md"));
             if (edgeUpgradeInfo.isRequiresUpdateDb()) {
@@ -153,10 +138,6 @@ public class DefaultEdgeUpgradeInstructionsService extends BaseEdgeInstallUpgrad
         String startService = readFile(resolveFile("start_service.md"));
         result.append(startService);
         return new EdgeInstructions(result.toString());
-    }
-
-    private String convertEdgeVersionToDocsFormat(String edgeVersion) {
-        return edgeVersion.replace("_", ".").substring(2);
     }
 
     @Override

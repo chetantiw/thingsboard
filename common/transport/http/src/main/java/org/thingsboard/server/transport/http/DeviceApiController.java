@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.http;
 
 import com.google.gson.JsonObject;
@@ -76,10 +63,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-
-/**
- * @author Andrew Shvayka
- */
 @RestController
 @ConditionalOnExpression("'${service.type:null}'=='tb-transport' || ('${service.type:null}'=='monolith' && '${transport.api_enabled:true}'=='true' && '${transport.http.enabled}'=='true')")
 @RequestMapping("/api/v1")
@@ -213,7 +196,7 @@ public class DeviceApiController implements TbTransportService {
         return responseWriter;
     }
 
-    @Operation(summary = "Save claiming information (claimDevice)",
+    @Operation(summary = "Save claiming information (saveClaimingInfo)",
             description = "Saves the information required for user to claim the device. " +
                     "See more info about claiming in the corresponding 'Claiming devices' platform documentation."
                     + "\n Example of the request payload: "
@@ -224,7 +207,7 @@ public class DeviceApiController implements TbTransportService {
                     "In case the secretKey is not specified, the empty string as a default value is used. In case the durationMs is not specified, the system parameter device.claim.duration is used.\n\n"
                     + REQUIRE_ACCESS_TOKEN)
     @RequestMapping(value = "/{deviceToken}/claim", method = RequestMethod.POST)
-    public DeferredResult<ResponseEntity> claimDevice(
+    public DeferredResult<ResponseEntity> saveClaimingInfo(
             @Parameter(description = ACCESS_TOKEN_PARAM_DESCRIPTION, required = true , schema = @Schema(defaultValue = "YOUR_DEVICE_ACCESS_TOKEN"))
             @PathVariable("deviceToken") String deviceToken,
             @RequestBody(required = false) String json) {

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.common.state;
 
 import lombok.Getter;
@@ -25,9 +12,9 @@ import org.thingsboard.server.queue.discovery.QueueKey;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -37,19 +24,19 @@ import static org.thingsboard.server.common.msg.queue.TopicPartitionInfo.withTop
 public abstract class QueueStateService<E extends TbQueueMsg, S extends TbQueueMsg> {
 
     protected final PartitionedQueueConsumerManager<E> eventConsumer;
+    protected final List<PartitionedQueueConsumerManager<?>> otherConsumers;
 
     @Getter
     protected final Map<QueueKey, Set<TopicPartitionInfo>> partitions = new HashMap<>();
-    protected final Set<TopicPartitionInfo> partitionsInProgress = ConcurrentHashMap.newKeySet();
-    protected boolean initialized;
 
     protected final ReadWriteLock partitionsLock = new ReentrantReadWriteLock();
 
-    protected QueueStateService(PartitionedQueueConsumerManager<E> eventConsumer) {
+    protected QueueStateService(PartitionedQueueConsumerManager<E> eventConsumer, List<PartitionedQueueConsumerManager<?>> otherConsumers) {
         this.eventConsumer = eventConsumer;
+        this.otherConsumers = otherConsumers;
     }
 
-    public void update(QueueKey queueKey, Set<TopicPartitionInfo> newPartitions) {
+    public void update(QueueKey queueKey, Set<TopicPartitionInfo> newPartitions, RestoreCallback callback) {
         newPartitions = withTopic(newPartitions, eventConsumer.getTopic());
         var writeLock = partitionsLock.writeLock();
         writeLock.lock();
@@ -71,17 +58,21 @@ public abstract class QueueStateService<E extends TbQueueMsg, S extends TbQueueM
         }
 
         if (!addedPartitions.isEmpty()) {
-            addPartitions(queueKey, addedPartitions);
+            addPartitions(queueKey, addedPartitions, callback);
+        } else {
+            if (callback != null) {
+                callback.onAllPartitionsRestored();
+            }
         }
-        initialized = true;
     }
 
-    protected void addPartitions(QueueKey queueKey, Set<TopicPartitionInfo> partitions) {
-        eventConsumer.addPartitions(partitions);
-    }
+    protected abstract void addPartitions(QueueKey queueKey, Set<TopicPartitionInfo> partitions, RestoreCallback callback) ;
 
     protected void removePartitions(QueueKey queueKey, Set<TopicPartitionInfo> partitions) {
         eventConsumer.removePartitions(partitions);
+        for (PartitionedQueueConsumerManager<?> consumer : otherConsumers) {
+            consumer.removePartitions(withTopic(partitions, consumer.getTopic()));
+        }
     }
 
     public void delete(Set<TopicPartitionInfo> partitions) {
@@ -100,15 +91,22 @@ public abstract class QueueStateService<E extends TbQueueMsg, S extends TbQueueM
 
     protected void deletePartitions(Set<TopicPartitionInfo> partitions) {
         eventConsumer.delete(withTopic(partitions, eventConsumer.getTopic()));
-    }
-
-    public Set<TopicPartitionInfo> getPartitionsInProgress() {
-        return initialized ? partitionsInProgress : null;
+        for (PartitionedQueueConsumerManager<?> consumer : otherConsumers) {
+            consumer.removePartitions(withTopic(partitions, consumer.getTopic()));
+        }
     }
 
     public void stop() {
         eventConsumer.stop();
         eventConsumer.awaitStop();
+    }
+
+    public interface RestoreCallback {
+
+        void onAllPartitionsRestored();
+
+        default void onPartitionRestored(TopicPartitionInfo partition) {}
+
     }
 
 }

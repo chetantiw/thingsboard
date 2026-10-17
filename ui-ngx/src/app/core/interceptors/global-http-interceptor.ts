@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { Observable } from 'rxjs/internal/Observable';
 import { Injectable } from '@angular/core';
@@ -30,6 +16,7 @@ import { DialogService } from '@core/services/dialog.service';
 import { TranslateService } from '@ngx-translate/core';
 import { parseHttpErrorMessage } from '@core/utils';
 import { getInterceptorConfig } from './interceptor.util';
+import { DomSanitizer } from '@angular/platform-browser';
 
 const tmpHeaders = {};
 
@@ -46,6 +33,7 @@ export class GlobalHttpInterceptor implements HttpInterceptor {
     private dialogService: DialogService,
     private translate: TranslateService,
     private authService: AuthService,
+    private sanitizer: DomSanitizer
   ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
@@ -107,6 +95,10 @@ export class GlobalHttpInterceptor implements HttpInterceptor {
       } else if (errorCode !== Constants.serverErrorCode.credentialsExpired) {
         unhandled = true;
       }
+    } else if (errorCode && errorCode === Constants.serverErrorCode.entitiesLimitExceeded) {
+      if (!ignoreErrors) {
+        this.dialogService.entitiesLimitExceeded(errorResponse.error);
+      }
     } else if (errorResponse.status === 429) {
       if (resendRequest) {
         return this.retryRequest(req, next);
@@ -116,7 +108,9 @@ export class GlobalHttpInterceptor implements HttpInterceptor {
         this.dialogService.forbidden();
       }
     } else if (errorResponse.status === 0 || errorResponse.status === -1) {
+      if (!ignoreErrors) {
         this.showError('Unable to connect');
+      }
     } else if (!(req.url.startsWith('/api/rpc') || req.url.startsWith('/api/plugins/rpc'))) {
       if (errorResponse.status === 404) {
         if (!ignoreErrors) {
@@ -129,7 +123,7 @@ export class GlobalHttpInterceptor implements HttpInterceptor {
     }
 
     if (unhandled && !ignoreErrors) {
-      const errorMessageWithTimeout = parseHttpErrorMessage(errorResponse, this.translate, req.responseType);
+      const errorMessageWithTimeout = parseHttpErrorMessage(errorResponse, this.translate, req.responseType, this.sanitizer);
       this.showError(errorMessageWithTimeout.message, errorMessageWithTimeout.timeout);
     }
     return throwError(() => errorResponse);

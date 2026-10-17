@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, Injector } from '@angular/core';
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
@@ -26,6 +12,7 @@ import {
   legendPositions,
   legendPositionTranslationMap,
   WidgetConfig,
+  widgetTitleAutocompleteValues,
 } from '@shared/models/widget.models';
 import { WidgetConfigComponent } from '@home/components/widget/widget-config.component';
 import { DataKeyType } from '@shared/models/telemetry/telemetry.models';
@@ -44,12 +31,17 @@ import {
   barChartWithLabelsDefaultSettings,
   BarChartWithLabelsWidgetSettings
 } from '@home/components/widget/lib/chart/bar-chart-with-labels-widget.models';
-import { TimeSeriesChartType } from '@home/components/widget/lib/chart/time-series-chart.models';
+import {
+  TimeSeriesChartType,
+  updateLatestDataKeys
+} from '@home/components/widget/lib/chart/time-series-chart.models';
+import { getSourceTbUnitSymbol } from '@shared/models/unit.models';
 
 @Component({
-  selector: 'tb-bar-chart-with-labels-basic-config',
-  templateUrl: './bar-chart-with-labels-basic-config.component.html',
-  styleUrls: ['../basic-config.scss']
+    selector: 'tb-bar-chart-with-labels-basic-config',
+    templateUrl: './bar-chart-with-labels-basic-config.component.html',
+    styleUrls: ['../basic-config.scss'],
+    standalone: false
 })
 export class BarChartWithLabelsBasicConfigComponent extends BasicWidgetConfigComponent {
 
@@ -71,6 +63,8 @@ export class BarChartWithLabelsBasicConfigComponent extends BasicWidgetConfigCom
   tooltipValuePreviewFn = this._tooltipValuePreviewFn.bind(this);
 
   tooltipDatePreviewFn = this._tooltipDatePreviewFn.bind(this);
+
+  predefinedValues = widgetTitleAutocompleteValues;
 
   constructor(protected store: Store<AppState>,
               protected widgetConfigComponent: WidgetConfigComponent,
@@ -160,6 +154,11 @@ export class BarChartWithLabelsBasicConfigComponent extends BasicWidgetConfigCom
 
       actions: [configData.config.actions || {}, []]
     });
+  }
+
+  protected onConfigChanged(widgetConfig: WidgetConfigComponentData) {
+    updateLatestDataKeys([widgetConfig.config.settings.yAxis], this.datasource, this.callbacks);
+    super.onConfigChanged(widgetConfig);
   }
 
   protected prepareOutputConfig(config: any): WidgetConfigComponentData {
@@ -365,7 +364,7 @@ export class BarChartWithLabelsBasicConfigComponent extends BasicWidgetConfigCom
   }
 
   private _tooltipValuePreviewFn(): string {
-    const units: string = this.barChartWidgetConfigForm.get('units').value;
+    const units: string = getSourceTbUnitSymbol(this.barChartWidgetConfigForm.get('units').value);
     const decimals: number = this.barChartWidgetConfigForm.get('decimals').value;
     return formatValue(22, decimals, units, false);
   }

@@ -1,23 +1,7 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data;
 
-/**
- * @author Andrew Shvayka
- */
 public class DataConstants {
 
     public static final String TENANT = "TENANT";
@@ -44,6 +28,7 @@ public class DataConstants {
     public static final String EDGE_ID = "edgeId";
     public static final String DEVICE_ID = "deviceId";
     public static final String GATEWAY_PARAMETER = "gateway";
+    public static final String CF_NAME_METADATA_KEY = "calculatedFieldName";
 
     public static final String OVERWRITE_ACTIVITY_TIME_PARAMETER = "overwriteActivityTime";
     public static final String COAP_TRANSPORT_NAME = "COAP";
@@ -129,6 +114,7 @@ public class DataConstants {
     public static final String EDGE_MSG_SOURCE = "edge";
     public static final String MSG_SOURCE_KEY = "source";
     public static final String EDGE_VERSION_ATTR_KEY = "edgeVersion";
+    public static final String EDGE_SYNC_IN_PROGRESS_ATTR_KEY = "syncInProgress";
 
     public static final String LAST_CONNECTED_GATEWAY = "lastConnectedGateway";
 
@@ -147,5 +133,7 @@ public class DataConstants {
 
     public static final String CF_QUEUE_NAME = "CalculatedFields";
     public static final String CF_STATES_QUEUE_NAME = "CalculatedFieldStates";
+
+    public static final String LATEST_TELEMETRY_SCOPE = "LATEST_TELEMETRY";
 
 }

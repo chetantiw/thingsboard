@@ -1,20 +1,6 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
-import { AfterViewInit, Component, DestroyRef, forwardRef, Input, OnInit } from '@angular/core';
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+import { Component, DestroyRef, EventEmitter, forwardRef, Input, OnInit, Output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
@@ -25,18 +11,24 @@ import { EntityId } from '@shared/models/id/entity-id';
 import { NULL_UUID } from '@shared/models/id/has-uuid';
 import { coerceBoolean } from '@shared/decorators/coercion';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatFormFieldAppearance } from '@angular/material/form-field';
+import { BaseData } from '@shared/models/base-data';
+import { EntityAutocompleteComponent } from '@shared/components/entity/entity-autocomplete.component';
 
 @Component({
-  selector: 'tb-entity-select',
-  templateUrl: './entity-select.component.html',
-  styleUrls: ['./entity-select.component.scss'],
-  providers: [{
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => EntitySelectComponent),
-    multi: true
-  }]
+    selector: 'tb-entity-select',
+    templateUrl: './entity-select.component.html',
+    styleUrls: ['./entity-select.component.scss'],
+    providers: [{
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => EntitySelectComponent),
+            multi: true
+        }],
+    standalone: false
 })
-export class EntitySelectComponent implements ControlValueAccessor, OnInit, AfterViewInit {
+export class EntitySelectComponent implements ControlValueAccessor, OnInit {
+
+  @ViewChild('entityAutocompleteComponent') entityAutocompleteComponent!: EntityAutocompleteComponent;
 
   entitySelectFormGroup: UntypedFormGroup;
 
@@ -58,15 +50,32 @@ export class EntitySelectComponent implements ControlValueAccessor, OnInit, Afte
   @Input()
   additionEntityTypes: {[entityType in string]: string} = {};
 
+  @Input()
+  appearance: MatFormFieldAppearance = 'fill';
+
+  @Input()
+  @coerceBoolean()
+  useEntityDisplayName = false;
+
+  @Input()
+  filterAllowedEntityTypes = true;
+
+  @Input()
+  defaultEntityType: AliasEntityType | EntityType;
+
+  @Input()
+  entityTypeLabel: string;
+
+  @Output()
+  entityChanged = new EventEmitter<BaseData<EntityId>>();
+
   displayEntityTypeSelect: boolean;
 
   AliasEntityType = AliasEntityType;
 
-  entityTypeNullUUID: Set<AliasEntityType | EntityType | string> = new Set([
+  entityTypeNullUUID = new Set<AliasEntityType | EntityType | string>([
     AliasEntityType.CURRENT_TENANT, AliasEntityType.CURRENT_USER, AliasEntityType.CURRENT_USER_OWNER
   ]);
-
-  private readonly defaultEntityType: EntityType | AliasEntityType = null;
 
   private propagateChange = (v: any) => { };
 
@@ -78,15 +87,17 @@ export class EntitySelectComponent implements ControlValueAccessor, OnInit, Afte
 
     const entityTypes = this.entityService.prepareAllowedEntityTypesList(this.allowedEntityTypes,
                                                                          this.useAliasEntityTypes);
+
+    let defaultEntityType: EntityType | AliasEntityType = null;
     if (entityTypes.length === 1) {
       this.displayEntityTypeSelect = false;
-      this.defaultEntityType = entityTypes[0];
+      defaultEntityType = entityTypes[0];
     } else {
       this.displayEntityTypeSelect = true;
     }
 
     this.entitySelectFormGroup = this.fb.group({
-      entityType: [this.defaultEntityType],
+      entityType: [defaultEntityType],
       entityId: [null]
     });
   }
@@ -118,9 +129,19 @@ export class EntitySelectComponent implements ControlValueAccessor, OnInit, Afte
     if (additionNullUIIDEntityTypes.length > 0) {
       additionNullUIIDEntityTypes.forEach((entityType) => this.entityTypeNullUUID.add(entityType));
     }
-  }
 
-  ngAfterViewInit(): void {
+    if (this.filterAllowedEntityTypes === false) {
+      if (this.allowedEntityTypes?.length === 1) {
+        this.displayEntityTypeSelect = false;
+        this.entitySelectFormGroup.get('entityType').setValue(this.allowedEntityTypes[0]);
+      } else {
+        this.displayEntityTypeSelect = true;
+      }
+    }
+
+    if (this.defaultEntityType) {
+      this.entitySelectFormGroup.get('entityType').setValue(this.defaultEntityType);
+    }
   }
 
   setDisabledState(isDisabled: boolean): void {
@@ -167,5 +188,13 @@ export class EntitySelectComponent implements ControlValueAccessor, OnInit, Afte
         this.propagateChange(null);
       }
     }
+  }
+
+  changeEntity(entity: BaseData<EntityId>): void {
+    this.entityChanged.emit(entity);
+  }
+
+  entityAutocompleteMarkAsTouched() {
+    this.entityAutocompleteComponent.markAsTouched();
   }
 }

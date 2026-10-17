@@ -1,21 +1,7 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.edge;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.protobuf.AbstractMessage;
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,8 +14,6 @@ import org.thingsboard.server.common.data.edge.Edge;
 import org.thingsboard.server.common.data.id.AssetId;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.EntityId;
-import org.thingsboard.server.common.data.page.PageData;
-import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.dao.service.DaoSqlTest;
 import org.thingsboard.server.gen.edge.v1.AssetProfileUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.AssetUpdateMsg;
@@ -37,10 +21,11 @@ import org.thingsboard.server.gen.edge.v1.UpdateMsgType;
 import org.thingsboard.server.gen.edge.v1.UplinkMsg;
 import org.thingsboard.server.gen.edge.v1.UplinkResponseMsg;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @DaoSqlTest
@@ -60,7 +45,7 @@ public class AssetEdgeTest extends AbstractEdgeTest {
         Asset assetMsg = JacksonUtil.fromString(assetUpdateMsg.getEntity(), Asset.class, true);
         Assert.assertNotNull(assetMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, assetUpdateMsg.getMsgType());
-        Assert.assertEquals(savedAsset, assetMsg);
+        compareHasVersionEntities(savedAsset, assetMsg);
         Optional<AssetProfileUpdateMsg> assetProfileUpdateMsgOpt = edgeImitator.findMessageByType(AssetProfileUpdateMsg.class);
         Assert.assertTrue(assetProfileUpdateMsgOpt.isPresent());
         AssetProfileUpdateMsg assetProfileUpdateMsg = assetProfileUpdateMsgOpt.get();
@@ -111,7 +96,7 @@ public class AssetEdgeTest extends AbstractEdgeTest {
         assetMsg = JacksonUtil.fromString(assetUpdateMsg.getEntity(), Asset.class, true);
         Assert.assertNotNull(assetMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, assetUpdateMsg.getMsgType());
-        Assert.assertEquals(savedAsset, assetMsg);
+        compareHasVersionEntities(savedAsset, assetMsg);
         assetProfileUpdateMsgOpt = edgeImitator.findMessageByType(AssetProfileUpdateMsg.class);
         Assert.assertTrue(assetProfileUpdateMsgOpt.isPresent());
         assetProfileUpdateMsg = assetProfileUpdateMsgOpt.get();
@@ -277,12 +262,10 @@ public class AssetEdgeTest extends AbstractEdgeTest {
         edgeImitator.expectResponsesAmount(1);
         edgeImitator.sendUplinkMsg(upLinkMsgBuilder.build());
         Assert.assertTrue(edgeImitator.waitForResponses());
-        AssetInfo assetInfo = doGet("/api/asset/info/" + savedAsset.getUuidId(), AssetInfo.class);
-        Assert.assertNotNull(assetInfo);
-        List<AssetInfo> edgeAssets = doGetTypedWithPageLink("/api/edge/" + edge.getUuidId() + "/assets?",
-                new TypeReference<PageData<AssetInfo>>() {
-                }, new PageLink(100)).getData();
-        Assert.assertFalse(edgeAssets.contains(assetInfo));
+
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() ->
+                doGet("/api/asset/info/" + savedAsset.getUuidId(), AssetInfo.class, status().isNotFound())
+        );
     }
 
     private Asset saveAssetOnCloudAndVerifyDeliveryToEdge() throws Exception {

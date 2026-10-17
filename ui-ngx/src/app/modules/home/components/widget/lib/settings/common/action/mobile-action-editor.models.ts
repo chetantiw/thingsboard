@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { WidgetMobileActionType } from '@shared/models/widget.models';
 import { TbFunction } from '@shared/models/js-function.models';
 
@@ -172,6 +158,14 @@ const handleErrorFunctionTemplate: TbFunction =
   '    }, 100);\n' +
   '}\n';
 
+const handleNonMobileFallbackFunctionTemplate: TbFunction =
+  '// Optional function body to handle non-mobile fallback \n' +
+  'showFallbackToast();\n' +
+  '\n' +
+  'function showFallbackToast(title, error) {\n' +
+  '    widgetContext.showWarnToast(\'This action is only available in the mobile application.\');\n' +
+  '}\n';
+
 const getLocationFunctionTemplate: TbFunction =
   '// Function body that should return location as array of two numbers (latitude, longitude) for further processing by mobile action.\n' +
   '// Usually location can be obtained from entity attributes/telemetry. \n\n' +
@@ -326,3 +320,5 @@ export const getDefaultHandleErrorFunction = (type: WidgetMobileActionType): TbF
   }
   return handleErrorFunctionTemplate.replace('--TITLE--', title);
 };
+
+export const getDefaultHandleNonMobileFallBackFunction = () => handleNonMobileFallbackFunctionTemplate;

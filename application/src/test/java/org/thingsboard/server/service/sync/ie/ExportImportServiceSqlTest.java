@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.sync.ie;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -22,7 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.rule.engine.debug.TbMsgGeneratorNode;
 import org.thingsboard.rule.engine.debug.TbMsgGeneratorNodeConfiguration;
@@ -48,10 +35,9 @@ import org.thingsboard.server.common.data.cf.CalculatedFieldType;
 import org.thingsboard.server.common.data.cf.configuration.Argument;
 import org.thingsboard.server.common.data.cf.configuration.ArgumentType;
 import org.thingsboard.server.common.data.cf.configuration.CalculatedFieldConfiguration;
-import org.thingsboard.server.common.data.cf.configuration.Output;
-import org.thingsboard.server.common.data.cf.configuration.OutputType;
 import org.thingsboard.server.common.data.cf.configuration.ReferencedEntityKey;
 import org.thingsboard.server.common.data.cf.configuration.SimpleCalculatedFieldConfiguration;
+import org.thingsboard.server.common.data.cf.configuration.TimeSeriesOutput;
 import org.thingsboard.server.common.data.device.data.DefaultDeviceTransportConfiguration;
 import org.thingsboard.server.common.data.device.data.DeviceData;
 import org.thingsboard.server.common.data.device.profile.DefaultDeviceProfileConfiguration;
@@ -66,6 +52,7 @@ import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.DeviceProfileId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityViewId;
+import org.thingsboard.server.common.data.id.OtaPackageId;
 import org.thingsboard.server.common.data.id.RuleChainId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.msg.TbNodeConnectionType;
@@ -127,9 +114,9 @@ import static org.mockito.Mockito.verify;
 @DaoSqlTest
 public class ExportImportServiceSqlTest extends AbstractControllerTest {
 
-    @SpyBean
+    @MockitoSpyBean
     private EntityActionService entityActionService;
-    @SpyBean
+    @MockitoSpyBean
     private OtaPackageStateService otaPackageStateService;
 
     @Autowired
@@ -203,11 +190,12 @@ public class ExportImportServiceSqlTest extends AbstractControllerTest {
         AssetProfile assetProfile = createAssetProfile(tenantId1, ruleChain.getId(), dashboard.getId(), "Asset profile 1");
         Asset asset = createAsset(tenantId1, null, assetProfile.getId(), "Asset 1");
         DeviceProfile deviceProfile = createDeviceProfile(tenantId1, ruleChain.getId(), dashboard.getId(), "Device profile 1");
-        Device device = createDevice(tenantId1, null, deviceProfile.getId(), "Device 1");
+        OtaPackage firmware = createOtaPackage(tenantId1, deviceProfile.getId(), OtaPackageType.FIRMWARE);
+        Device device = createDevice(tenantId1, null, deviceProfile.getId(), "Device 1", firmware.getId(), null);
         CalculatedField calculatedField = createCalculatedField(tenantId1, device.getId(), asset.getId());
 
         Map<EntityType, EntityExportData> entitiesExportData = Stream.of(customer.getId(), asset.getId(), device.getId(),
-                        ruleChain.getId(), dashboard.getId(), assetProfile.getId(), deviceProfile.getId())
+                        ruleChain.getId(), dashboard.getId(), assetProfile.getId(), deviceProfile.getId(), firmware.getId())
                 .map(entityId -> {
                     try {
                         return exportEntity(tenantAdmin1, entityId, EntityExportSettings.builder()
@@ -275,12 +263,17 @@ public class ExportImportServiceSqlTest extends AbstractControllerTest {
         verify(tbClusterService).sendNotificationMsgToEdge(any(), any(), eq(importedDeviceProfile.getId()), any(), any(), eq(EdgeEventActionType.ADDED), any());
         verify(otaPackageStateService).update(eq(importedDeviceProfile), eq(false), eq(false));
 
+        OtaPackage importedFirmware = (OtaPackage) importEntity(tenantAdmin2, getAndClone(entitiesExportData, EntityType.OTA_PACKAGE)).getSavedEntity();
+        verify(entityActionService).logEntityAction(any(), eq(importedFirmware.getId()), eq(importedFirmware),
+                any(), eq(ActionType.ADDED), isNull());
+
         Device importedDevice = (Device) importEntity(tenantAdmin2, getAndClone(entitiesExportData, EntityType.DEVICE)).getSavedEntity();
         verify(entityActionService).logEntityAction(any(), eq(importedDevice.getId()), eq(importedDevice),
                 any(), eq(ActionType.ADDED), isNull());
         verify(tbClusterService).onDeviceUpdated(eq(importedDevice), isNull());
         importEntity(tenantAdmin2, getAndClone(entitiesExportData, EntityType.DEVICE));
         verify(tbClusterService, Mockito.never()).onDeviceUpdated(eq(importedDevice), eq(importedDevice));
+        assertThat(importedDevice.getFirmwareId()).isEqualTo(importedFirmware.getId());
 
         // calculated field of imported device:
         List<CalculatedField> calculatedFields = calculatedFieldService.findCalculatedFieldsByEntityId(tenantId2, importedDevice.getId());
@@ -318,14 +311,15 @@ public class ExportImportServiceSqlTest extends AbstractControllerTest {
         assetProfile = assetProfileService.saveAssetProfile(assetProfile);
 
         DeviceProfile deviceProfile = createDeviceProfile(tenantId1, ruleChain.getId(), dashboard.getId(), "Device profile 1");
-        Device device = createDevice(tenantId1, customer.getId(), deviceProfile.getId(), "Device 1");
+        OtaPackage firmware = createOtaPackage(tenantId1, deviceProfile.getId(), OtaPackageType.FIRMWARE);
+        Device device = createDevice(tenantId1, customer.getId(), deviceProfile.getId(), "Device 1", firmware.getId(), null);
         EntityView entityView = createEntityView(tenantId1, customer.getId(), device.getId(), "Entity view 1");
 
         CalculatedField calculatedField = createCalculatedField(tenantId1, device.getId(), device.getId());
 
         Map<EntityId, EntityId> ids = new HashMap<>();
         for (EntityId entityId : List.of(customer.getId(), ruleChain.getId(), dashboard.getId(), assetProfile.getId(), asset.getId(),
-                deviceProfile.getId(), device.getId(), entityView.getId(), ruleChain.getId(), dashboard.getId())) {
+                deviceProfile.getId(), firmware.getId(), device.getId(), entityView.getId(), ruleChain.getId(), dashboard.getId())) {
             EntityExportData exportData = exportEntity(getSecurityUser(tenantAdmin1), entityId);
             EntityImportResult importResult = importEntity(getSecurityUser(tenantAdmin2), exportData, EntityImportSettings.builder()
                     .saveCredentials(false)
@@ -359,12 +353,17 @@ public class ExportImportServiceSqlTest extends AbstractControllerTest {
         assertThat(exportedDeviceProfile.getDefaultRuleChainId()).isEqualTo(ruleChain.getId());
         assertThat(exportedDeviceProfile.getDefaultDashboardId()).isEqualTo(dashboard.getId());
 
-        EntityExportData<Device> entityExportData =  exportEntity(tenantAdmin2, (DeviceId) ids.get(device.getId()));
+        OtaPackage exportedFirmware = (OtaPackage) exportEntity(tenantAdmin2, (OtaPackageId) ids.get(firmware.getId())).getEntity();
+        assertThat(exportedFirmware.getDeviceProfileId()).isEqualTo(exportedDeviceProfile.getId());
+        assertThat(exportedFirmware.getId()).isEqualTo(firmware.getId());
+
+        EntityExportData<Device> entityExportData = exportEntity(tenantAdmin2, (DeviceId) ids.get(device.getId()));
         Device exportedDevice = entityExportData.getEntity();
         assertThat(exportedDevice.getCustomerId()).isEqualTo(customer.getId());
         assertThat(exportedDevice.getDeviceProfileId()).isEqualTo(deviceProfile.getId());
+        assertThat(exportedDevice.getFirmwareId()).isEqualTo(firmware.getId());
 
-        List<CalculatedField> calculatedFields = ((DeviceExportData) entityExportData).getCalculatedFields();
+        List<CalculatedField> calculatedFields = entityExportData.getCalculatedFields();
         assertThat(calculatedFields.size()).isOne();
         CalculatedField field = calculatedFields.get(0);
         assertThat(field.getName()).isEqualTo(calculatedField.getName());
@@ -380,13 +379,15 @@ public class ExportImportServiceSqlTest extends AbstractControllerTest {
         deviceProfileService.saveDeviceProfile(importedDeviceProfile);
     }
 
-    protected Device createDevice(TenantId tenantId, CustomerId customerId, DeviceProfileId deviceProfileId, String name) {
+    protected Device createDevice(TenantId tenantId, CustomerId customerId, DeviceProfileId deviceProfileId, String name, OtaPackageId firmwareId, OtaPackageId softwareId) {
         Device device = new Device();
         device.setTenantId(tenantId);
         device.setCustomerId(customerId);
         device.setName(name);
         device.setLabel("lbl");
         device.setDeviceProfileId(deviceProfileId);
+        device.setFirmwareId(firmwareId);
+        device.setSoftwareId(softwareId);
         DeviceData deviceData = new DeviceData();
         deviceData.setTransportConfiguration(new DefaultDeviceTransportConfiguration());
         device.setDeviceData(deviceData);
@@ -612,9 +613,8 @@ public class ExportImportServiceSqlTest extends AbstractControllerTest {
 
         config.setExpression("T - (100 - H) / 5");
 
-        Output output = new Output();
+        TimeSeriesOutput output = new TimeSeriesOutput();
         output.setName("output");
-        output.setType(OutputType.TIME_SERIES);
 
         config.setOutput(output);
 

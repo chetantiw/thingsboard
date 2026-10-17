@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.cf.ctx.state;
 
 import lombok.RequiredArgsConstructor;
@@ -43,6 +30,8 @@ import org.thingsboard.server.queue.provider.TbRuleEngineQueueFactory;
 import org.thingsboard.server.service.cf.AbstractCalculatedFieldStateService;
 import org.thingsboard.server.service.cf.ctx.CalculatedFieldEntityCtxId;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.thingsboard.server.queue.common.AbstractTbQueueTemplate.bytesToString;
@@ -61,6 +50,8 @@ public class KafkaCalculatedFieldStateService extends AbstractCalculatedFieldSta
 
     @Value("${queue.calculated_fields.poll_interval:25}")
     private long pollInterval;
+    @Value("${queue.calculated_fields.pack_processing_timeout:60000}")
+    private long packProcessingTimeout;
 
     private TbKafkaProducerTemplate<TbProtoQueueMsg<CalculatedFieldStateProto>> stateProducer;
 
@@ -73,31 +64,52 @@ public class KafkaCalculatedFieldStateService extends AbstractCalculatedFieldSta
                 .queueKey(queueKey)
                 .topic(partitionService.getTopic(queueKey))
                 .pollInterval(pollInterval)
-                .msgPackProcessor((msgs, consumer, config) -> {
+                .msgPackProcessor((msgs, consumer, consumerKey, config) -> {
+                    CountDownLatch completionLatch = new CountDownLatch(msgs.size());
                     for (TbProtoQueueMsg<CalculatedFieldStateProto> msg : msgs) {
+                        TbCallback callback = new TbCallback() {
+                            @Override
+                            public void onSuccess() {
+                                int processedMsgCount = counter.incrementAndGet();
+                                if (processedMsgCount % 10000 == 0) {
+                                    log.info("Processed {} CF state messages", processedMsgCount);
+                                }
+                                completionLatch.countDown();
+                            }
+
+                            @Override
+                            public void onFailure(Throwable t) {
+                                log.error("Failed to process CF state message: {}", msg, t);
+                                completionLatch.countDown();
+                            }
+                        };
+
                         try {
                             if (msg.getValue() != null) {
-                                processRestoredState(msg.getValue());
+                                processRestoredState(msg.getValue(), consumerKey.partition(), callback);
                             } else {
-                                processRestoredState(getStateId(msg.getHeaders()), null);
+                                processRestoredState(getStateId(msg.getHeaders()), null, consumerKey.partition(), callback);
                             }
                         } catch (Throwable t) {
-                            log.error("Failed to process state message: {}", msg, t);
-                        }
-
-                        int processedMsgCount = counter.incrementAndGet();
-                        if (processedMsgCount % 10000 == 0) {
-                            log.info("Processed {} calculated field state msgs", processedMsgCount);
+                            callback.onFailure(t);
                         }
                     }
+
+                    boolean success = completionLatch.await(packProcessingTimeout, TimeUnit.MILLISECONDS);
+                    if (!success) {
+                        log.error("Timeout to process CF state messages pack of size {}", msgs.size());
+                    }
                 })
-                .consumerCreator((config, partitionId) -> queueFactory.createCalculatedFieldStateConsumer())
+                .consumerCreator((queueConfig, tpi) -> queueFactory.createCalculatedFieldStateConsumer())
                 .queueAdmin(queueFactory.getCalculatedFieldQueueAdmin())
                 .consumerExecutor(eventConsumer.getConsumerExecutor())
                 .scheduler(eventConsumer.getScheduler())
                 .taskExecutor(eventConsumer.getTaskExecutor())
                 .build();
-        super.stateService = new KafkaQueueStateService<>(eventConsumer, stateConsumer);
+        super.stateService = KafkaQueueStateService.<TbProtoQueueMsg<ToCalculatedFieldMsg>, TbProtoQueueMsg<CalculatedFieldStateProto>>builder()
+                .eventConsumer(eventConsumer)
+                .stateConsumer(stateConsumer)
+                .build();
         this.stateProducer = (TbKafkaProducerTemplate<TbProtoQueueMsg<CalculatedFieldStateProto>>) queueFactory.createCalculatedFieldStateProducer();
     }
 
@@ -111,18 +123,14 @@ public class KafkaCalculatedFieldStateService extends AbstractCalculatedFieldSta
         stateProducer.send(tpi, stateId.toKey(), msg, new TbQueueCallback() {
             @Override
             public void onSuccess(TbQueueMsgMetadata metadata) {
-                if (callback != null) {
-                    callback.onSuccess();
-                }
             }
 
             @Override
             public void onFailure(Throwable t) {
-                if (callback != null) {
-                    callback.onFailure(t);
-                }
+                log.error("Failed to send state message: {}", stateId, t);
             }
         });
+        callback.onSuccess();
     }
 
     @Override

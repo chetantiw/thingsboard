@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.common;
 
 import lombok.Builder;
@@ -30,8 +17,6 @@ import org.thingsboard.server.queue.TbQueueResponseTemplate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,7 +29,6 @@ public class DefaultTbQueueResponseTemplate<Request extends TbQueueMsg, Response
 
     private final TbQueueConsumer<Request> requestTemplate;
     private final TbQueueProducer<Response> responseTemplate;
-    private final ConcurrentMap<UUID, String> pendingRequests;
     private final ExecutorService loopExecutor;
     private final ScheduledExecutorService timeoutExecutor;
     private final ExecutorService callbackExecutor;
@@ -67,7 +51,6 @@ public class DefaultTbQueueResponseTemplate<Request extends TbQueueMsg, Response
                                           MessagesStats stats) {
         this.requestTemplate = requestTemplate;
         this.responseTemplate = responseTemplate;
-        this.pendingRequests = new ConcurrentHashMap<>();
         this.maxPendingRequests = maxPendingRequests;
         this.pollInterval = pollInterval;
         this.requestTimeout = requestTimeout;
@@ -89,7 +72,6 @@ public class DefaultTbQueueResponseTemplate<Request extends TbQueueMsg, Response
 
     @Override
     public void launch(TbQueueHandler<Request, Response> handler) {
-        this.responseTemplate.init();
         loopExecutor.submit(() -> {
             while (!stopped) {
                 try {

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.lwm2m.ota.sql;
 
 import lombok.extern.slf4j.Slf4j;
@@ -47,17 +34,19 @@ public class Ota9LwM2MIntegrationTest extends AbstractOtaLwM2MIntegrationTest {
      * => PKG integrity verified -> DELIVERED  (Res=3 (Successfully Downloaded and package integrity verified) && State=3) -> INSTALLED;
      * => Install -> INSTALLED (Res=2 SW successfully installed) && State=4) -> Start
      *
-     * */
+     *
+     */
     @Test
     public void testSoftwareUpdateByObject9() throws Exception {
+        String clientEndpoint = this.CLIENT_ENDPOINT_OTA9;
         Lwm2mDeviceProfileTransportConfiguration transportConfiguration = getTransportConfiguration(OBSERVE_ATTRIBUTES_WITH_PARAMS_OTA9, getBootstrapServerCredentialsNoSec(NONE));
-        DeviceProfile deviceProfile = createLwm2mDeviceProfile("profileFor" + this.CLIENT_ENDPOINT_OTA9, transportConfiguration);
-        LwM2MDeviceCredentials deviceCredentials = getDeviceCredentialsNoSec(createNoSecClientCredentials(this.CLIENT_ENDPOINT_OTA9));
-        final Device device = createLwm2mDevice(deviceCredentials, this.CLIENT_ENDPOINT_OTA9, deviceProfile.getId());
-        createNewClient(SECURITY_NO_SEC, null, false, this.CLIENT_ENDPOINT_OTA9, device.getId().getId().toString());
+        DeviceProfile deviceProfile = createLwm2mDeviceProfile("profileFor" + clientEndpoint, transportConfiguration);
+        LwM2MDeviceCredentials deviceCredentials = getDeviceCredentialsNoSec(createNoSecClientCredentials(clientEndpoint));
+        final Device device = createLwm2mDevice(deviceCredentials, clientEndpoint, deviceProfile.getId());
+        createNewClient(SECURITY_NO_SEC, null, false, clientEndpoint, device.getId().getId().toString());
         awaitObserveReadAll(4, device.getId().getId().toString());
 
-        device.setSoftwareId(createSoftware(deviceProfile.getId()).getId());
+        device.setSoftwareId(createSoftware(deviceProfile.getId(), "v1.0").getId());
         final Device savedDevice = doPost("/api/device", device, Device.class); //sync call
 
         assertThat(savedDevice).as("saved device").isNotNull();

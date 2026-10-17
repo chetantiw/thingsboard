@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.profile;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -51,16 +38,18 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @RuleNode(
         type = ComponentType.ACTION,
-        name = "device profile",
+        name = "device profile (deprecated)",
         customRelations = true,
         relationTypes = {"Alarm Created", "Alarm Updated", "Alarm Severity Updated", "Alarm Cleared", "Success", "Failure"},
         version = 1,
         configClazz = TbDeviceProfileNodeConfiguration.class,
-        nodeDescription = "Process device messages based on device profile settings",
+        nodeDescription = "Process device messages based on device profile settings (deprecated)",
         nodeDetails = "Create and clear alarms based on alarm rules defined in device profile. The output relation type is either " +
-                "'Alarm Created', 'Alarm Updated', 'Alarm Severity Updated' and 'Alarm Cleared' or simply 'Success' if no alarms were affected.",
-        configDirective = "tbActionNodeDeviceProfileConfig"
+                      "'Alarm Created', 'Alarm Updated', 'Alarm Severity Updated' and 'Alarm Cleared' or simply 'Success' if no alarms were affected.",
+        configDirective = "tbActionNodeDeviceProfileConfig",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/action/device-profile/"
 )
+@Deprecated
 public class TbDeviceProfileNode implements TbNode {
 
     private TbDeviceProfileNodeConfiguration config;
@@ -137,7 +126,7 @@ public class TbDeviceProfileNode implements TbNode {
                     if (deviceState != null) {
                         deviceState.process(ctx, msg);
                     } else {
-                        log.info("Device was not found! Most probably device [" + deviceId + "] has been removed from the database. Acknowledging msg.");
+                        log.info("Device was not found! Most probably device [{}] has been removed from the database. Acknowledging msg.", deviceId);
                         ctx.ack(msg);
                     }
                 }
@@ -160,7 +149,7 @@ public class TbDeviceProfileNode implements TbNode {
         deviceStates.clear();
     }
 
-    protected DeviceState getOrCreateDeviceState(TbContext ctx, DeviceId deviceId, RuleNodeState rns, boolean printNewlyAddedDeviceStates) {
+    private DeviceState getOrCreateDeviceState(TbContext ctx, DeviceId deviceId, RuleNodeState rns, boolean printNewlyAddedDeviceStates) {
         DeviceState deviceState = deviceStates.get(deviceId);
         if (deviceState == null) {
             DeviceProfile deviceProfile = cache.get(ctx.getTenantId(), deviceId);

@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, Inject, OnDestroy, SkipSelf, ViewChild } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
@@ -75,10 +61,11 @@ export interface DashboardLayoutSettings {
 }
 
 @Component({
-  selector: 'tb-manage-dashboard-layouts-dialog',
-  templateUrl: './manage-dashboard-layouts-dialog.component.html',
-  providers: [{provide: ErrorStateMatcher, useExisting: ManageDashboardLayoutsDialogComponent}],
-  styleUrls: ['./manage-dashboard-layouts-dialog.component.scss', '../../../components/dashboard/layout-button.scss']
+    selector: 'tb-manage-dashboard-layouts-dialog',
+    templateUrl: './manage-dashboard-layouts-dialog.component.html',
+    providers: [{ provide: ErrorStateMatcher, useExisting: ManageDashboardLayoutsDialogComponent }],
+    styleUrls: ['./manage-dashboard-layouts-dialog.component.scss', '../../../components/dashboard/layout-button.scss'],
+    standalone: false
 })
 export class ManageDashboardLayoutsDialogComponent extends DialogComponent<ManageDashboardLayoutsDialogComponent, DashboardStateLayouts>
   implements ErrorStateMatcher, OnDestroy {

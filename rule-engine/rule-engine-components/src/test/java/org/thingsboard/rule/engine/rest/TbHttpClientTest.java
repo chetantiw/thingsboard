@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.rest;
 
 
@@ -22,10 +9,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.mockserver.integration.ClientAndServer;
 import org.springframework.util.LinkedMultiValueMap;
+import org.thingsboard.common.util.DirectListeningExecutor;
 import org.thingsboard.rule.engine.api.TbContext;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EntityId;
@@ -54,6 +43,7 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
+@ResourceLock("SsrfProtectionValidator") // to avoid race conditions when modifying SsrfProtectionValidator's static configuration
 public class TbHttpClientTest {
 
     EventLoopGroup eventLoop;
@@ -154,6 +144,7 @@ public class TbHttpClientTest {
                 .build();
 
         var ctx = mock(TbContext.class);
+        when(ctx.getExternalCallExecutor()).thenReturn(DirectListeningExecutor.INSTANCE);
         when(ctx.transformMsg(
                 eq(msg),
                 eq(msg.getMetaData()),

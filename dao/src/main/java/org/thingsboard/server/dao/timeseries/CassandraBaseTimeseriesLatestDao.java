@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.timeseries;
 
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
@@ -36,17 +23,13 @@ import org.thingsboard.server.common.data.kv.ReadTsKvQuery;
 import org.thingsboard.server.common.data.kv.ReadTsKvQueryResult;
 import org.thingsboard.server.common.data.kv.TsKvEntry;
 import org.thingsboard.server.common.data.kv.TsKvLatestRemovingResult;
-import org.thingsboard.server.common.data.page.PageData;
-import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.dao.model.ModelConstants;
-import org.thingsboard.server.dao.model.sqlts.latest.TsKvLatestEntity;
 import org.thingsboard.server.dao.nosql.TbResultSet;
 import org.thingsboard.server.dao.sqlts.AggregationTimeseriesDao;
 import org.thingsboard.server.dao.util.NoSqlTsLatestDao;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.literal;
@@ -103,6 +86,20 @@ public class CassandraBaseTimeseriesLatestDao extends AbstractCassandraBaseTimes
         return Collections.emptyList();
     }
 
+    @Override
+    public ListenableFuture<List<String>> findAllKeysByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return Futures.immediateFuture(Collections.emptyList());
+    }
+
+    @Override
+    public List<TsKvEntry> findLatestByEntityIds(TenantId tenantId, List<EntityId> entityIds) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public ListenableFuture<List<TsKvEntry>> findLatestByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return Futures.immediateFuture(Collections.emptyList());
+    }
 
     @Override
     public ListenableFuture<Long> saveLatest(TenantId tenantId, EntityId entityId, TsKvEntry tsKvEntry) {
@@ -184,7 +181,7 @@ public class CassandraBaseTimeseriesLatestDao extends AbstractCassandraBaseTimes
     }
 
     private ListenableFuture<List<TsKvEntry>> convertAsyncResultSetToTsKvEntryList(TbResultSet rs) {
-        return Futures.transform(rs.allRows(readResultsProcessingExecutor),
+        return Futures.transform(rs.allRows(readResultsProcessingExecutor, maxResultSetSizeBytes),
                 rows -> this.convertResultToTsKvEntryList(rows), readResultsProcessingExecutor);
     }
 

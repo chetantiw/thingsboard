@@ -1,32 +1,18 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
-import { Component, Inject, OnInit, SkipSelf } from '@angular/core';
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+import { Component, Inject, SkipSelf } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
 import {
   AbstractControl,
+  FormGroupDirective,
+  NgForm,
   UntypedFormArray,
   UntypedFormBuilder,
   UntypedFormControl,
   UntypedFormGroup,
-  FormGroupDirective,
-  NgForm,
   Validators
 } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -52,13 +38,14 @@ export interface FiltersDialogData {
 }
 
 @Component({
-  selector: 'tb-filters-dialog',
-  templateUrl: './filters-dialog.component.html',
-  providers: [{provide: ErrorStateMatcher, useExisting: FiltersDialogComponent}],
-  styleUrls: ['./filters-dialog.component.scss']
+    selector: 'tb-filters-dialog',
+    templateUrl: './filters-dialog.component.html',
+    providers: [{ provide: ErrorStateMatcher, useExisting: FiltersDialogComponent }],
+    styleUrls: ['./filters-dialog.component.scss'],
+    standalone: false
 })
 export class FiltersDialogComponent extends DialogComponent<FiltersDialogComponent, Filters>
-  implements OnInit, ErrorStateMatcher {
+  implements ErrorStateMatcher {
 
   title: string;
   disableAdd: boolean;
@@ -96,15 +83,16 @@ export class FiltersDialogComponent extends DialogComponent<FiltersDialogCompone
         }
       } else {
         this.data.widgets.forEach((widget) => {
-          const datasources = this.dashboardUtils.validateAndUpdateDatasources(widget.config.datasources);
-          datasources.forEach((datasource) => {
-            if (datasource.type === DatasourceType.entity && datasource.filterId) {
+          this.dashboardUtils.getWidgetDatasources(widget).forEach((datasource) => {
+            if (datasource.type !== DatasourceType.function && datasource.filterId) {
               widgetsTitleList = this.filterToWidgetsMap[datasource.filterId];
               if (!widgetsTitleList) {
                 widgetsTitleList = [];
                 this.filterToWidgetsMap[datasource.filterId] = widgetsTitleList;
               }
-              widgetsTitleList.push(widget.config.title);
+              if (!widgetsTitleList.includes(widget.config.title)) {
+                widgetsTitleList.push(widget.config.title);
+              }
             }
           });
         });
@@ -138,9 +126,6 @@ export class FiltersDialogComponent extends DialogComponent<FiltersDialogCompone
 
   filtersFormArray(): UntypedFormArray {
     return this.filtersFormGroup.get('filters') as UntypedFormArray;
-  }
-
-  ngOnInit(): void {
   }
 
   isErrorState(control: UntypedFormControl | null, form: FormGroupDirective | NgForm | null): boolean {

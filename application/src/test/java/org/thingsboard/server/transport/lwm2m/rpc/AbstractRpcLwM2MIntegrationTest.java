@@ -1,26 +1,15 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.lwm2m.rpc;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.leshan.core.ResponseCode;
 import org.eclipse.leshan.core.link.LinkParser;
 import org.eclipse.leshan.core.link.lwm2m.DefaultLwM2mLinkParser;
 import org.junit.Before;
 import org.mockito.Mockito;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.DeviceProfile;
 import org.thingsboard.server.common.data.device.credentials.lwm2m.LwM2MDeviceCredentials;
@@ -29,6 +18,7 @@ import org.thingsboard.server.dao.service.DaoSqlTest;
 import org.thingsboard.server.gen.transport.TransportProtos;
 import org.thingsboard.server.transport.lwm2m.AbstractLwM2MIntegrationTest;
 import org.thingsboard.server.transport.lwm2m.server.LwM2mTransportServerHelper;
+import org.thingsboard.server.transport.lwm2m.server.client.ResourceUpdateResult;
 
 import java.util.List;
 import java.util.Set;
@@ -39,15 +29,17 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.eclipse.leshan.core.LwM2mId.ACCESS_CONTROL;
 import static org.eclipse.leshan.core.LwM2mId.DEVICE;
 import static org.eclipse.leshan.core.LwM2mId.FIRMWARE;
+import static org.eclipse.leshan.core.LwM2mId.SECURITY;
 import static org.eclipse.leshan.core.LwM2mId.SERVER;
 import static org.eclipse.leshan.core.LwM2mId.SOFTWARE_MANAGEMENT;
 import static org.thingsboard.server.transport.lwm2m.Lwm2mTestHelper.BINARY_APP_DATA_CONTAINER;
 import static org.thingsboard.server.transport.lwm2m.Lwm2mTestHelper.LwM2MProfileBootstrapConfigType.NONE;
-import static org.thingsboard.server.transport.lwm2m.Lwm2mTestHelper.OBJECT_ID_0;
-import static org.thingsboard.server.transport.lwm2m.Lwm2mTestHelper.OBJECT_ID_1;
 import static org.thingsboard.server.transport.lwm2m.Lwm2mTestHelper.OBJECT_INSTANCE_ID_0;
 import static org.thingsboard.server.transport.lwm2m.Lwm2mTestHelper.OBJECT_INSTANCE_ID_1;
 import static org.thingsboard.server.transport.lwm2m.Lwm2mTestHelper.OBJECT_INSTANCE_ID_12;
@@ -72,16 +64,16 @@ public abstract class AbstractRpcLwM2MIntegrationTest extends AbstractLwM2MInteg
 
     protected final LinkParser linkParser = new DefaultLwM2mLinkParser();
     protected String CONFIG_PROFILE_WITH_PARAMS_RPC;
-    public Set expectedObjects;
-    public Set expectedObjectIdVers;
-    public Set expectedInstances;
-    public Set expectedObjectIdVerInstances;
+    public Set<String> expectedObjects;
+    public Set<String> expectedObjectIdVers;
+    public Set<String> expectedInstances;
+    public Set<String> expectedObjectIdVerInstances;
 
     protected String objectInstanceIdVer_1;
     protected String objectIdVer_0;
     protected String objectIdVer_1;
     protected String objectIdVer_2;
-    private static final Predicate PREDICATE_3 = path -> (!((String) path).startsWith("/" + TEMPERATURE_SENSOR) && ((String) path).startsWith("/" + DEVICE));
+    private static final Predicate<String> PREDICATE_3 = path -> (!((String) path).startsWith("/" + TEMPERATURE_SENSOR) && ((String) path).startsWith("/" + DEVICE));
     protected String objectIdVer_3;
     protected String objectInstanceIdVer_3;
     protected String objectInstanceIdVer_5;
@@ -98,12 +90,8 @@ public abstract class AbstractRpcLwM2MIntegrationTest extends AbstractLwM2MInteg
 
     protected String idVer_19_0_0;
 
-    @SpyBean
+    @MockitoSpyBean
     protected LwM2mTransportServerHelper lwM2mTransportServerHelperTest;
-
-    public AbstractRpcLwM2MIntegrationTest() {
-        setResources(lwm2mClientResources);
-    }
 
     @Before
     public void startInitRPC() throws Exception {
@@ -114,6 +102,10 @@ public abstract class AbstractRpcLwM2MIntegrationTest extends AbstractLwM2MInteg
             initRpc(0);
         } else if (this.getClass().getSimpleName().equals("RpcLwm2mIntegrationReadCollectedValueTest")) {
             initRpc(3303);
+        } else if (this.getClass().getSimpleName().equals("RpcLwm2mIntegrationInitReadCompositeAllTest")) {
+            initRpc(2);
+        }else if (this.getClass().getSimpleName().equals("RpcLwm2mIntegrationInitReadCompositeByObjectTest")) {
+            initRpc(3);
         } else {
             initRpc(1);
         }
@@ -139,10 +131,10 @@ public abstract class AbstractRpcLwM2MIntegrationTest extends AbstractLwM2MInteg
                 });
             }
         });
-        String ver_Id_0 = lwM2MTestClient.getLeshanClient().getObjectTree().getModel().getObjectModel(OBJECT_ID_0).version;
-        String ver_Id_1 = lwM2MTestClient.getLeshanClient().getObjectTree().getModel().getObjectModel(OBJECT_ID_1).version;
-        objectIdVer_0 = "/" + OBJECT_ID_0 + "_" + ver_Id_0;
-        objectIdVer_1 = "/" + OBJECT_ID_1 + "_" + ver_Id_1;
+        String ver_Id_0 = lwM2MTestClient.getLeshanClient().getObjectTree().getModel().getObjectModel(SECURITY).version;
+        String ver_Id_1 = lwM2MTestClient.getLeshanClient().getObjectTree().getModel().getObjectModel(SERVER).version;
+        objectIdVer_0 = "/" + SECURITY + "_" + ver_Id_0;
+        objectIdVer_1 = "/" + SERVER + "_" + ver_Id_1;
         objectIdVer_2 = (String) expectedObjectIdVers.stream().filter(path -> ((String) path).startsWith("/" + ACCESS_CONTROL)).findFirst().get();
         objectIdVer_3 = (String) expectedObjectIdVers.stream().filter(PREDICATE_3).findFirst().get();
         objectIdVer_19 = (String) expectedObjectIdVers.stream().filter(path -> ((String) path).startsWith("/" + BINARY_APP_DATA_CONTAINER)).findFirst().get();
@@ -220,10 +212,67 @@ public abstract class AbstractRpcLwM2MIntegrationTest extends AbstractLwM2MInteg
                         "    ],\n" +
                         "    \"attributeLwm2m\": {}\n" +
                         "  }";
+       String INIT_READ_TELEMETRY_ATTRIBUTE_AS_OBSERVE_STRATEGY_ALL =
+               "    {\n" +
+                       "    \"keyName\": {\n" +
+                       "      \"/3_1.2/0/9\": \"batteryLevel\",\n" +
+                       "      \"/3_1.2/0/20\": \"batteryStatus\",\n" +
+                       "      \"/19_1.1/0/2\": \"dataCreationTime\",\n" +
+                       "      \"/5_1.2/0/6\": \"pkgname\",\n" +
+                       "      \"/5_1.2/0/7\": \"pkgversion\",\n" +
+                       "      \"/5_1.2/0/9\": \"firmwareUpdateDeliveryMethod\"\n" +
+                       "    },\n" +
+                       "    \"observe\": [\n" +
+                       "      \"/3_1.2/0/20\"\n" +
+                       "    ],\n" +
+                       "    \"attribute\": [\n" +
+                       "      \"/5_1.2/0/6\",\n" +
+                       "      \"/5_1.2/0/7\"\n" +
+                       "    ],\n" +
+                       "    \"telemetry\": [\n" +
+                       "      \"/3_1.2/0/9\",\n" +
+                       "      \"/3_1.2/0/20\",\n" +
+                       "      \"/5_1.2/0/9\",\n" +
+                       "      \"/19_1.1/0/2\"\n" +
+                       "    ],\n" +
+                       "    \"attributeLwm2m\": {},\n" +
+                       "    \"initAttrTelAsObsStrategy\": true,\n" +
+                       "    \"observeStrategy\": 1\n" +
+                       "  }";
+    String INIT_READ_TELEMETRY_ATTRIBUTE_AS_OBSERVE_STRATEGY_BY_OBJECT =
+               "    {\n" +
+                       "    \"keyName\": {\n" +
+                       "      \"/3_1.2/0/9\": \"batteryLevel\",\n" +
+                       "      \"/3_1.2/0/20\": \"batteryStatus\",\n" +
+                       "      \"/19_1.1/0/2\": \"dataCreationTime\",\n" +
+                       "      \"/5_1.2/0/6\": \"pkgname\",\n" +
+                       "      \"/5_1.2/0/7\": \"pkgversion\",\n" +
+                       "      \"/5_1.2/0/9\": \"firmwareUpdateDeliveryMethod\"\n" +
+                       "    },\n" +
+                       "    \"observe\": [\n" +
+                       "      \"/3_1.2/0/9\"\n" +
+                       "    ],\n" +
+                       "    \"attribute\": [\n" +
+                       "      \"/5_1.2/0/6\",\n" +
+                       "      \"/5_1.2/0/7\"\n" +
+                       "    ],\n" +
+                       "    \"telemetry\": [\n" +
+                       "      \"/3_1.2/0/9\",\n" +
+                       "      \"/3_1.2/0/20\",\n" +
+                       "      \"/5_1.2/0/9\",\n" +
+                       "      \"/19_1.1/0/2\"\n" +
+                       "    ],\n" +
+                       "    \"attributeLwm2m\": {},\n" +
+                       "    \"initAttrTelAsObsStrategy\": true,\n" +
+                       "    \"observeStrategy\": 2\n" +
+                       "  }";
+
         CONFIG_PROFILE_WITH_PARAMS_RPC =
                 switch (typeConfigProfile) {
                     case 0 -> ATTRIBUTES_TELEMETRY_WITH_PARAMS_RPC_WITH_OBSERVE;
                     case 1 -> TELEMETRY_WITH_PARAMS_RPC_WITHOUT_OBSERVE;
+                    case 2 -> INIT_READ_TELEMETRY_ATTRIBUTE_AS_OBSERVE_STRATEGY_ALL;
+                    case 3 -> INIT_READ_TELEMETRY_ATTRIBUTE_AS_OBSERVE_STRATEGY_BY_OBJECT;
                     case 3303 -> TELEMETRY_WITH_PARAMS_RPC_COLLECTED_VALUE;
                     default -> throw new IllegalStateException("Unexpected value: " + typeConfigProfile);
                 };
@@ -258,22 +307,9 @@ public abstract class AbstractRpcLwM2MIntegrationTest extends AbstractLwM2MInteg
                 .filter(invocation ->
                         invocation.getMethod().getName().equals("updateAttrTelemetry") &&
                                 invocation.getArguments().length > 1 &&
-                                idVerRez.equals(invocation.getArguments()[1])
+                                ((ResourceUpdateResult)invocation.getArguments()[0]).getPaths().toString().contains(idVerRez)
                 )
                 .count();
-    }
-
-    protected void updateRegAtLeastOnceAfterAction() {
-        long initialInvocationCount = countUpdateReg();
-        AtomicLong newInvocationCount = new AtomicLong(initialInvocationCount);
-        log.trace("updateRegAtLeastOnceAfterAction: initialInvocationCount [{}]", initialInvocationCount);
-        await("Update Registration at-least-once after action")
-                .atMost(50, TimeUnit.SECONDS)
-                .until(() -> {
-                    newInvocationCount.set(countUpdateReg());
-                    return newInvocationCount.get() > initialInvocationCount;
-                });
-        log.trace("updateRegAtLeastOnceAfterAction: newInvocationCount [{}]", newInvocationCount.get());
     }
 
     protected long countSendParametersOnThingsboardTelemetryResource(String rezName) {
@@ -288,5 +324,37 @@ public abstract class AbstractRpcLwM2MIntegrationTest extends AbstractLwM2MInteg
                                         .anyMatch(arg -> rezName.equals(((TransportProtos.KeyValueProto) arg).getKey()))
                 )
                 .count();
+    }
+
+    protected String sendDiscover(String path) throws Exception {
+        String setRpcRequest = "{\"method\": \"Discover\", \"params\": {\"id\": \"" + path + "\"}}";
+        return doPostAsync("/api/plugins/rpc/twoway/" + lwM2MTestClient.getDeviceIdStr(), setRpcRequest, String.class, status().isOk());
+    }
+
+    protected String sendRpcObserveReadAllWithResult() throws Exception {
+        ObjectNode rpcActualResult = sendRpcObserveWithResult("ObserveReadAll", null);
+        assertEquals(ResponseCode.CONTENT.getName(), rpcActualResult.get("result").asText());
+        return rpcActualResult.get("value").asText();
+    }
+
+    protected String sendRpcObserveReadAllWithResult(String params) throws Exception {
+        sendRpcObserveOk("Observe", params);
+        ObjectNode rpcActualResult = sendRpcObserveWithResult("ObserveReadAll", null);
+        assertEquals(ResponseCode.CONTENT.getName(), rpcActualResult.get("result").asText());
+        return rpcActualResult.get("value").asText();
+    }
+
+    protected void testObserveOneResourceValue_Count_4_CancelAll_Reboot_After_Observe_Count_4(String expectedIdVer) throws Exception {
+        String expectedIdObserve = "SingleObservation:/3/0/9";
+        sendObserveCancelAllWithAwait(lwM2MTestClient.getDeviceIdStr());
+        updateRegAtLeastOnceAfterAction();
+        lwM2MTestClient.getLeshanClient().stop(false);
+        lwM2MTestClient.getLeshanClient().start();
+        updateRegAtLeastOnceAfterAction();
+        awaitObserveReadAll(4,lwM2MTestClient.getDeviceIdStr());
+        String actualIdVer = sendDiscover(objectIdVer_3);
+        assertTrue(actualIdVer.contains(expectedIdVer));
+        String actualAllObserve = sendRpcObserveReadAllWithResult();
+        assertTrue(actualAllObserve.contains(expectedIdObserve));
     }
 }

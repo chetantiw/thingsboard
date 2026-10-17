@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -38,12 +24,14 @@ import {
 } from '@angular/core';
 import { DashboardWidget } from '@home/models/dashboard-component.models';
 import {
+  MobileImageResult,
   Widget,
   WidgetAction,
   WidgetActionDescriptor,
   widgetActionSources,
   WidgetActionType,
   WidgetComparisonSettings,
+  WidgetHeaderActionButtonType,
   WidgetMobileActionDescriptor,
   WidgetMobileActionType,
   WidgetResource,
@@ -53,7 +41,6 @@ import {
 import { PageComponent } from '@shared/components/page.component';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
-import { WidgetService } from '@core/http/widget.service';
 import { UtilsService } from '@core/services/utils.service';
 import { forkJoin, Observable, of, ReplaySubject, Subscription, throwError } from 'rxjs';
 import {
@@ -105,6 +92,7 @@ import { ExceptionData } from '@shared/models/error.models';
 import { WidgetComponentService } from './widget-component.service';
 import { Timewindow } from '@shared/models/time/time.models';
 import { CancelAnimationFrame, RafService } from '@core/services/raf.service';
+import { UnitService } from '@core/services/unit.service';
 import { DashboardService } from '@core/http/dashboard.service';
 import { WidgetSubscription } from '@core/api/widget-subscription';
 import { EntityService } from '@core/http/entity.service';
@@ -125,18 +113,23 @@ import { IModulesMap } from '@modules/common/modules-map.models';
 import { DashboardUtilsService } from '@core/services/dashboard-utils.service';
 import { CompiledTbFunction, compileTbFunction, isNotEmptyTbFunction } from '@shared/models/js-function.models';
 import { HttpClient } from '@angular/common/http';
+import { addDiagnosticChain } from '@angular/compiler-cli/src/ngtsc/diagnostics';
 
 @Component({
-  selector: 'tb-widget',
-  templateUrl: './widget.component.html',
-  styleUrls: ['./widget.component.scss'],
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'tb-widget',
+    templateUrl: './widget.component.html',
+    styleUrls: ['./widget.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class WidgetComponent extends PageComponent implements OnInit, OnChanges, OnDestroy {
 
   @Input()
   widgetTitlePanel: TemplateRef<any>;
+
+  @Input()
+  widgetHeaderActionsPanel: TemplateRef<any>;
 
   @Input()
   isEdit: boolean;
@@ -201,7 +194,6 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
               @Inject(EMBED_DASHBOARD_DIALOG_TOKEN) private embedDashboardDialogComponent: ComponentType<any>,
               @Inject(DASHBOARD_PAGE_COMPONENT_TOKEN) private dashboardPageComponent: ComponentType<any>,
               @Optional() @Inject(MODULES_MAP) private modulesMap: IModulesMap,
-              private widgetService: WidgetService,
               private resources: ResourcesService,
               private timeService: TimeService,
               private deviceService: DeviceService,
@@ -214,6 +206,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
               private dashboardUtils: DashboardUtilsService,
               private mobileService: MobileService,
               private raf: RafService,
+              private unitService: UnitService,
               private ngZone: NgZone,
               private cd: ChangeDetectorRef,
               private http: HttpClient) {
@@ -271,6 +264,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
       elementClick: this.elementClick.bind(this),
       cardClick: this.cardClick.bind(this),
       click: this.click.bind(this),
+      invokeAction: this.invokeAction.bind(this),
       getActiveEntityInfo: this.getActiveEntityInfo.bind(this),
       openDashboardStateInSeparateDialog: this.openDashboardStateInSeparateDialog.bind(this),
       openDashboardStateInPopover: this.openDashboardStateInPopover.bind(this),
@@ -301,10 +295,13 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
             buttonType: descriptor.buttonType,
             showIcon: descriptor.showIcon,
             icon: descriptor.icon,
-            buttonColor: descriptor.buttonColor,
-            buttonFillColor: descriptor.buttonFillColor,
-            buttonBorderColor: descriptor.buttonBorderColor,
-            customButtonStyle: descriptor.customButtonStyle,
+            customButtonStyle: this.headerButtonStyle(
+              descriptor.buttonType,
+              descriptor.customButtonStyle,
+              descriptor.buttonColor,
+              descriptor.buttonFillColor,
+              descriptor.buttonBorderColor
+            ),
             descriptor,
             useShowWidgetHeaderActionFunction,
             showWidgetHeaderActionFunction,
@@ -324,6 +321,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     if (customHeaderActions$.length) {
       forkJoin(customHeaderActions$).subscribe((customHeaderActions) => {
         this.widgetContext.customHeaderActions.push(...customHeaderActions);
+        this.dashboardWidget.updateParamsFromData(true);
       });
     }
 
@@ -336,20 +334,21 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     this.subscriptionContext.utils = this.utils;
     this.subscriptionContext.dashboardUtils = this.dashboardUtils;
     this.subscriptionContext.raf = this.raf;
+    this.subscriptionContext.unitService = this.unitService;
     this.subscriptionContext.widgetUtils = this.widgetContext.utils;
     this.subscriptionContext.getServerTimeDiff = this.dashboardService.getServerTimeDiff.bind(this.dashboardService);
 
-    this.widgetComponentService.getWidgetInfo(this.widget.typeFullFqn).subscribe(
-      (widgetInfo) => {
+    this.widgetComponentService.getWidgetInfo(this.widget.typeFullFqn).subscribe({
+      next: (widgetInfo) => {
         this.widgetInfo = widgetInfo;
         this.loadFromWidgetInfo();
       },
-      (errorData) => {
+      error: (errorData) => {
         this.widgetInfo = errorData.widgetInfo;
         this.errorMessages = errorData.errorMessages;
         this.loadFromWidgetInfo();
       }
-    );
+    });
 
     const noDataDisplayMessage = this.widget.config.noDataDisplayMessage;
     if (isNotEmptyStr(noDataDisplayMessage)) {
@@ -357,6 +356,39 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     } else {
       this.noDataDisplayMessageText = this.translate.instant('widget.no-data');
     }
+  }
+
+  headerButtonStyle(buttonType: WidgetHeaderActionButtonType = WidgetHeaderActionButtonType.icon,
+                    customButtonStyle:{[key: string]: string},
+                    buttonColor: string = this.widget.config.color,
+                    backgroundColor: string,
+                    borderColor: string) {
+    const buttonStyle = {};
+    switch (buttonType) {
+      case WidgetHeaderActionButtonType.basic:
+        buttonStyle['--mat-button-text-label-text-color'] = buttonColor;
+        break;
+      case WidgetHeaderActionButtonType.raised:
+        buttonStyle['--mat-button-protected-label-text-color'] = buttonColor;
+        buttonStyle['--mat-button-protected-container-color'] = backgroundColor;
+        break;
+      case WidgetHeaderActionButtonType.stroked:
+        buttonStyle['--mat-button-outlined-label-text-color'] = buttonColor;
+        buttonStyle['--mat-button-outlined-outline-color'] = borderColor;
+        break;
+      case WidgetHeaderActionButtonType.flat:
+        buttonStyle['--mat-button-filled-label-text-color'] = buttonColor;
+        buttonStyle['--mat-button-filled-container-color'] = backgroundColor;
+        break;
+      case WidgetHeaderActionButtonType.miniFab:
+        buttonStyle['--mat-fab-small-foreground-color'] = buttonColor;
+        buttonStyle['--mat-fab-small-container-color'] = backgroundColor;
+        break;
+      default:
+        buttonStyle['--mat-icon-color'] = buttonColor;
+        break;
+    }
+    return {...buttonStyle, ...customButtonStyle};
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -446,6 +478,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     this.widgetType = this.widgetInfo.widgetTypeFunction;
     this.typeParameters = this.widgetInfo.typeParameters;
     this.widgetContext.embedTitlePanel = this.typeParameters.embedTitlePanel;
+    this.widgetContext.embedActionsPanel = this.typeParameters.embedActionsPanel;
     this.widgetContext.overflowVisible = this.typeParameters.overflowVisible;
 
     if (!this.widgetType) {
@@ -480,15 +513,15 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
       this.widgetTypeInstance.onDestroy = () => {};
     }
 
-    this.initialize().subscribe(
-      () => {
+    this.initialize().subscribe({
+      next: () => {
         this.onInit();
       },
-      (err) => {
+      error: () => {
         this.widgetContext.inited = true;
         // console.log(err);
       }
-    );
+    });
   }
 
   private detectChanges(detectContainerChanges = false) {
@@ -638,10 +671,11 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
   }
 
   private reInitImpl() {
+    this.displayNoData = false;
     this.onDestroy();
     if (!this.typeParameters.useCustomDatasources) {
-      this.createDefaultSubscription().subscribe(
-        () => {
+      this.createDefaultSubscription().subscribe({
+        next: () => {
           if (this.destroyed) {
             this.onDestroy();
           } else {
@@ -651,7 +685,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
             this.onInit();
           }
         },
-        () => {
+        error: () => {
           if (this.destroyed) {
             this.onDestroy();
           } else {
@@ -660,7 +694,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
             this.onInit();
           }
         }
-      );
+      });
     } else {
       this.widgetContext.reset();
       this.subscriptionInited = true;
@@ -681,7 +715,6 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
           subscriptionChanged = subscriptionChanged || subscription.onAliasesChanged(aliasIds);
         }
         if (subscriptionChanged && !this.typeParameters.useCustomDatasources) {
-          this.displayNoData = false;
           this.reInit();
         }
       }
@@ -695,7 +728,6 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
           subscriptionChanged = subscriptionChanged || subscription.onFiltersChanged(filterIds);
         }
         if (subscriptionChanged && !this.typeParameters.useCustomDatasources) {
-          this.displayNoData = false;
           this.reInit();
         }
       }
@@ -710,8 +742,8 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
       }
     ));
     if (!this.typeParameters.useCustomDatasources) {
-      this.createDefaultSubscription().subscribe(
-        () => {
+      this.createDefaultSubscription().subscribe({
+        next: () => {
           this.subscriptionInited = true;
           try {
             this.configureDynamicWidgetComponent();
@@ -721,11 +753,11 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
             initSubject.error(err);
           }
         },
-        (err) => {
+        error: (err) => {
           this.subscriptionInited = true;
           initSubject.error(err);
         }
-      );
+      });
     } else {
       this.loadingData = false;
       this.subscriptionInited = true;
@@ -750,7 +782,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     }
   }
 
-  private handleWidgetException(e) {
+  private handleWidgetException(e: any) {
     console.error(e);
     this.widgetErrorData = this.utils.processWidgetException(e);
     this.detectChanges();
@@ -825,8 +857,8 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     const createSubscriptionSubject = new ReplaySubject<IWidgetSubscription>();
     options.dashboardTimewindow = this.widgetContext.dashboardTimewindow;
     const subscription: IWidgetSubscription = new WidgetSubscription(this.subscriptionContext, options);
-    subscription.init$.subscribe(
-      () => {
+    subscription.init$.subscribe({
+      next: () => {
         this.widgetContext.subscriptions[subscription.id] = subscription;
         if (subscribe) {
           subscription.subscribe();
@@ -834,10 +866,10 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
         createSubscriptionSubject.next(subscription);
         createSubscriptionSubject.complete();
       },
-      (err) => {
+      error: (err) => {
         createSubscriptionSubject.error(err);
       }
-    );
+    });
     return createSubscriptionSubject.asObservable();
   }
 
@@ -859,15 +891,15 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     } else {
       options.datasources = this.entityService.createDatasourcesFromSubscriptionsInfo(subscriptionsInfo);
     }
-    this.createSubscription(options, subscribe).subscribe(
-      (subscription) => {
+    this.createSubscription(options, subscribe).subscribe({
+      next: (subscription) => {
         createSubscriptionSubject.next(subscription);
         createSubscriptionSubject.complete();
       },
-      (err) => {
+      error: (err) => {
         createSubscriptionSubject.error(err);
       }
-    );
+    });
     return createSubscriptionSubject.asObservable();
   }
 
@@ -896,7 +928,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
               this.dataUpdatePending = true;
             }
           }
-        } catch (e){}
+        } catch (e){/**/}
       },
       onLatestDataUpdated: () => {
         try {
@@ -907,15 +939,15 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
               this.latestDataUpdatePending = true;
             }
           }
-        } catch (e){}
+        } catch (e){/**/}
       },
-      onDataUpdateError: (subscription, e) => {
+      onDataUpdateError: (_subscription, e) => {
         this.handleWidgetException(e);
       },
-      onLatestDataUpdateError: (subscription, e) => {
+      onLatestDataUpdateError: (_subscription, e) => {
         this.handleWidgetException(e);
       },
-      onSubscriptionMessage: (subscription, message) => {
+      onSubscriptionMessage: (_subscription, message) => {
         if (this.displayWidgetInstance()) {
           if (this.widgetInstanceInited) {
             this.displayMessage(message.severity, message.message);
@@ -924,7 +956,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
           }
         }
       },
-      onInitialPageDataChanged: (subscription, nextPageData) => {
+      onInitialPageDataChanged: (_subscription, _nextPageData) => {
         this.reInit();
       },
       forceReInit: () => {
@@ -936,12 +968,12 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
           this.detectChanges();
         }
       },
-      legendDataUpdated: (subscription, detectChanges) => {
+      legendDataUpdated: (_subscription, detectChanges) => {
         if (detectChanges) {
           this.detectChanges();
         }
       },
-      timeWindowUpdated: (subscription, timeWindowConfig) => {
+      timeWindowUpdated: (_subscription, timeWindowConfig) => {
         this.ngZone.run(() => {
           this.widget.config.timewindow = timeWindowConfig;
           this.detectChanges(true);
@@ -976,8 +1008,8 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
 
       this.defaultComponentsOptions(options);
 
-      this.createSubscription(options).subscribe(
-        (subscription) => {
+      this.createSubscription(options).subscribe({
+        next: (subscription) => {
 
           // backward compatibility
           this.widgetContext.datasources = subscription.datasources;
@@ -991,12 +1023,12 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
             createSubscriptionSubject.complete();
           });
         },
-        (err) => {
+        error: (err) => {
           this.ngZone.run(() => {
             createSubscriptionSubject.error(err);
           });
         }
-      );
+      });
     } else if (this.widget.type === widgetType.rpc) {
       this.loadingData = false;
       options = {
@@ -1033,7 +1065,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
             this.detectChanges();
           }
         },
-        onRpcErrorCleared: (subscription) => {
+        onRpcErrorCleared: (_subscription) => {
           if (this.dynamicWidgetComponent) {
             this.dynamicWidgetComponent.rpcErrorText = null;
             this.dynamicWidgetComponent.rpcRejection = null;
@@ -1044,20 +1076,20 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
           }
         }
       };
-      this.createSubscription(options).subscribe(
-        (subscription) => {
+      this.createSubscription(options).subscribe({
+        next: (subscription) => {
           this.widgetContext.defaultSubscription = subscription;
           this.ngZone.run(() => {
             createSubscriptionSubject.next();
             createSubscriptionSubject.complete();
           });
         },
-        (err) => {
+        error: (err) => {
           this.ngZone.run(() => {
             createSubscriptionSubject.error(err);
           });
         }
-      );
+      });
       this.detectChanges();
     } else if (this.widget.type === widgetType.static) {
       this.loadingData = false;
@@ -1118,7 +1150,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
         }
         const state = objToBase64URI([ stateObject ]);
         const isSinglePage = this.route.snapshot.data.singlePageMode;
-        let url;
+        let url: string;
         if (isSinglePage) {
           url = `/dashboard/${targetDashboardId}?state=${state}`;
         } else {
@@ -1127,7 +1159,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
         if (descriptor.openNewBrowserTab) {
           window.open(url, '_blank');
         } else {
-          this.router.navigateByUrl(url);
+          this.router.navigateByUrl(url).then(() => {});
         }
         break;
       case WidgetActionType.openURL:
@@ -1180,11 +1212,15 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     switch (type) {
       case WidgetMobileActionType.takePictureFromGallery:
       case WidgetMobileActionType.takePhoto:
+      case WidgetMobileActionType.takeScreenshot:
+        argsObservable = of([mobileAction.saveToGallery]);
+        break;
       case WidgetMobileActionType.scanQrCode:
       case WidgetMobileActionType.getLocation:
-      case WidgetMobileActionType.takeScreenshot:
-      case WidgetMobileActionType.deviceProvision:
         argsObservable = of([]);
+        break;
+      case WidgetMobileActionType.deviceProvision:
+        argsObservable = of([mobileAction.provisionType]);
         break;
       case WidgetMobileActionType.mapDirection:
       case WidgetMobileActionType.mapLocation:
@@ -1255,6 +1291,10 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
                     case WidgetMobileActionType.takePhoto:
                     case WidgetMobileActionType.takeScreenshot:
                       const imageUrl = actionResult.imageUrl;
+                      if (!additionalParams) {
+                        additionalParams = {};
+                      }
+                      additionalParams.imageInfo = actionResult.imageInfo;
                       if (isNotEmptyTbFunction(mobileAction.processImageFunction)) {
                         compileTbFunction(this.http, mobileAction.processImageFunction, 'imageUrl', '$event', 'widgetContext', 'entityId',
                           'entityName', 'additionalParams', 'entityLabel').subscribe(
@@ -1379,6 +1419,23 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
                     );
                   }
                 }
+              } else if (!this.mobileService.isMobileApp()) {
+                if (isNotEmptyTbFunction(mobileAction.handleNonMobileFallbackFunction)) {
+                  compileTbFunction(this.http, mobileAction.handleNonMobileFallbackFunction, '$event', 'widgetContext',).subscribe(
+                    {
+                      next: (compiled) => {
+                        try {
+                          compiled.execute($event, this.widgetContext);
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      },
+                      error: (err) => {
+                        console.error(err);
+                      }
+                    }
+                  );
+                }
               }
             }
           );
@@ -1426,7 +1483,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
                                       popoverWidth = '25vw',
                                       popoverHeight = '25vh',
                                       popoverStyle: { [klass: string]: any } = {}) {
-    const trigger = ($event.target || $event.srcElement || $event.currentTarget) as Element;
+    const trigger = ($event.target || $event.currentTarget) as Element;
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
@@ -1519,7 +1576,7 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
   }
 
   private elementClick($event: Event) {
-    const elementClicked = ($event.target || $event.srcElement) as Element;
+    const elementClicked = ($event.target) as Element;
     const descriptors = this.getActionDescriptors('elementClick');
     if (descriptors.length) {
       const idsList = descriptors.map(descriptor => `#${descriptor.name}`).join(',');
@@ -1543,6 +1600,16 @@ export class WidgetComponent extends PageComponent implements OnInit, OnChanges,
     const descriptors = this.getActionDescriptors(sourceId);
     if (descriptors.length) {
       this.onWidgetAction($event, descriptors[0]);
+    }
+  }
+
+  private invokeAction($event: Event, actionName: string, additionalParams?: any) {
+    const descriptors = this.getActionDescriptors('javaScript');
+    if (descriptors?.length) {
+      const found = descriptors.find(d => d.name === actionName);
+      if (found) {
+        this.handleWidgetAction($event, found, null, null, additionalParams);
+      }
     }
   }
 

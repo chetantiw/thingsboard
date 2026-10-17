@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.msa;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,9 +13,12 @@ import org.apache.http.ssl.SSLContexts;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Listeners;
+import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.DeviceProfile;
 import org.thingsboard.server.common.data.DeviceProfileProvisionType;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.common.data.EntityType;
+import org.thingsboard.server.common.data.TenantProfile;
 import org.thingsboard.server.common.data.device.profile.AllowCreateNewDevicesDeviceProfileProvisionConfiguration;
 import org.thingsboard.server.common.data.device.profile.CheckPreProvisionedDevicesDeviceProfileProvisionConfiguration;
 import org.thingsboard.server.common.data.device.profile.DeviceProfileData;
@@ -39,7 +29,7 @@ import org.thingsboard.server.common.data.id.DeviceId;
 import java.net.URI;
 import java.util.Map;
 import java.util.Random;
-
+import java.util.function.Consumer;
 
 @Slf4j
 @Listeners(TestListener.class)
@@ -166,24 +156,27 @@ public abstract class AbstractContainerTest {
         DeviceProfileProvisionConfiguration provisionConfiguration;
         String testProvisionDeviceKey = TEST_PROVISION_DEVICE_KEY;
         deviceProfile.setProvisionType(provisionType);
-        switch(provisionType) {
-            case ALLOW_CREATE_NEW_DEVICES:
-                provisionConfiguration = new AllowCreateNewDevicesDeviceProfileProvisionConfiguration(TEST_PROVISION_DEVICE_SECRET);
-                break;
-            case CHECK_PRE_PROVISIONED_DEVICES:
-                provisionConfiguration = new CheckPreProvisionedDevicesDeviceProfileProvisionConfiguration(TEST_PROVISION_DEVICE_SECRET);
-                break;
-            default:
-            case DISABLED:
+        provisionConfiguration = switch (provisionType) {
+            case ALLOW_CREATE_NEW_DEVICES -> new AllowCreateNewDevicesDeviceProfileProvisionConfiguration(TEST_PROVISION_DEVICE_SECRET);
+            case CHECK_PRE_PROVISIONED_DEVICES -> new CheckPreProvisionedDevicesDeviceProfileProvisionConfiguration(TEST_PROVISION_DEVICE_SECRET);
+            default -> {
                 testProvisionDeviceKey = null;
-                provisionConfiguration = new DisabledDeviceProfileProvisionConfiguration(null);
-                break;
-        }
+                yield new DisabledDeviceProfileProvisionConfiguration(null);
+            }
+        };
         DeviceProfileData deviceProfileData = deviceProfile.getProfileData();
         deviceProfileData.setProvisionConfiguration(provisionConfiguration);
         deviceProfile.setProfileData(deviceProfileData);
         deviceProfile.setProvisionDeviceKey(testProvisionDeviceKey);
         return testRestClient.postDeviceProfile(deviceProfile);
+    }
+
+    protected void updateDefaultTenantProfile(Consumer<TenantProfile> updater) {
+        EntityInfo defaultTenantProfileInfo = testRestClient.getDefaultTenantProfileInfo();
+        TenantProfile oldTenantProfile = testRestClient.getTenantProfileById(defaultTenantProfileInfo.getId().getId().toString());
+        TenantProfile tenantProfile = JacksonUtil.clone(oldTenantProfile);
+        updater.accept(tenantProfile);
+        testRestClient.postTenantProfile(tenantProfile);
     }
 
 }

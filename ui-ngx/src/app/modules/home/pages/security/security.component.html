@@ -1,18 +1,7 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+    SPDX-License-Identifier: Apache-2.0
 
 -->
 <div class="profile-container flex flex-col gap-2">
@@ -27,6 +16,20 @@
               type="button"
               (click)="copyToken()">
         <span>{{ 'profile.copy-jwt-token' | translate }}</span>
+      </button>
+    </div>
+  </mat-card>
+  <mat-card appearance="outlined" class="profile-card flex flex-col">
+    <div class="flex flex-row items-center justify-between">
+      <mat-card-title>
+        <span class="mat-headline-5 card-title" translate>api-key.api-keys</span>
+      </mat-card-title>
+      <button mat-raised-button
+              color="primary"
+              type="button"
+              (click)="openApiKeysTable()">
+        <mat-icon>key</mat-icon>
+        <span>{{ 'api-key.manage' | translate }}</span>
       </button>
     </div>
   </mat-card>
@@ -52,13 +55,13 @@
               <mat-error *ngIf="changePassword.get('newPassword').errors
                               && !changePassword.get('newPassword').hasError('alreadyUsed')
                               && !changePassword.get('newPassword').hasError('hasWhitespaces')
-                              && !changePassword.get('newPassword').hasError('samePassword')">
+                              && !changePassword.get('newPassword').hasError('passwordSameAsOld')">
                 {{ 'security.password-requirement.password-not-meet-requirements' | translate }}
               </mat-error>
               <mat-error *ngIf="changePassword.get('newPassword').hasError('alreadyUsed')">
                 {{ changePassword.get('newPassword').getError('alreadyUsed') }}
               </mat-error>
-              <mat-error *ngIf="changePassword.get('newPassword').hasError('samePassword')">
+              <mat-error *ngIf="changePassword.get('newPassword').hasError('passwordSameAsOld')">
                 {{ 'security.password-requirement.password-should-difference' | translate }}
               </mat-error>
               <mat-error *ngIf="changePassword.get('newPassword').hasError('hasWhitespaces')">
@@ -72,7 +75,7 @@
               <mat-label translate>login.new-password-again</mat-label>
               <input matInput type="password" name="new-password" formControlName="newPassword2" autocomplete="new-password" required/>
               <tb-toggle-password [class.!hidden]="!changePassword.get('newPassword2').dirty && !changePassword.get('newPassword2').touched" matSuffix></tb-toggle-password>
-              <mat-error *ngIf="changePassword.get('newPassword2').hasError('differencePassword')">
+              <mat-error *ngIf="changePassword.get('newPassword2').hasError('passwordsNotMatch')">
                 {{ 'security.password-requirement.new-passwords-not-match' | translate }}
               </mat-error>
             </mat-form-field>
@@ -134,7 +137,7 @@
           </button>
           <button mat-raised-button color="primary"
                   type="submit"
-                  [disabled]="(isLoading$ | async)">
+                  [disabled]="(isLoading$ | async) || changePassword.invalid">
             {{ 'profile.change-password' | translate }}
           </button>
         </div>

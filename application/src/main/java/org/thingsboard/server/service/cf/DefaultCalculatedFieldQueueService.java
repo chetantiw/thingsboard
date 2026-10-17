@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.cf;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -25,17 +12,24 @@ import org.thingsboard.rule.engine.api.TimeseriesDeleteRequest;
 import org.thingsboard.rule.engine.api.TimeseriesSaveRequest;
 import org.thingsboard.server.cluster.TbClusterService;
 import org.thingsboard.server.common.data.EntityType;
+import org.thingsboard.server.common.data.cf.CalculatedField;
 import org.thingsboard.server.common.data.cf.CalculatedFieldLink;
-import org.thingsboard.server.common.data.id.AssetId;
+import org.thingsboard.server.common.data.cf.CalculatedFieldType;
+import org.thingsboard.server.common.data.cf.configuration.aggregation.RelatedEntitiesAggregationCalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.id.CalculatedFieldId;
-import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.kv.AttributeKvEntry;
+import org.thingsboard.server.common.data.kv.AttributesSaveResult;
 import org.thingsboard.server.common.data.kv.TimeseriesSaveResult;
 import org.thingsboard.server.common.data.kv.TsKvEntry;
 import org.thingsboard.server.common.data.msg.TbMsgType;
+import org.thingsboard.server.common.data.relation.EntityRelation;
+import org.thingsboard.server.common.data.relation.EntityRelationPathQuery;
+import org.thingsboard.server.common.data.relation.EntitySearchDirection;
+import org.thingsboard.server.common.data.relation.RelationPathLevel;
 import org.thingsboard.server.common.util.ProtoUtils;
+import org.thingsboard.server.dao.relation.RelationService;
 import org.thingsboard.server.gen.transport.TransportProtos.AttributeScopeProto;
 import org.thingsboard.server.gen.transport.TransportProtos.AttributeValueProto;
 import org.thingsboard.server.gen.transport.TransportProtos.CalculatedFieldTelemetryMsgProto;
@@ -44,13 +38,9 @@ import org.thingsboard.server.gen.transport.TransportProtos.TsKvProto;
 import org.thingsboard.server.queue.TbQueueCallback;
 import org.thingsboard.server.queue.TbQueueMsgMetadata;
 import org.thingsboard.server.service.cf.ctx.state.CalculatedFieldCtx;
-import org.thingsboard.server.service.profile.TbAssetProfileCache;
-import org.thingsboard.server.service.profile.TbDeviceProfileCache;
 
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -73,20 +63,20 @@ public class DefaultCalculatedFieldQueueService implements CalculatedFieldQueueS
         }
     };
 
-    private final TbAssetProfileCache assetProfileCache;
-    private final TbDeviceProfileCache deviceProfileCache;
     private final CalculatedFieldCache calculatedFieldCache;
     private final TbClusterService clusterService;
-
-    private static final Set<EntityType> supportedReferencedEntities = EnumSet.of(
-            EntityType.DEVICE, EntityType.ASSET, EntityType.CUSTOMER, EntityType.TENANT
-    );
+    private final RelationService relationService;
 
     @Override
     public void pushRequestToQueue(TimeseriesSaveRequest request, TimeseriesSaveResult result, FutureCallback<Void> callback) {
         var tenantId = request.getTenantId();
         var entityId = request.getEntityId();
-        checkEntityAndPushToQueue(tenantId, entityId, cf -> cf.matches(request.getEntries()), cf -> cf.linkMatches(entityId, request.getEntries()),
+        var entries = request.getEntries();
+        checkEntityAndPushToQueue(tenantId, entityId,
+                cf -> cf.matches(entries),
+                cf -> cf.linkMatches(entityId, entries),
+                cf -> cf.dynamicSourceMatches(request.getEntries()),
+                cf -> cf.relatedEntityMatches(entries),
                 () -> toCalculatedFieldTelemetryMsgProto(request, result), callback);
     }
 
@@ -96,10 +86,16 @@ public class DefaultCalculatedFieldQueueService implements CalculatedFieldQueueS
     }
 
     @Override
-    public void pushRequestToQueue(AttributesSaveRequest request, List<Long> result, FutureCallback<Void> callback) {
+    public void pushRequestToQueue(AttributesSaveRequest request, AttributesSaveResult result, FutureCallback<Void> callback) {
         var tenantId = request.getTenantId();
         var entityId = request.getEntityId();
-        checkEntityAndPushToQueue(tenantId, entityId, cf -> cf.matches(request.getEntries(), request.getScope()), cf -> cf.linkMatches(entityId, request.getEntries(), request.getScope()),
+        var entries = request.getEntries();
+        var scope = request.getScope();
+        checkEntityAndPushToQueue(tenantId, entityId,
+                cf -> cf.matches(entries, scope),
+                cf -> cf.linkMatches(entityId, entries, scope),
+                cf -> cf.dynamicSourceMatches(request.getEntries(), request.getScope()),
+                cf -> cf.relatedEntityMatches(entries, scope),
                 () -> toCalculatedFieldTelemetryMsgProto(request, result), callback);
     }
 
@@ -112,7 +108,12 @@ public class DefaultCalculatedFieldQueueService implements CalculatedFieldQueueS
     public void pushRequestToQueue(AttributesDeleteRequest request, List<String> result, FutureCallback<Void> callback) {
         var tenantId = request.getTenantId();
         var entityId = request.getEntityId();
-        checkEntityAndPushToQueue(tenantId, entityId, cf -> cf.matchesKeys(result, request.getScope()), cf -> cf.linkMatchesAttrKeys(entityId, result, request.getScope()),
+        var scope = request.getScope();
+        checkEntityAndPushToQueue(tenantId, entityId,
+                cf -> cf.matchesKeys(result, scope),
+                cf -> cf.linkMatchesAttrKeys(entityId, result, scope),
+                cf -> cf.matchesDynamicSourceKeys(result, request.getScope()),
+                cf -> cf.matchesRelatedEntityKeys(result, scope),
                 () -> toCalculatedFieldTelemetryMsgProto(request, result), callback);
     }
 
@@ -120,20 +121,27 @@ public class DefaultCalculatedFieldQueueService implements CalculatedFieldQueueS
     public void pushRequestToQueue(TimeseriesDeleteRequest request, List<String> result, FutureCallback<Void> callback) {
         var tenantId = request.getTenantId();
         var entityId = request.getEntityId();
-
-        checkEntityAndPushToQueue(tenantId, entityId, cf -> cf.matchesKeys(result), cf -> cf.linkMatchesTsKeys(entityId, result),
+        checkEntityAndPushToQueue(tenantId, entityId,
+                cf -> cf.matchesKeys(result),
+                cf -> cf.linkMatchesTsKeys(entityId, result),
+                cf -> cf.matchesDynamicSourceKeys(result),
+                cf -> cf.matchesRelatedEntityKeys(result),
                 () -> toCalculatedFieldTelemetryMsgProto(request, result), callback);
     }
 
     private void checkEntityAndPushToQueue(TenantId tenantId, EntityId entityId,
-                                           Predicate<CalculatedFieldCtx> mainEntityFilter, Predicate<CalculatedFieldCtx> linkedEntityFilter,
+                                           Predicate<CalculatedFieldCtx> mainEntityFilter,
+                                           Predicate<CalculatedFieldCtx> linkedEntityFilter,
+                                           Predicate<CalculatedFieldCtx> dynamicSourceFilter,
+                                           Predicate<CalculatedFieldCtx> relatedEntityFilter,
                                            Supplier<ToCalculatedFieldMsg> msg, FutureCallback<Void> callback) {
         if (EntityType.TENANT.equals(entityId.getEntityType())) {
             tenantId = (TenantId) entityId;
         }
-        boolean send = checkEntityForCalculatedFields(tenantId, entityId, mainEntityFilter, linkedEntityFilter);
+        boolean send = checkEntityForCalculatedFields(tenantId, entityId, mainEntityFilter, linkedEntityFilter, dynamicSourceFilter, relatedEntityFilter);
         if (send) {
-            clusterService.pushMsgToCalculatedFields(tenantId, entityId, msg.get(), wrap(callback));
+            ToCalculatedFieldMsg calculatedFieldMsg = msg.get();
+            clusterService.pushMsgToCalculatedFields(tenantId, entityId, calculatedFieldMsg, wrap(callback));
         } else {
             if (callback != null) {
                 callback.onSuccess(null);
@@ -141,34 +149,66 @@ public class DefaultCalculatedFieldQueueService implements CalculatedFieldQueueS
         }
     }
 
-    private boolean checkEntityForCalculatedFields(TenantId tenantId, EntityId entityId, Predicate<CalculatedFieldCtx> filter, Predicate<CalculatedFieldCtx> linkedEntityFilter) {
-        boolean send = false;
-        if (supportedReferencedEntities.contains(entityId.getEntityType())) {
-            send = calculatedFieldCache.getCalculatedFieldCtxsByEntityId(entityId).stream().anyMatch(filter);
-            if (!send) {
-                send = calculatedFieldCache.getCalculatedFieldCtxsByEntityId(getProfileId(tenantId, entityId)).stream().anyMatch(filter);
-            }
-            if (!send) {
-                send = calculatedFieldCache.getCalculatedFieldLinksByEntityId(entityId).stream()
-                        .map(CalculatedFieldLink::getCalculatedFieldId)
-                        .map(calculatedFieldCache::getCalculatedFieldCtx)
-                        .anyMatch(linkedEntityFilter);
+    private boolean checkEntityForCalculatedFields(TenantId tenantId, EntityId entityId, Predicate<CalculatedFieldCtx> filter, Predicate<CalculatedFieldCtx> linkedEntityFilter, Predicate<CalculatedFieldCtx> dynamicSourceFilter, Predicate<CalculatedFieldCtx> relatedEntityFilter) {
+        if (!CalculatedField.isSupportedRefEntity(entityId)) {
+            return false;
+        }
+
+        if (calculatedFieldCache.hasCalculatedFields(tenantId, entityId, filter)) {
+            return true;
+        }
+
+        List<CalculatedFieldLink> links = calculatedFieldCache.getCalculatedFieldLinksByEntityId(entityId);
+        for (CalculatedFieldLink link : links) {
+            CalculatedFieldCtx ctx = calculatedFieldCache.getCalculatedFieldCtx(link.calculatedFieldId());
+            if (ctx != null && linkedEntityFilter.test(ctx)) {
+                return true;
             }
         }
-        return send;
-    }
 
-    private EntityId getProfileId(TenantId tenantId, EntityId entityId) {
-        return switch (entityId.getEntityType()) {
-            case ASSET -> assetProfileCache.get(tenantId, (AssetId) entityId).getId();
-            case DEVICE -> deviceProfileCache.get(tenantId, (DeviceId) entityId).getId();
-            default -> null;
-        };
+        for (EntityId dynamicEntity : calculatedFieldCache.getDynamicEntities(tenantId, entityId)) {
+            if (calculatedFieldCache.getCalculatedFieldCtxsByEntityId(dynamicEntity).stream().anyMatch(dynamicSourceFilter)) {
+                return true;
+            }
+            EntityId dynamicEntityProfileId = calculatedFieldCache.getProfileId(tenantId, dynamicEntity);
+            if (calculatedFieldCache.getCalculatedFieldCtxsByEntityId(dynamicEntityProfileId).stream().anyMatch(dynamicSourceFilter)) {
+                return true;
+            }
+        }
+
+        boolean hasMatchesEntityAggCfs = calculatedFieldCache.getCalculatedFieldCtxsByType(tenantId, CalculatedFieldType.ENTITY_AGGREGATION).anyMatch(filter);
+        if (hasMatchesEntityAggCfs) {
+            return true;
+        }
+
+        List<CalculatedFieldCtx> relatedEntitiesAggregationCfs = calculatedFieldCache.getCalculatedFieldCtxsByType(tenantId, CalculatedFieldType.RELATED_ENTITIES_AGGREGATION)
+                .filter(relatedEntityFilter)
+                .toList();
+        for (CalculatedFieldCtx cfCtx : relatedEntitiesAggregationCfs) {
+            if (cfCtx.getCalculatedField().getConfiguration() instanceof RelatedEntitiesAggregationCalculatedFieldConfiguration aggConfig) {
+                RelationPathLevel relation = aggConfig.getRelation();
+                EntitySearchDirection inverseDirection = switch (relation.direction()) {
+                    case FROM -> EntitySearchDirection.TO;
+                    case TO -> EntitySearchDirection.FROM;
+                };
+                RelationPathLevel inverseRelation = new RelationPathLevel(inverseDirection, relation.relationType());
+                List<EntityRelation> byRelationPathQuery = relationService.findByRelationPathQuery(tenantId, new EntityRelationPathQuery(entityId, List.of(inverseRelation)));
+                if (!byRelationPathQuery.isEmpty()) {
+                    EntityId cfEntityId = cfCtx.getEntityId();
+                    for (EntityRelation entityRelation : byRelationPathQuery) {
+                        EntityId relatedId = (inverseDirection == EntitySearchDirection.FROM) ? entityRelation.getTo() : entityRelation.getFrom();
+                        if (cfEntityId.equals(relatedId) || cfEntityId.equals(calculatedFieldCache.getProfileId(tenantId, relatedId))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private ToCalculatedFieldMsg toCalculatedFieldTelemetryMsgProto(TimeseriesSaveRequest request, TimeseriesSaveResult result) {
-        ToCalculatedFieldMsg.Builder msg = ToCalculatedFieldMsg.newBuilder();
-
         CalculatedFieldTelemetryMsgProto.Builder telemetryMsg = buildTelemetryMsgProto(request.getTenantId(), request.getEntityId(), request.getPreviousCalculatedFieldIds(), request.getTbMsgId(), request.getTbMsgType());
 
         List<TsKvEntry> entries = request.getEntries();
@@ -176,25 +216,27 @@ public class DefaultCalculatedFieldQueueService implements CalculatedFieldQueueS
 
         for (int i = 0; i < entries.size(); i++) {
             TsKvProto.Builder tsProtoBuilder = toTsKvProto(entries.get(i)).toBuilder();
-            if (result != null) {
+            if (versions != null && !versions.isEmpty() && versions.get(i) != null) {
                 tsProtoBuilder.setVersion(versions.get(i));
             }
             telemetryMsg.addTsData(tsProtoBuilder.build());
         }
 
-        msg.setTelemetryMsg(telemetryMsg.build());
-        return msg.build();
+        return ToCalculatedFieldMsg.newBuilder().setTelemetryMsg(telemetryMsg).build();
     }
 
-    private ToCalculatedFieldMsg toCalculatedFieldTelemetryMsgProto(AttributesSaveRequest request, List<Long> versions) {
+    private ToCalculatedFieldMsg toCalculatedFieldTelemetryMsgProto(AttributesSaveRequest request, AttributesSaveResult result) {
         ToCalculatedFieldMsg.Builder msg = ToCalculatedFieldMsg.newBuilder();
 
         CalculatedFieldTelemetryMsgProto.Builder telemetryMsg = buildTelemetryMsgProto(request.getTenantId(), request.getEntityId(), request.getPreviousCalculatedFieldIds(), request.getTbMsgId(), request.getTbMsgType());
         telemetryMsg.setScope(AttributeScopeProto.valueOf(request.getScope().name()));
+
         List<AttributeKvEntry> entries = request.getEntries();
+        List<Long> versions = result.versions();
+
         for (int i = 0; i < entries.size(); i++) {
             AttributeValueProto.Builder attrProtoBuilder = ProtoUtils.toProto(entries.get(i)).toBuilder();
-            if (versions != null) {
+            if (versions != null && !versions.isEmpty() && versions.get(i) != null) {
                 attrProtoBuilder.setVersion(versions.get(i));
             }
             telemetryMsg.addAttrData(attrProtoBuilder.build());
@@ -277,6 +319,7 @@ public class DefaultCalculatedFieldQueueService implements CalculatedFieldQueueS
         public void onFailure(Throwable t) {
             callback.onFailure(t);
         }
+
     }
 
 }

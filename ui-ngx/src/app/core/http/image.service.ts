@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { PageLink } from '@shared/models/page/page-link';
@@ -31,7 +17,7 @@ import {
   removeTbImagePrefix,
   ResourceSubType
 } from '@shared/models/resource.models';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { blobToBase64, blobToText } from '@core/utils';
 import { ResourcesService } from '@core/services/resources.service';
@@ -116,16 +102,15 @@ export class ImageService {
       request = new ReplaySubject<Blob>(1);
       this.imagesLoading[imageLink] = request;
       const options = defaultHttpOptionsFromConfig({ignoreLoading: true, ignoreErrors: true});
-      this.http.get(imageLink, {...options, ...{ responseType: 'blob' } }).subscribe({
+      this.http.get(imageLink, {...options, ...{ responseType: 'blob' } }).pipe(
+        finalize(()=> delete this.imagesLoading[imageLink])
+      ).subscribe({
         next: (value) => {
           request.next(value);
           request.complete();
         },
         error: err => {
           request.error(err);
-        },
-        complete: () => {
-          delete this.imagesLoading[imageLink];
         }
       });
     }

@@ -1,22 +1,9 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterContentChecked,
-  AfterContentInit, AfterViewChecked,
+  AfterContentInit,
+  AfterViewChecked,
   AfterViewInit,
   ChangeDetectorRef,
   Component,
@@ -25,17 +12,20 @@ import {
   ElementRef,
   EventEmitter,
   HostBinding,
-  Input, NgZone,
+  Input,
+  NgZone,
+  OnChanges,
   OnDestroy,
   OnInit,
   Output,
   QueryList,
+  SimpleChanges, TemplateRef,
   ViewChild
 } from '@angular/core';
 import { PageComponent } from '@shared/components/page.component';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
-import { BehaviorSubject, Subject, Subscription } from 'rxjs';
+import { BehaviorSubject, Observable, ReplaySubject, Subject, Subscription } from 'rxjs';
 import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
 import { MediaBreakpoints } from '@shared/models/constants';
 import { coerceBoolean } from '@shared/decorators/coercion';
@@ -46,6 +36,8 @@ import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-
 export interface ToggleHeaderOption {
   name: string;
   value: any;
+  template?: TemplateRef<any>;
+  error$?: Observable<string>;
 }
 
 export type ToggleHeaderAppearance = 'fill' | 'fill-invert' | 'stroked';
@@ -56,12 +48,19 @@ export type ScrollDirection = 'after' | 'before';
   {
     // eslint-disable-next-line @angular-eslint/directive-selector
     selector: 'tb-toggle-option',
-  }
+    standalone: false
+}
 )
 // eslint-disable-next-line @angular-eslint/directive-class-suffix
-export class ToggleOption {
+export class ToggleOption implements OnChanges, OnDestroy {
 
   @Input() value: any;
+
+  @Input() template: TemplateRef<any>;
+
+  @Input() error: string;
+
+  currentError = new ReplaySubject<string>(1);
 
   get viewValue(): string {
     return (this._element?.nativeElement.textContent || '').trim();
@@ -70,6 +69,18 @@ export class ToggleOption {
   constructor(
     private _element: ElementRef<HTMLElement>
   ) {}
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes?.error) {
+      if (changes.error.currentValue !== changes.error.previousValue) {
+        this.currentError.next(this.error);
+      }
+    }
+  }
+
+  ngOnDestroy() {
+    this.currentError.complete();
+  }
 }
 
 @Directive()
@@ -102,8 +113,11 @@ export abstract class _ToggleBase extends PageComponent implements AfterContentI
       this.options.length = 0;
       this.toggleOptions.forEach(option => {
         this.options.push(
-          { name: option.viewValue,
-            value: option.value
+          {
+            name: option.viewValue,
+            value: option.value,
+            template: option.template,
+            error$: option.currentError.asObservable()
           }
         );
       });
@@ -113,9 +127,10 @@ export abstract class _ToggleBase extends PageComponent implements AfterContentI
 }
 
 @Component({
-  selector: 'tb-toggle-header',
-  templateUrl: './toggle-header.component.html',
-  styleUrls: ['./toggle-header.component.scss']
+    selector: 'tb-toggle-header',
+    templateUrl: './toggle-header.component.html',
+    styleUrls: ['./toggle-header.component.scss'],
+    standalone: false
 })
 export class ToggleHeaderComponent extends _ToggleBase implements OnInit, AfterViewInit, AfterContentInit,
   AfterContentChecked, AfterViewChecked, OnDestroy {

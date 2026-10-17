@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.sync.ie;
 
 import lombok.RequiredArgsConstructor;
@@ -31,8 +18,7 @@ import org.thingsboard.server.common.data.relation.EntityRelation;
 import org.thingsboard.server.common.data.sync.ie.EntityExportData;
 import org.thingsboard.server.common.data.sync.ie.EntityImportResult;
 import org.thingsboard.server.common.data.util.ThrowingRunnable;
-import org.thingsboard.server.dao.cf.CalculatedFieldService;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.dao.relation.RelationService;
 import org.thingsboard.server.queue.util.TbCoreComponent;
 import org.thingsboard.server.service.entitiy.TbLogEntityActionService;
@@ -62,16 +48,16 @@ public class DefaultEntitiesExportImportService implements EntitiesExportImportS
     private final Map<EntityType, EntityImportService<?, ?, ?>> importServices = new HashMap<>();
 
     private final RelationService relationService;
-    private final CalculatedFieldService calculatedFieldService;
     private final RateLimitService rateLimitService;
     private final TbLogEntityActionService logEntityActionService;
 
-    protected static final List<EntityType> SUPPORTED_ENTITY_TYPES = List.of(
+    public static final List<EntityType> SUPPORTED_ENTITY_TYPES = List.of(
             EntityType.CUSTOMER, EntityType.RULE_CHAIN, EntityType.TB_RESOURCE,
             EntityType.DASHBOARD, EntityType.ASSET_PROFILE, EntityType.ASSET,
-            EntityType.DEVICE_PROFILE, EntityType.DEVICE,
+            EntityType.DEVICE_PROFILE, EntityType.OTA_PACKAGE, EntityType.DEVICE,
             EntityType.ENTITY_VIEW, EntityType.WIDGET_TYPE, EntityType.WIDGETS_BUNDLE,
-            EntityType.NOTIFICATION_TEMPLATE, EntityType.NOTIFICATION_TARGET, EntityType.NOTIFICATION_RULE
+            EntityType.NOTIFICATION_TEMPLATE, EntityType.NOTIFICATION_TARGET, EntityType.NOTIFICATION_RULE,
+            EntityType.AI_MODEL
     );
 
     @Override
@@ -132,7 +118,10 @@ public class DefaultEntitiesExportImportService implements EntitiesExportImportS
 
     @Override
     public Comparator<EntityType> getEntityTypeComparatorForImport() {
-        return Comparator.comparing(SUPPORTED_ENTITY_TYPES::indexOf);
+        return Comparator.comparingInt(type -> {
+            int index = SUPPORTED_ENTITY_TYPES.indexOf(type);
+            return index >= 0 ? index : Integer.MAX_VALUE;
+        });
     }
 
     @SuppressWarnings("unchecked")

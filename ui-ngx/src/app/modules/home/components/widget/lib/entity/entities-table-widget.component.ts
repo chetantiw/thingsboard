@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -42,7 +28,7 @@ import {
 import { IWidgetSubscription } from '@core/api/widget-api.models';
 import { UtilsService } from '@core/services/utils.service';
 import { TranslateService } from '@ngx-translate/core';
-import { deepClone, hashCode, isDefined, isDefinedAndNotNull, isNumber, isObject, isUndefined } from '@core/utils';
+import { deepClone, hashCode, isDefined, isDefinedAndNotNull, isObject, isUndefined } from '@core/utils';
 import cssjs from '@core/css/css';
 import { CollectionViewer, DataSource } from '@angular/cdk/collections';
 import { DataKeyType } from '@shared/models/telemetry/telemetry.models';
@@ -75,6 +61,8 @@ import {
   getHeaderTitle,
   getRowStyleInfo,
   getTableCellButtonActions,
+  isValidPageStepCount,
+  isValidPageStepIncrement,
   noDataMessage,
   prepareTableCellButtonActions,
   RowStyleInfo,
@@ -98,7 +86,7 @@ import {
   EntityKeyType,
   KeyFilter
 } from '@shared/models/query/query.models';
-import { sortItems } from '@shared/models/page/page-link';
+import { SortColumnType, sortItems } from '@shared/models/page/page-link';
 import { entityFields } from '@shared/models/entity.models';
 import { DatePipe } from '@angular/common';
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
@@ -107,6 +95,7 @@ import { AggregationType } from '@shared/models/time/time.models';
 import { FormBuilder } from '@angular/forms';
 import { DEFAULT_OVERLAY_POSITIONS } from '@shared/models/overlay.models';
 import { CompiledTbFunction } from '@shared/models/js-function.models';
+import { ValueFormatProcessor } from '@shared/models/widget-settings.models';
 
 interface EntitiesTableWidgetSettings extends TableWidgetSettings {
   entitiesTitle: string;
@@ -120,9 +109,10 @@ interface EntitiesTableWidgetSettings extends TableWidgetSettings {
 }
 
 @Component({
-  selector: 'tb-entities-table-widget',
-  templateUrl: './entities-table-widget.component.html',
-  styleUrls: ['./entities-table-widget.component.scss', './../table-widget.scss']
+    selector: 'tb-entities-table-widget',
+    templateUrl: './entities-table-widget.component.html',
+    styleUrls: ['./entities-table-widget.component.scss', './../table-widget.scss'],
+    standalone: false
 })
 export class EntitiesTableWidgetComponent extends PageComponent implements OnInit, AfterViewInit, OnDestroy {
 
@@ -164,7 +154,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
   private defaultPageSize;
   private defaultSortOrder = 'entityName';
 
-  private contentsInfo: {[key: string]: CellContentInfo} = {};
+  private contentsInfo: {[key: string]: WithOptional<CellContentInfo, 'valueFormat'>} = {};
   private stylesInfo: {[key: string]: Observable<CellStyleInfo>} = {};
   private columnWidth: {[key: string]: string} = {};
   private columnDefaultVisibility: {[key: string]: boolean} = {};
@@ -262,6 +252,15 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
 
     if (this.displayPagination) {
       this.sort.sortChange.pipe(takeUntil(this.destroy$)).subscribe(() => this.paginator.pageIndex = 0);
+
+      this.ctx.aliasController?.filtersChanged.pipe(
+        takeUntil(this.destroy$)
+      ).subscribe((filters) => {
+        let currentFilterId = this.ctx.defaultSubscription.options.datasources?.[0]?.filterId;
+        if (currentFilterId && filters.includes(currentFilterId)) {
+          this.paginator.firstPage();
+        }
+      });
     }
     ((this.displayPagination ? merge(this.sort.sortChange, this.paginator.page) : this.sort.sortChange) as Observable<any>).pipe(
       takeUntil(this.destroy$)
@@ -311,10 +310,10 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
     this.rowStylesInfo = getRowStyleInfo(this.ctx, this.settings, 'entity, ctx');
 
     const pageSize = this.settings.defaultPageSize;
-    let pageStepIncrement = this.settings.pageStepIncrement;
-    let pageStepCount = this.settings.pageStepCount;
+    let pageStepIncrement = isValidPageStepIncrement(this.settings.pageStepIncrement) ? this.settings.pageStepIncrement : null;
+    let pageStepCount = isValidPageStepCount(this.settings.pageStepCount) ? this.settings.pageStepCount : null;
 
-    if (isDefined(pageSize) && isNumber(pageSize) && pageSize > 0) {
+    if (Number.isInteger(pageSize) && pageSize > 0) {
       this.defaultPageSize = pageSize;
     }
 
@@ -459,7 +458,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
         }
         dataKeys.push(dataKey);
 
-        const keySettings: TableWidgetDataKeySettings = dataKey.settings;
+        const keySettings: TableWidgetDataKeySettings = dataKey.settings ?? {};
         dataKey.label = this.utils.customTranslation(dataKey.label, dataKey.label);
         dataKey.title = getHeaderTitle(dataKey, keySettings, this.utils);
         dataKey.def = 'def' + this.columns.length;
@@ -475,14 +474,13 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
 
         this.stylesInfo[dataKey.def] = getCellStyleInfo(this.ctx, keySettings, 'value, entity, ctx');
         const contentFunctionInfo = getCellContentFunctionInfo(this.ctx, keySettings, 'value, entity, ctx');
-        const contentInfo: CellContentInfo = {
+        const decimals = (dataKey.decimals || dataKey.decimals === 0) ? dataKey.decimals : this.ctx.widgetConfig.decimals;
+        const units = dataKey.units || this.ctx.widgetConfig.units;
+        const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, showZeroDecimals: true});
+        this.contentsInfo[dataKey.def] = {
           contentFunction: contentFunctionInfo,
-          units: dataKey.units,
-          decimals: dataKey.decimals
+          valueFormat
         };
-        this.contentsInfo[dataKey.def] = contentInfo;
-        this.contentsInfo[dataKey.def].units = dataKey.units;
-        this.contentsInfo[dataKey.def].decimals = dataKey.decimals;
         this.columnWidth[dataKey.def] = getColumnWidth(keySettings);
         this.columnDefaultVisibility[dataKey.def] = getColumnDefaultVisibility(keySettings, this.ctx);
         this.columnSelectionAvailability[dataKey.def] = getColumnSelectionAvailability(keySettings);
@@ -513,7 +511,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
     if ($event) {
       $event.stopPropagation();
     }
-    const target = $event.target || $event.srcElement || $event.currentTarget;
+    const target = $event.target || $event.currentTarget;
     const config = new OverlayConfig({
       panelClass: 'tb-panel-container',
       backdropClass: 'cdk-overlay-transparent-backdrop',
@@ -605,8 +603,12 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
       this.pageLink.sortOrder = null;
     }
     const sortOrderLabel = fromEntityColumnDef(this.sort.active, this.columns);
+    const sortColumnType: SortColumnType = key
+      ? (key.type === EntityKeyType.ENTITY_FIELD ? 'entityField'
+         : key.type === EntityKeyType.TIME_SERIES ? 'timeseries' : 'attribute')
+      : 'entityField';
     const keyFilters: KeyFilter[] = null; // TODO:
-    this.entityDatasource.loadEntities(this.pageLink, sortOrderLabel, keyFilters);
+    this.entityDatasource.loadEntities(this.pageLink, sortOrderLabel, sortColumnType, keyFilters);
     this.ctx.detectChanges();
   }
 
@@ -629,7 +631,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
 
   public rowStyle(entity: EntityData, row: number): Observable<any> {
     let style$: Observable<any>;
-    let res = this.rowStyleCache[row];
+    const res = this.rowStyleCache[row];
     if (!res) {
       style$ = this.rowStylesInfo.pipe(
         map(styleInfo => {
@@ -667,7 +669,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
     let style$: Observable<any>;
     const col = this.columns.indexOf(key);
     const index = row * this.columns.length + col;
-    let res = this.cellStyleCache[index];
+    const res = this.cellStyleCache[index];
     if (!res) {
       if (entity && key) {
         style$ = this.stylesInfo[key.def].pipe(
@@ -717,7 +719,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
     let content$: Observable<SafeHtml>;
     const col = this.columns.indexOf(key);
     const index = row * this.columns.length + col;
-    let res = this.cellContentCache[index];
+    const res = this.cellContentCache[index];
     if (isUndefined(res)) {
       const contentInfo = this.contentsInfo[key.def];
       content$ = contentInfo.contentFunction.pipe(
@@ -758,7 +760,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
     return content$;
   }
 
-  private defaultContent(key: EntityColumn, contentInfo: CellContentInfo, value: any): any {
+  private defaultContent(key: EntityColumn, contentInfo: WithOptional<CellContentInfo, 'valueFormat'>, value: any): any {
     if (isDefined(value)) {
       const entityField = entityFields[key.name];
       if (entityField) {
@@ -766,9 +768,7 @@ export class EntitiesTableWidgetComponent extends PageComponent implements OnIni
           return this.datePipe.transform(value, 'yyyy-MM-dd HH:mm:ss');
         }
       }
-      const decimals = (contentInfo.decimals || contentInfo.decimals === 0) ? contentInfo.decimals : this.ctx.widgetConfig.decimals;
-      const units = contentInfo.units || this.ctx.widgetConfig.units;
-      return this.ctx.utils.formatValue(value, decimals, units, true);
+      return contentInfo.valueFormat?.format(value) ?? value;
     } else {
       return '';
     }
@@ -855,6 +855,7 @@ class EntityDatasource implements DataSource<EntityData> {
 
   private appliedPageLink: EntityDataPageLink;
   private appliedSortOrderLabel: string;
+  private appliedSortColumnType: SortColumnType = 'entityField';
 
   private reserveSpaceForHiddenAction = true;
   private cellButtonActions: TableCellButtonActionDescriptor[];
@@ -895,11 +896,13 @@ class EntityDatasource implements DataSource<EntityData> {
     this.pageDataSubject.complete();
   }
 
-  loadEntities(pageLink: EntityDataPageLink, sortOrderLabel: string, keyFilters: KeyFilter[]) {
+  loadEntities(pageLink: EntityDataPageLink, sortOrderLabel: string,
+               sortColumnType: SortColumnType, keyFilters: KeyFilter[]) {
     this.dataLoading = true;
     // this.clear();
     this.appliedPageLink = pageLink;
     this.appliedSortOrderLabel = sortOrderLabel;
+    this.appliedSortColumnType = sortColumnType;
     this.subscription.subscribeForPaginatedData(0, pageLink, keyFilters);
   }
 
@@ -924,7 +927,7 @@ class EntityDatasource implements DataSource<EntityData> {
       });
       if (this.appliedSortOrderLabel && this.appliedSortOrderLabel.length) {
         const asc = this.appliedPageLink.sortOrder.direction === Direction.ASC;
-        entities = entities.sort((a, b) => sortItems(a, b, this.appliedSortOrderLabel, asc));
+        entities = entities.sort((a, b) => sortItems(a, b, this.appliedSortOrderLabel, asc, this.appliedSortColumnType));
       }
       if (!dynamicWidthCellButtonActions && this.cellButtonActions.length && entities.length) {
         maxCellButtonAction = entities[0].actionCellButtons.length;

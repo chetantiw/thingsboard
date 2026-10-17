@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.transform;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -44,19 +31,19 @@ import java.util.concurrent.ExecutionException;
                 "If key to rename doesn't exist in the specified source (message or message metadata) it will be ignored.<br><br>" +
                 "Output connections: <code>Success</code>, <code>Failure</code>.",
         configDirective = "tbTransformationNodeRenameKeysConfig",
-        icon = "find_replace"
+        icon = "find_replace",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/transformation/rename-keys/"
 )
 public class TbRenameKeysNode extends TbAbstractTransformNodeWithTbMsgSource {
 
-    private TbRenameKeysNodeConfiguration config;
     private Map<String, String> renameKeysMapping;
     private TbMsgSource renameIn;
 
     @Override
     public void init(TbContext ctx, TbNodeConfiguration configuration) throws TbNodeException {
-        this.config = TbNodeUtils.convert(configuration, TbRenameKeysNodeConfiguration.class);
-        this.renameIn = config.getRenameIn();
-        this.renameKeysMapping = config.getRenameKeysMapping();
+        var config = TbNodeUtils.convert(configuration, TbRenameKeysNodeConfiguration.class);
+        renameIn = config.getRenameIn();
+        renameKeysMapping = config.getRenameKeysMapping();
         if (renameIn == null) {
             throw new TbNodeException("RenameIn can't be null! Allowed values: " + Arrays.toString(TbMsgSource.values()));
         }

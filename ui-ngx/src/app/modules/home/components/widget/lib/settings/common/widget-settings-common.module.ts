@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '@shared/shared.module';
@@ -69,6 +55,9 @@ import {
 } from '@home/components/widget/lib/settings/common/action/set-value-action-settings-panel.component';
 import { CssSizeInputComponent } from '@home/components/widget/lib/settings/common/css-size-input.component';
 import { WidgetActionComponent } from '@home/components/widget/lib/settings/common/action/widget-action.component';
+import {
+  MapItemTooltipsComponent
+} from '@home/components/widget/lib/settings/common/action/map-item-tooltips.component';
 import {
   CustomActionPrettyResourcesTabsComponent
 } from '@home/components/widget/lib/settings/common/action/custom-action-pretty-resources-tabs.component';
@@ -226,10 +215,10 @@ import { MarkerShapesComponent } from '@home/components/widget/lib/settings/comm
 import {
   MarkerClusteringSettingsComponent
 } from '@home/components/widget/lib/settings/common/map/marker-clustering-settings.component';
-import { MapDataSourcesComponent } from '@home/components/widget/lib/settings/common/map/map-data-sources.component';
+import { AdditionalMapDataSourcesComponent } from '@home/components/widget/lib/settings/common/map/additional-map-data-sources.component';
 import {
-  MapDataSourceRowComponent
-} from '@home/components/widget/lib/settings/common/map/map-data-source-row.component';
+  AdditionalMapDataSourceRowComponent
+} from '@home/components/widget/lib/settings/common/map/additional-map-data-source-row.component';
 import {
   ImageMapSourceSettingsComponent
 } from '@home/components/widget/lib/settings/common/map/image-map-source-settings.component';
@@ -248,6 +237,26 @@ import {
 import {
   MarkerIconShapesComponent
 } from '@home/components/widget/lib/settings/common/map/marker-icon-shapes.component';
+import { MapDataSourcesComponent } from '@home/components/widget/lib/settings/common/map/map-data-sources.component';
+import {
+  MapDataSourceRowComponent
+} from '@home/components/widget/lib/settings/common/map/map-data-source-row.component';
+import {
+  ShapeFillImageSettingsComponent
+} from '@home/components/widget/lib/settings/common/map/shape-fill-image-settings.component';
+import {
+  ShapeFillImageSettingsPanelComponent
+} from '@home/components/widget/lib/settings/common/map/shape-fill-image-settings-panel.component';
+import {
+  ShapeFillStripeSettingsComponent
+} from '@home/components/widget/lib/settings/common/map/shape-fill-stripe-settings.component';
+import {
+  ShapeFillStripeSettingsPanelComponent
+} from '@home/components/widget/lib/settings/common/map/shape-fill-stripe-settings-panel.component';
+import {
+  HtmlContainerSettingsComponent
+} from '@home/components/widget/lib/settings/common/html/html-container-settings.component';
+import { AxisScaleRowComponent } from './axis-scale-row.component';
 
 @NgModule({
   declarations: [
@@ -279,6 +288,7 @@ import {
     SetValueActionSettingsComponent,
     SetValueActionSettingsPanelComponent,
     WidgetActionComponent,
+    MapItemTooltipsComponent,
     CustomActionPrettyResourcesTabsComponent,
     CustomActionPrettyEditorComponent,
     MobileActionEditorComponent,
@@ -334,11 +344,17 @@ import {
     MarkerImageSettingsComponent,
     MarkerImageSettingsPanelComponent,
     MarkerClusteringSettingsComponent,
+    ShapeFillStripeSettingsComponent,
+    ShapeFillStripeSettingsPanelComponent,
+    ShapeFillImageSettingsComponent,
+    ShapeFillImageSettingsPanelComponent,
     MapDataLayerDialogComponent,
     MapDataLayerRowComponent,
     MapDataLayersComponent,
     MapDataSourceRowComponent,
     MapDataSourcesComponent,
+    AdditionalMapDataSourceRowComponent,
+    AdditionalMapDataSourcesComponent,
     TripTimelineSettingsComponent,
     MapSettingsComponent,
     EntityAliasSelectComponent,
@@ -346,7 +362,9 @@ import {
     DataKeysComponent,
     DataKeyConfigDialogComponent,
     DataKeyConfigComponent,
-    WidgetSettingsComponent
+    WidgetSettingsComponent,
+    HtmlContainerSettingsComponent,
+    AxisScaleRowComponent
   ],
   imports: [
     CommonModule,
@@ -427,7 +445,9 @@ import {
     DataKeysComponent,
     DataKeyConfigDialogComponent,
     DataKeyConfigComponent,
-    WidgetSettingsComponent
+    WidgetSettingsComponent,
+    HtmlContainerSettingsComponent,
+    AxisScaleRowComponent
   ],
   providers: [
     ColorSettingsComponentService,

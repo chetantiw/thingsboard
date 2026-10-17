@@ -1,85 +1,73 @@
 --
--- Copyright © 2016-2025 The Thingsboard Authors
---
--- Licensed under the Apache License, Version 2.0 (the "License");
--- you may not use this file except in compliance with the License.
--- You may obtain a copy of the License at
---
---     http://www.apache.org/licenses/LICENSE-2.0
---
--- Unless required by applicable law or agreed to in writing, software
--- distributed under the License is distributed on an "AS IS" BASIS,
--- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
--- See the License for the specific language governing permissions and
--- limitations under the License.
+-- SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+-- SPDX-License-Identifier: Apache-2.0
 --
 
--- UPDATE SAVE TIME SERIES NODES START
+-- Runs before schema-entities.sql and the LTS schema migrations: reference only tables a released version already has.
 
-UPDATE rule_node
-SET configuration = (
-    (configuration::jsonb - 'skipLatestPersistence')
-        || jsonb_build_object(
-            'processingSettings', jsonb_build_object(
-                    'type',       'ADVANCED',
-                    'timeseries',       jsonb_build_object('type', 'ON_EVERY_MESSAGE'),
-                    'latest',           jsonb_build_object('type', 'SKIP'),
-                    'webSockets',       jsonb_build_object('type', 'ON_EVERY_MESSAGE'),
-                    'calculatedFields', jsonb_build_object('type', 'ON_EVERY_MESSAGE')
-                                   )
-           )
-    )::text,
-    configuration_version = 1
-WHERE type = 'org.thingsboard.rule.engine.telemetry.TbMsgTimeseriesNode'
-  AND configuration_version = 0
-  AND configuration::jsonb ->> 'skipLatestPersistence' = 'true';
-
-UPDATE rule_node
-SET configuration = (
-    (configuration::jsonb - 'skipLatestPersistence')
-        || jsonb_build_object(
-            'processingSettings', jsonb_build_object(
-                    'type', 'ON_EVERY_MESSAGE'
-                                   )
-           )
-    )::text,
-    configuration_version = 1
-WHERE type = 'org.thingsboard.rule.engine.telemetry.TbMsgTimeseriesNode'
-  AND configuration_version = 0
-  AND (configuration::jsonb ->> 'skipLatestPersistence' != 'true' OR configuration::jsonb ->> 'skipLatestPersistence' IS NULL);
-
--- UPDATE SAVE TIME SERIES NODES END
-
--- UPDATE SAVE ATTRIBUTES NODES START
-
-UPDATE rule_node
-SET configuration = (
-    configuration::jsonb
-        || jsonb_build_object(
-            'processingSettings', jsonb_build_object('type', 'ON_EVERY_MESSAGE')
-           )
-    )::text,
-    configuration_version = 3
-WHERE type = 'org.thingsboard.rule.engine.telemetry.TbMsgAttributesNode'
-  AND configuration_version = 2;
-
--- UPDATE SAVE ATTRIBUTES NODES END
-
-ALTER TABLE api_usage_state ADD COLUMN IF NOT EXISTS version BIGINT DEFAULT 1;
-
--- UPDATE TENANT PROFILE CALCULATED FIELD LIMITS START
+-- UPDATE TENANT PROFILE CONFIGURATION START
 
 UPDATE tenant_profile
-SET profile_data = profile_data
-    || jsonb_build_object(
-        'configuration', profile_data->'configuration' || jsonb_build_object(
-        'maxCalculatedFieldsPerEntity', COALESCE(profile_data->'configuration'->>'maxCalculatedFieldsPerEntity', '5')::bigint,
-        'maxArgumentsPerCF', COALESCE(profile_data->'configuration'->>'maxArgumentsPerCF', '10')::bigint,
-        'maxDataPointsPerRollingArg', COALESCE(profile_data->'configuration'->>'maxDataPointsPerRollingArg', '1000')::bigint,
-        'maxStateSizeInKBytes', COALESCE(profile_data->'configuration'->>'maxStateSizeInKBytes', '32')::bigint,
-        'maxSingleValueArgumentSizeInKBytes', COALESCE(profile_data->'configuration'->>'maxSingleValueArgumentSizeInKBytes', '2')::bigint
-        )
+SET profile_data = jsonb_set(
+    profile_data,
+    '{configuration}',
+    jsonb_build_object(
+        'minAllowedScheduledUpdateIntervalInSecForCF', 10,
+        'maxRelationLevelPerCfArgument', 2,
+        'maxRelatedEntitiesToReturnPerCfArgument', 100,
+        'minAllowedDeduplicationIntervalInSecForCF', 10,
+        'minAllowedAggregationIntervalInSecForCF', 60,
+        'intermediateAggregationIntervalInSecForCF', 300,
+        'cfReevaluationCheckInterval', 60,
+        'alarmsReevaluationInterval', 60
     )
-WHERE profile_data->'configuration'->>'maxCalculatedFieldsPerEntity' IS NULL;
+    ||
+    jsonb_strip_nulls(profile_data -> 'configuration')
+)
+WHERE NOT (
+    jsonb_strip_nulls(profile_data -> 'configuration') ?& ARRAY[
+        'minAllowedScheduledUpdateIntervalInSecForCF',
+        'maxRelationLevelPerCfArgument',
+        'maxRelatedEntitiesToReturnPerCfArgument',
+        'minAllowedDeduplicationIntervalInSecForCF',
+        'minAllowedAggregationIntervalInSecForCF',
+        'intermediateAggregationIntervalInSecForCF',
+        'cfReevaluationCheckInterval',
+        'alarmsReevaluationInterval'
+    ]
+);
 
--- UPDATE TENANT PROFILE CALCULATED FIELD LIMITS END
+-- UPDATE TENANT PROFILE CONFIGURATION END
+
+-- CALCULATED FIELD UNIQUE CONSTRAINT UPDATE START
+
+ALTER TABLE calculated_field DROP CONSTRAINT IF EXISTS calculated_field_unq_key;
+ALTER TABLE calculated_field ADD CONSTRAINT calculated_field_unq_key UNIQUE (entity_id, type, name);
+
+-- CALCULATED FIELD UNIQUE CONSTRAINT UPDATE END
+
+-- CALCULATED FIELD OUTPUT STRATEGY UPDATE START
+
+UPDATE calculated_field
+SET configuration = jsonb_set(
+        configuration::jsonb,
+        '{output}',
+        (configuration::jsonb -> 'output')
+            || jsonb_build_object(
+                'strategy',
+                jsonb_build_object(
+                        'type', 'RULE_CHAIN'
+                )
+               ),
+        false
+                    )
+WHERE (configuration::jsonb -> 'output' -> 'strategy') IS NULL;
+
+-- CALCULATED FIELD OUTPUT STRATEGY UPDATE END
+
+-- REMOVAL OF CALCULATED FIELD LINKS PERSISTENCE START
+
+DROP TABLE IF EXISTS calculated_field_link;
+ANALYZE calculated_field;
+
+-- REMOVAL OF CALCULATED FIELD LINKS PERSISTENCE END

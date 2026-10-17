@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.device;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -23,6 +10,7 @@ import org.thingsboard.server.common.data.DeviceInfoFilter;
 import org.thingsboard.server.common.data.DeviceProfile;
 import org.thingsboard.server.common.data.DeviceTransportType;
 import org.thingsboard.server.common.data.EntitySubtype;
+import org.thingsboard.server.common.data.NameConflictStrategy;
 import org.thingsboard.server.common.data.ProfileEntityIdInfo;
 import org.thingsboard.server.common.data.device.DeviceSearchQuery;
 import org.thingsboard.server.common.data.id.CustomerId;
@@ -58,7 +46,11 @@ public interface DeviceService extends EntityDaoService {
 
     Device saveDeviceWithAccessToken(Device device, String accessToken);
 
+    Device saveDeviceWithAccessToken(Device device, String accessToken, NameConflictStrategy nameConflictStrategy);
+
     Device saveDeviceWithCredentials(Device device, DeviceCredentials deviceCredentials);
+
+    Device saveDeviceWithCredentials(Device device, DeviceCredentials deviceCredentials, NameConflictStrategy nameConflictStrategy);
 
     Device saveDevice(ProvisionRequest provisionRequest, DeviceProfile profile);
 
@@ -75,6 +67,8 @@ public interface DeviceService extends EntityDaoService {
     PageData<DeviceIdInfo> findDeviceIdInfos(PageLink pageLink);
 
     PageData<ProfileEntityIdInfo> findProfileEntityIdInfos(PageLink pageLink);
+
+    PageData<ProfileEntityIdInfo> findProfileEntityIdInfosByTenantId(TenantId tenantId, PageLink pageLink);
 
     PageData<Device> findDevicesByTenantIdAndType(TenantId tenantId, String type, PageLink pageLink);
 

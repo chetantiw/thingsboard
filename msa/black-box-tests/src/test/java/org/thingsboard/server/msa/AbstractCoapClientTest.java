@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.msa;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -28,7 +15,7 @@ import org.thingsboard.server.common.msg.session.FeatureType;
 
 public abstract class AbstractCoapClientTest extends AbstractContainerTest{
 
-    private static final String COAP_BASE_URL = "coap://localhost:5683/api/v1/";
+    private static final String CONTAINER_COAP_BASE_URL = "coap://localhost:5683/api/v1/";
     private static final long CLIENT_REQUEST_TIMEOUT = 60000L;
 
 
@@ -54,7 +41,7 @@ public abstract class AbstractCoapClientTest extends AbstractContainerTest{
     protected byte[] createCoapClientAndPublish(String deviceName) throws Exception {
         String provisionRequestMsg = createTestProvisionMessage(deviceName);
         Configuration.addDefaultModule(MODULE_DEFINITIONS_PROVIDER);
-        String featureTokenUrl = COAP_BASE_URL + FeatureType.PROVISION.name().toLowerCase();
+        String featureTokenUrl = CONTAINER_COAP_BASE_URL + FeatureType.PROVISION.name().toLowerCase();
         client = new CoapClient(featureTokenUrl);
         return client.setTimeout(CLIENT_REQUEST_TIMEOUT)
                 .post(provisionRequestMsg.getBytes(), MediaTypeRegistry.APPLICATION_JSON)

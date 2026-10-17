@@ -1,47 +1,41 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.cf.ctx.state;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.thingsboard.common.util.JacksonUtil;
+import org.thingsboard.server.actors.ActorSystemContext;
 import org.thingsboard.server.common.data.AttributeScope;
+import org.thingsboard.server.common.data.TenantProfile;
 import org.thingsboard.server.common.data.cf.CalculatedField;
 import org.thingsboard.server.common.data.cf.CalculatedFieldType;
 import org.thingsboard.server.common.data.cf.configuration.Argument;
 import org.thingsboard.server.common.data.cf.configuration.ArgumentType;
+import org.thingsboard.server.common.data.cf.configuration.AttributesOutput;
 import org.thingsboard.server.common.data.cf.configuration.CalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.cf.configuration.Output;
-import org.thingsboard.server.common.data.cf.configuration.OutputType;
 import org.thingsboard.server.common.data.cf.configuration.ReferencedEntityKey;
 import org.thingsboard.server.common.data.cf.configuration.SimpleCalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.id.AssetId;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.common.data.kv.BooleanDataEntry;
 import org.thingsboard.server.common.data.kv.DoubleDataEntry;
 import org.thingsboard.server.common.data.kv.LongDataEntry;
 import org.thingsboard.server.common.data.kv.StringDataEntry;
-import org.thingsboard.server.dao.usagerecord.ApiLimitService;
-import org.thingsboard.server.service.cf.CalculatedFieldResult;
+import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileConfiguration;
+import org.thingsboard.server.dao.tenant.TbTenantProfileCache;
+import org.thingsboard.server.service.cf.TelemetryCalculatedFieldResult;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -65,14 +59,21 @@ public class SimpleCalculatedFieldStateTest {
     private CalculatedFieldCtx ctx;
 
     @Mock
-    private ApiLimitService apiLimitService;
+    private TenantProfile tenantProfile;
+    @Mock
+    private TbTenantProfileCache tenantProfileCache;
+    @InjectMocks
+    private ActorSystemContext systemContext;
 
     @BeforeEach
     void setUp() {
-        when(apiLimitService.getLimit(any(), any())).thenReturn(1000L);
-        ctx = new CalculatedFieldCtx(getCalculatedField(), null, apiLimitService);
+        when(tenantProfileCache.get(any(TenantId.class))).thenReturn(tenantProfile);
+        when(tenantProfile.getProfileConfiguration()).thenReturn(Optional.of(new DefaultTenantProfileConfiguration()));
+        ctx = new CalculatedFieldCtx(getCalculatedField(), systemContext);
         ctx.init();
-        state = new SimpleCalculatedFieldState(ctx.getArgNames());
+        state = new SimpleCalculatedFieldState(ctx.getEntityId());
+        state.setCtx(ctx, null);
+        state.init(false);
     }
 
     @Test
@@ -88,7 +89,7 @@ public class SimpleCalculatedFieldStateTest {
         ));
 
         Map<String, ArgumentEntry> newArgs = Map.of("key3", key3ArgEntry);
-        boolean stateUpdated = state.updateState(ctx, newArgs);
+        boolean stateUpdated = !state.update(newArgs, ctx).isEmpty();
 
         assertThat(stateUpdated).isTrue();
         assertThat(state.getArguments()).containsExactlyInAnyOrderEntriesOf(
@@ -106,7 +107,7 @@ public class SimpleCalculatedFieldStateTest {
 
         SingleValueArgumentEntry newArgEntry = new SingleValueArgumentEntry(System.currentTimeMillis(), new LongDataEntry("key1", 18L), 190L);
         Map<String, ArgumentEntry> newArgs = Map.of("key1", newArgEntry);
-        boolean stateUpdated = state.updateState(ctx, newArgs);
+        boolean stateUpdated = !state.update(newArgs, ctx).isEmpty();
 
         assertThat(stateUpdated).isTrue();
         assertThat(state.getArguments()).containsExactlyInAnyOrderEntriesOf(Map.of("key1", newArgEntry));
@@ -120,9 +121,10 @@ public class SimpleCalculatedFieldStateTest {
         ));
 
         Map<String, ArgumentEntry> newArgs = Map.of("key3", new TsRollingArgumentEntry(10, 30000L));
-        assertThatThrownBy(() -> state.updateState(ctx, newArgs))
+        assertThatThrownBy(() -> state.update(newArgs, ctx))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Rolling argument entry is not supported for simple calculated fields.");
+                .hasMessage("Unsupported argument type detected for argument: key3. " +
+                            "Rolling argument entry is not supported for simple calculated fields.");
     }
 
     @Test
@@ -133,26 +135,43 @@ public class SimpleCalculatedFieldStateTest {
                 "key3", key3ArgEntry
         ));
 
-        CalculatedFieldResult result = state.performCalculation(ctx).get();
+        TelemetryCalculatedFieldResult result = performCalculation();
 
         assertThat(result).isNotNull();
         Output output = getCalculatedFieldConfig().getOutput();
         assertThat(result.getType()).isEqualTo(output.getType());
         assertThat(result.getScope()).isEqualTo(output.getScope());
-        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 49)));
+        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 49L)));
     }
 
     @Test
-    void testPerformCalculationWhenPassedNotNumber() {
+    void testPerformCalculationWhenPassedString() {
         state.arguments = new HashMap<>(Map.of(
                 "key1", key1ArgEntry,
                 "key2", new SingleValueArgumentEntry(System.currentTimeMillis() - 9, new StringDataEntry("key2", "string"), 124L),
                 "key3", key3ArgEntry
         ));
 
-        assertThatThrownBy(() -> state.performCalculation(ctx))
+        assertThatThrownBy(() -> state.performCalculation(Collections.emptyMap(), ctx))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Argument 'key2' is not a number.");
+    }
+
+    @Test
+    void testPerformCalculationWhenPassedBoolean() throws ExecutionException, InterruptedException {
+        state.arguments = new HashMap<>(Map.of(
+                "key1", key1ArgEntry,
+                "key2", new SingleValueArgumentEntry(System.currentTimeMillis() - 9, new BooleanDataEntry("key2", true), 124L),// true is parsed as 1
+                "key3", key3ArgEntry
+        ));
+
+        TelemetryCalculatedFieldResult result = performCalculation();
+
+        assertThat(result).isNotNull();
+        Output output = getCalculatedFieldConfig().getOutput();
+        assertThat(result.getType()).isEqualTo(output.getType());
+        assertThat(result.getScope()).isEqualTo(output.getScope());
+        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 35L)));
     }
 
     @Test
@@ -167,7 +186,7 @@ public class SimpleCalculatedFieldStateTest {
         output.setDecimalsByDefault(3);
         ctx.setOutput(output);
 
-        CalculatedFieldResult result = state.performCalculation(ctx).get();
+        TelemetryCalculatedFieldResult result = performCalculation();
 
         assertThat(result).isNotNull();
         assertThat(result.getType()).isEqualTo(output.getType());
@@ -178,28 +197,29 @@ public class SimpleCalculatedFieldStateTest {
     @Test
     void testIsReadyWhenNotAllArgPresent() {
         assertThat(state.isReady()).isFalse();
+        assertThat(state.getReadinessStatus().errorMsg()).contains(state.getRequiredArguments());
     }
 
     @Test
     void testIsReadyWhenAllArgPresent() {
-        state.arguments = new HashMap<>(Map.of(
+        state.update(Map.of(
                 "key1", key1ArgEntry,
                 "key2", key2ArgEntry,
                 "key3", key3ArgEntry
-        ));
-
+        ), ctx);
         assertThat(state.isReady()).isTrue();
+        assertThat(state.getReadinessStatus().errorMsg()).isNull();
     }
 
     @Test
     void testIsReadyWhenEmptyEntryPresents() {
-        state.arguments = new HashMap<>(Map.of(
+        state.update(Map.of(
                 "key1", key1ArgEntry,
-                "key2", key2ArgEntry
-        ));
-        state.getArguments().put("key3", new SingleValueArgumentEntry());
-
+                "key2", key2ArgEntry,
+                "key3", new SingleValueArgumentEntry()
+        ), ctx);
         assertThat(state.isReady()).isFalse();
+        assertThat(state.getReadinessStatus().errorMsg()).contains("key3");
     }
 
     private CalculatedField getCalculatedField() {
@@ -236,15 +256,18 @@ public class SimpleCalculatedFieldStateTest {
 
         config.setExpression("key1 + key2 + key3");
 
-        Output output = new Output();
+        AttributesOutput output = new AttributesOutput();
         output.setName("output");
-        output.setType(OutputType.ATTRIBUTES);
         output.setScope(AttributeScope.SERVER_SCOPE);
         output.setDecimalsByDefault(0);
 
         config.setOutput(output);
 
         return config;
+    }
+
+    private TelemetryCalculatedFieldResult performCalculation() throws InterruptedException, ExecutionException {
+        return (TelemetryCalculatedFieldResult) state.performCalculation(Collections.emptyMap(), ctx).get();
     }
 
 }

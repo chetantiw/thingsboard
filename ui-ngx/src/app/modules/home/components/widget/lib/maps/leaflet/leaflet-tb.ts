@@ -1,31 +1,76 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import L, { TB } from 'leaflet';
-import { guid, isNotEmptyStr } from '@core/utils';
+import { guid, isDefinedAndNotNull, isNotEmptyStr } from '@core/utils';
 import 'leaflet-providers';
-import { Map as MapLibreGLMap, LngLat as MapLibreGLLngLat } from 'maplibre-gl';
+import { Map as MapLibreGLMap, setWorkerUrl } from 'maplibre-gl';
 import '@geoman-io/leaflet-geoman-free';
 import 'leaflet.markercluster';
 import { MatIconRegistry } from '@angular/material/icon';
 import { isSvgIcon, splitIconName } from '@shared/models/icon.models';
 import { catchError, take } from 'rxjs/operators';
 import { of } from 'rxjs';
+import { WEBGL_ERROR_EVENT } from '@shared/models/widget/maps/map.models';
 
 L.MarkerCluster = L.MarkerCluster.mergeOptions({ pmIgnore: true });
+
+L.Map.addInitHook(function () {
+  this._patterns = {};
+});
+
+L.Map.include({
+
+  addPattern: function (pattern: Pattern) {
+    const id = L.stamp(pattern);
+    if (this._patterns[id]) {
+      return pattern;
+    }
+    this._patterns[id] = pattern;
+    this.whenReady(() => {
+      pattern.onAdd(this);
+    });
+    return this;
+  },
+
+  removePattern: function (pattern: Pattern) {
+    const id = L.stamp(pattern);
+    if (!this._patterns[id]) {
+      return this;
+    }
+    if (this._loaded) {
+      pattern.onRemove(this);
+    }
+    delete this._patterns[id];
+
+    if (this._loaded) {
+      this.fire('patternremove', {pattern: pattern});
+      pattern.fire('remove');
+    }
+
+    pattern._map = null;
+    return this;
+  },
+
+  _initDefRoot: function () {
+    if (!this._defRoot) {
+      const renderer: L.Renderer = this.getRenderer(this);
+      this._defRoot = Pattern.prototype._createElement('defs');
+      ((renderer as any)._container).appendChild(this._defRoot);
+    }
+  }
+});
+
+L.SVG.include({
+  _superUpdateStyle: (L.SVG.prototype as any)._updateStyle,
+
+  _updateStyle: function (layer: L.Layer){
+    this._superUpdateStyle(layer);
+    const options: L.PathOptions = layer.options;
+    if (options.fill && options.fillPattern) {
+      ((layer as any)._path as SVGElement).setAttribute('fill', 'url(#' + L.stamp(options.fillPattern) + ")");
+    }
+  }
+})
 
 class SidebarControl extends L.Control<TB.SidebarControlOptions> implements L.TB.SidebarControl {
 
@@ -572,6 +617,381 @@ class BottomToolbarControl implements L.TB.BottomToolbarControl {
 
 }
 
+class Pattern extends L.Evented implements L.TB.Pattern {
+
+  _map: L.Map;
+  _dom: SVGPatternElement & HTMLElement;
+
+  private options: L.TB.PatternOptions = {
+    x: 0,
+    y: 0,
+    width: 8,
+    height: 8,
+    patternUnits: 'userSpaceOnUse',
+    patternContentUnits: 'userSpaceOnUse'
+  };
+  private _elements: {[id: string]: PatternElement} = {};
+
+  constructor(options: L.TB.PatternOptions) {
+    super();
+    this.options = {...this.options, ...options};
+  }
+
+  onAdd(map: L.Map): void {
+    this._map = map;
+    this._map._initDefRoot();
+
+    this._initDom();
+
+    for (const i in this._elements) {
+      this._elements[i].onAdd(this);
+    }
+
+    this._addElements();
+    this._addDom();
+    this.redraw();
+    this.fire('add');
+    this._map.fire('patternadd', {pattern: this});
+  }
+
+  onRemove(_map: L.Map): void {
+    this._removeDom();
+  }
+
+  redraw(): this {
+    if (this._map) {
+      this._update();
+      for (const i in this._elements) {
+        this._elements[i].redraw();
+      }
+    }
+    return this;
+  }
+
+  setStyle(style: L.TB.PatternOptions): this {
+    L.setOptions(this, style);
+    if (this._map) {
+      this._updateStyle();
+      this.redraw();
+    }
+    return this;
+  }
+
+  addTo(map: L.Map): this {
+    map.addPattern(this);
+    return this;
+  }
+
+  remove(): this {
+    return this.removeFrom(this._map);
+  }
+
+  removeFrom(map: L.Map): this {
+    if (map) {
+      map.removePattern(this);
+    }
+    return this;
+  }
+
+  addElement(element: PatternElement): PatternElement | undefined {
+    const id = L.stamp(element);
+    if (this._elements[id]) {
+      return element;
+    }
+    this._elements[id] = element;
+    element.onAdd(this);
+  }
+
+  _createElement<E extends SVGElement> (name: string): E {
+    return document.createElementNS("http://www.w3.org/2000/svg", name) as E;
+  }
+
+  _initDom(): void {
+    this._dom = this._createElement('pattern');
+    if (this.options.className) {
+      L.DomUtil.addClass(this._dom, this.options.className);
+    }
+    this._updateStyle();
+  }
+
+  _addDom(): void {
+    this._map._defRoot.appendChild(this._dom);
+  }
+
+  _removeDom(): void {
+    L.DomUtil.remove(this._dom);
+  }
+
+  _updateStyle(): void {
+    const dom = this._dom;
+    const options = this.options;
+    if (!dom) { return; }
+    dom.setAttribute('id', `${L.stamp(this)}`);
+    dom.setAttribute('x', `${options.x}`);
+    dom.setAttribute('y', `${options.y}`);
+    dom.setAttribute('width', `${options.width}`);
+    dom.setAttribute('height', `${options.height}`);
+    dom.setAttribute('patternUnits', options.patternUnits);
+    dom.setAttribute('patternContentUnits', options.patternContentUnits);
+
+    if (options.patternTransform || options.angle) {
+      let transform = options.patternTransform ? options.patternTransform + " " : "";
+      transform += options.angle ?  "rotate(" + options.angle + ") " : "";
+      dom.setAttribute('patternTransform', transform);
+    } else {
+      dom.removeAttribute('patternTransform');
+    }
+    if (options.viewBox) {
+      dom.setAttribute('viewBox', options.viewBox.join(' '));
+    } else {
+      dom.removeAttribute('viewBox');
+    }
+    if (options.preserveAspectRatioAlign) {
+      let preserveAspectRatioValue = options.preserveAspectRatioAlign;
+      if (preserveAspectRatioValue !== 'none' && options.preserveAspectRatioMeetOrSlice) {
+        preserveAspectRatioValue += (' ' + options.preserveAspectRatioMeetOrSlice);
+      }
+      dom.setAttribute('preserveAspectRatio', preserveAspectRatioValue);
+    } else {
+      dom.removeAttribute('preserveAspectRatio');
+    }
+
+    for (const i in this._elements) {
+      this._elements[i]._updateStyle();
+    }
+  }
+
+  protected _addElements() {};
+  protected _update() {};
+
+}
+
+abstract class PatternElement<O extends L.TB.PatternElementOptions = L.TB.PatternElementOptions> extends L.Class implements L.TB.PatternElement {
+
+  protected options: O;
+
+  protected _pattern: Pattern;
+  protected _dom: SVGElement & HTMLElement;
+
+  protected constructor(options: L.TB.PatternElementOptions) {
+    super();
+    this.options = {...this._defaultOptions(), ...options};
+  }
+
+  onAdd(pattern: Pattern): void {
+    this._pattern = pattern;
+    if (this._pattern._dom) {
+      this._initDom();
+      this._addDom();
+    }
+  }
+
+  addTo(pattern: Pattern): this {
+    pattern.addElement(this);
+    return this;
+  }
+
+  redraw(): this {
+    if (this._pattern) {
+      this._updateElement();
+    }
+    return this;
+  }
+
+  setStyle(style: L.TB.PatternElementOptions): this {
+    L.setOptions(this, style);
+    if (this._pattern) {
+      this._updateStyle();
+    }
+    return this;
+  }
+
+  _createElement<E extends SVGElement> (name: string): E {
+    return document.createElementNS("http://www.w3.org/2000/svg", name) as E;
+  }
+
+  _initDomElement(type: string): void {
+    this._dom = this._createElement(type);
+    if (this.options.className) {
+      L.DomUtil.addClass(this._dom, this.options.className);
+    }
+    this._updateStyle();
+  }
+
+  _addDom(): void {
+    this._pattern._dom.appendChild(this._dom);
+  }
+
+  _updateStyle(): void {}
+
+  protected _initDom() {}
+  protected _updateElement() {}
+
+  protected abstract _defaultOptions(): O;
+}
+
+const defaultPatternShapeOptions: L.TB.PatternShapeOptions = {
+  stroke: true,
+  color: '#3388ff',
+  weight: 3,
+  opacity: 1,
+  lineCap: 'round',
+  lineJoin: 'round',
+  fillOpacity: 0.2,
+  fillRule: 'evenodd'
+};
+
+
+abstract class PatternShape<O extends L.TB.PatternShapeOptions> extends PatternElement<O> implements L.TB.PatternShape {
+
+  protected constructor(options: O) {
+    super(options);
+  }
+
+  _updateStyle(): void {
+    const dom = this._dom;
+    const options = this.options;
+    if (!dom) { return; }
+    if (options.stroke) {
+      dom.setAttribute('stroke', options.color);
+      dom.setAttribute('stroke-opacity', `${options.opacity}`);
+      dom.setAttribute('stroke-width', `${options.weight}`);
+      dom.setAttribute('stroke-linecap', options.lineCap);
+      dom.setAttribute('stroke-linejoin', options.lineJoin);
+
+      if (options.dashArray) {
+        dom.setAttribute('stroke-dasharray', options.dashArray.join(' '));
+      } else {
+        dom.removeAttribute('stroke-dasharray');
+      }
+
+      if (options.dashOffset) {
+        dom.setAttribute('stroke-dashoffset', `${options.dashOffset}`);
+      } else {
+        dom.removeAttribute('stroke-dashoffset');
+      }
+    } else {
+      dom.setAttribute('stroke', 'none');
+    }
+
+    if (options.fill) {
+      if (options.fillPattern) {
+        dom.setAttribute('fill', 'url(#' + L.stamp(options.fillPattern) + ")");
+      }
+      else {
+        dom.setAttribute('fill', options.fillColor || options.color);
+      }
+      dom.setAttribute('fill-opacity', `${options.fillOpacity}`);
+      dom.setAttribute('fill-rule', options.fillRule || 'evenodd');
+    } else {
+      dom.setAttribute('fill', 'none');
+    }
+    dom.setAttribute('pointer-events', options.pointerEvents || (options.interactive ? 'visiblePainted' : 'none'));
+  }
+}
+
+class PatternRect extends PatternShape<L.TB.PatternRectOptions> implements L.TB.PatternRect {
+
+  constructor(options: L.TB.PatternRectOptions) {
+    super(options);
+  }
+
+  protected _initDom() {
+    this._initDomElement('rect');
+  }
+
+  protected _updateElement() {
+    if (!this._dom) { return; }
+    this._dom.setAttribute('x', `${this.options.x}`);
+    this._dom.setAttribute('y', `${this.options.y}`);
+    this._dom.setAttribute('width', `${this.options.width}`);
+    this._dom.setAttribute('height', `${this.options.height}`);
+    if (this.options.rx) { this._dom.setAttribute('rx', `${this.options.rx}`); }
+    if (this.options.ry) { this._dom.setAttribute('ry', `${this.options.ry}`); }
+  }
+
+  protected _defaultOptions(): L.TB.PatternRectOptions {
+    return {
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      ...defaultPatternShapeOptions
+    };
+  }
+}
+
+class PatternPath extends PatternShape<L.TB.PatternPathOptions> implements L.TB.PatternPath {
+
+  constructor(options: L.TB.PatternPathOptions) {
+    super(options);
+  }
+
+  protected _initDom() {
+    this._initDomElement('path');
+  }
+
+  protected _updateElement() {
+    if (!this._dom) { return; }
+    this._dom.setAttribute('d', this.options.d);
+  }
+
+  protected _defaultOptions(): L.TB.PatternPathOptions {
+    return {...defaultPatternShapeOptions};
+  }
+}
+
+class PatternImage extends PatternElement<L.TB.PatternImageOptions> implements L.TB.PatternImage {
+
+  constructor(options: TB.PatternImageOptions) {
+    super(options);
+  }
+
+  protected _initDom() {
+    this._initDomElement('image');
+  }
+
+  _updateStyle(): void {
+    const dom = this._dom;
+    const options = this.options;
+    if (!dom) { return; }
+    this._dom.setAttribute('href', options.imageUrl);
+    this._dom.setAttribute('opacity', isDefinedAndNotNull(options.opacity) ? `${options.opacity}` : '1');
+    this._dom.setAttribute('x', '0');
+    this._dom.setAttribute('y', '0');
+    this._dom.setAttribute('width', `${options.width}`);
+    this._dom.setAttribute('height', `${options.height}`);
+    if (options.preserveAspectRatioAlign) {
+      let preserveAspectRatioValue = options.preserveAspectRatioAlign;
+      if (preserveAspectRatioValue !== 'none' && options.preserveAspectRatioMeetOrSlice) {
+        preserveAspectRatioValue += (' ' + options.preserveAspectRatioMeetOrSlice);
+      }
+      dom.setAttribute('preserveAspectRatio', preserveAspectRatioValue);
+    } else {
+      dom.removeAttribute('preserveAspectRatio');
+    }
+    const transforms: string[] = [];
+    if (options.angle) {
+      transforms.push(`rotate(${options.angle})`);
+    }
+    if (options.scale && options.scale !== 1) {
+      transforms.push(`scale(${options.scale})`);
+    }
+    if (transforms.length) {
+      this._dom.setAttribute('transform', transforms.join(' '));
+      this._dom.setAttribute('transform-origin', `${options.width/2} ${options.height/2}`);
+    }
+  }
+
+  protected _defaultOptions(): L.TB.PatternImageOptions {
+    return {
+      imageUrl: '',
+      width: 0,
+      height: 0
+    };
+  }
+}
+
 const sidebar = (options: TB.SidebarControlOptions): L.TB.SidebarControl => {
   return new SidebarControl(options);
 }
@@ -650,6 +1070,9 @@ const chinaProvider = (type: string, options?: L.TileLayerOptions): L.TB.TileLay
   return new ChinaProvider(type, options);
 }
 
+// The worker is copied to assets by angular.json, bundlers cannot resolve it from import.meta.url
+setWorkerUrl(new URL('assets/maplibre-gl/maplibre-gl-worker.mjs', document.baseURI).href);
+
 class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
 
   options: TB.MapLibreGL.LeafletMapLibreGLMapOptions;
@@ -660,6 +1083,7 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
   private _actualCanvas: HTMLCanvasElement;
   private _offset: L.Point;
   private _zooming: boolean;
+  private _glError = false;
 
   constructor(options: TB.MapLibreGL.LeafletMapLibreGLMapOptions) {
     super();
@@ -703,7 +1127,9 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
     const paneName = this.getPaneName();
     map.getPane(paneName).removeChild(this._container);
 
-    this._glMap.remove();
+    if (this._glMap) {
+      this._glMap.remove();
+    }
     this._glMap = null;
 
     return this;
@@ -771,7 +1197,18 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
       zoom: this._map.getZoom() - 1,
       attributionControl: false
     });
-    this._glMap = new MapLibreGLMap(options);
+    this._glError = false;
+    try {
+      this._glMap = new MapLibreGLMap(options);
+    } catch (e) {
+      this._glError = true;
+      this.fire(WEBGL_ERROR_EVENT, { error: e });
+      return;
+    }
+    this._glMap.once('webglcontextlost', (e) => {
+      this._glError = true;
+      this.fire(WEBGL_ERROR_EVENT, {error: e});
+    });
     this._glMap.once('load', () => {
       this.fire('load');
     });
@@ -789,8 +1226,12 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
     }
   }
 
+  private _glReady(): boolean {
+    return !this._glError && !!this._glMap;
+  }
+
   private _update() {
-    if (!this._map) {
+    if (!this._map || !this._glReady()) {
       return;
     }
     this._offset = this._map.containerPointToLayerPoint([0, 0]);
@@ -808,25 +1249,23 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
 
     this._transformGL(gl);
 
-    if (gl.transform.width !== size.x || gl.transform.height !== size.y) {
+    if (container.clientWidth !== size.x || container.clientHeight !== size.y) {
       container.style.width  = size.x + 'px';
       container.style.height = size.y + 'px';
       gl.resize();
-    } else {
-      gl._update();
     }
   }
 
   private _transformGL(gl: MapLibreGLMap) {
     const center = this._map.getCenter();
-    const tr = gl._getTransformForUpdate();
-    tr.setCenter(MapLibreGLLngLat.convert([center.lng, center.lat]));
-    tr.setZoom(this._map.getZoom() - 1);
-    gl.transform.apply(tr);
-    gl._fireMoveEvents();
+    gl.jumpTo({
+      center: [center.lng, center.lat],
+      zoom: this._map.getZoom() - 1
+    });
   }
 
   private _pinchZoom() {
+    if (!this._glReady()) { return; }
     this._glMap.jumpTo({
       zoom: this._map.getZoom() - 1,
       center: this._map.getCenter()
@@ -834,6 +1273,7 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
   }
 
   private _animateZoom(e: L.ZoomAnimEvent) {
+    if (!this._glReady() || !this._actualCanvas) { return; }
     const scale = this._map.getZoomScale(e.zoom);
     const padding = this._map.getSize().multiplyBy(this.options.padding * scale);
     const viewHalf = this.getSize().divideBy(2);
@@ -858,6 +1298,7 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
   }
 
   private _zoomEnd() {
+    if (!this._glReady() || !this._actualCanvas) { return; }
     const scale = this._map.getZoomScale(this._map.getZoom());
     L.DomUtil.setTransform(
       this._actualCanvas,
@@ -869,7 +1310,9 @@ class MapLibreGLLayer extends L.Layer implements TB.MapLibreGL.MapLibreGLLayer {
   }
 
   private _transitionEnd() {
+    if (!this._glReady()) { return; }
     L.Util.requestAnimFrame(() => {
+      if (!this._glReady()) { return; }
       const zoom = this._map.getZoom();
       const center = this._map.getCenter();
       const offset = this._map.latLngToContainerPoint(
@@ -952,6 +1395,12 @@ L.TB = L.TB || {
   ToolbarButton,
   ToolbarControl,
   BottomToolbarControl,
+  Pattern,
+  PatternElement,
+  PatternShape,
+  PatternRect,
+  PatternPath,
+  PatternImage,
   sidebar,
   sidebarPane,
   layers,

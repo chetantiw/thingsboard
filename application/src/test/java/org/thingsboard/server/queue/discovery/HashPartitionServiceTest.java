@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.discovery;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
@@ -49,6 +36,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -148,7 +136,7 @@ public class HashPartitionServiceTest {
         Random random = new Random();
         long ts = new SimpleDateFormat("dd-MM-yyyy").parse("06-12-2016").getTime() - TimeUnit.DAYS.toMillis(tenantCount);
         for (int tenantIndex = 0; tenantIndex < tenantCount; tenantIndex++) {
-            TenantId tenantId = new TenantId(Uuids.startOf(ts));
+            TenantId tenantId = TenantId.fromUUID(Uuids.startOf(ts));
             ts += TimeUnit.DAYS.toMillis(1) + random.nextInt(1000);
             for (int queueIndex = 0; queueIndex < queueCount; queueIndex++) {
                 QueueKey queueKey = new QueueKey(ServiceType.TB_RULE_ENGINE, "queue" + queueIndex, tenantId);
@@ -189,7 +177,7 @@ public class HashPartitionServiceTest {
         Map<TenantId, TenantProfileId> tenants = new HashMap<>();
         for (TenantProfileId tenantProfileId : isolatedTenantProfiles) {
             for (int i = 0; i < tenantsCountPerProfile; i++) {
-                tenants.put(new TenantId(UUID.randomUUID()), tenantProfileId);
+                tenants.put(TenantId.fromUUID(UUID.randomUUID()), tenantProfileId);
             }
         }
 
@@ -298,7 +286,7 @@ public class HashPartitionServiceTest {
         Queue systemQueue = createQueue(TenantId.SYS_TENANT_ID, 10);
         queues.add(systemQueue);
 
-        TenantId tenantId = new TenantId(UUID.randomUUID());
+        TenantId tenantId = TenantId.fromUUID(UUID.randomUUID());
         mockRoutingInfo(tenantId, tenantProfileId, false); // not isolated yet
         mockQueues(queues);
 
@@ -379,7 +367,7 @@ public class HashPartitionServiceTest {
         }
 
         Stream.concat(Stream.of(TenantId.SYS_TENANT_ID), Stream.generate(UUID::randomUUID).map(TenantId::new).limit(10)).forEach(tenantId -> {
-            List<QueueKey> queues = Stream.generate(() -> RandomStringUtils.randomAlphabetic(10))
+            List<QueueKey> queues = Stream.generate(() -> RandomStringUtils.secure().nextAlphabetic(10))
                     .map(queueName -> new QueueKey(ServiceType.TB_RULE_ENGINE, queueName, tenantId))
                     .limit(100).toList();
 
@@ -419,10 +407,11 @@ public class HashPartitionServiceTest {
     }
 
     private HashPartitionService createPartitionService() {
-        HashPartitionService partitionService = new HashPartitionService(serviceInfoProvider,
-                routingInfoService,
+        HashPartitionService partitionService = new HashPartitionService(
                 applicationEventPublisher,
-                queueRoutingInfoService,
+                serviceInfoProvider,
+                Optional.of(routingInfoService),
+                Optional.of(queueRoutingInfoService),
                 topicService);
         ReflectionTestUtils.setField(partitionService, "coreTopic", "tb.core");
         ReflectionTestUtils.setField(partitionService, "corePartitions", 10);
@@ -434,6 +423,7 @@ public class HashPartitionServiceTest {
         ReflectionTestUtils.setField(partitionService, "edgeTopic", "tb.edge");
         ReflectionTestUtils.setField(partitionService, "edgePartitions", 10);
         ReflectionTestUtils.setField(partitionService, "edqsPartitions", 12);
+        ReflectionTestUtils.setField(partitionService, "defaultTasksPartitions", 12);
         partitionService.init();
         partitionService.partitionsInit();
         return partitionService;

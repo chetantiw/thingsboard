@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.kafka;
 
 import jakarta.annotation.PostConstruct;
@@ -26,10 +13,10 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.thingsboard.common.util.ThingsBoardExecutors;
 import org.thingsboard.server.common.data.StringUtils;
+import org.thingsboard.server.queue.util.TbKafkaComponent;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -44,11 +31,12 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "queue", value = "type", havingValue = "kafka")
+@TbKafkaComponent
 public class TbKafkaConsumerStatsService {
     private final Set<String> monitoredGroups = ConcurrentHashMap.newKeySet();
 
     private final TbKafkaSettings kafkaSettings;
+    private final KafkaAdmin kafkaAdmin;
     private final TbKafkaConsumerStatisticConfig statsConfig;
 
     private Consumer<String, byte[]> consumer;
@@ -77,7 +65,7 @@ public class TbKafkaConsumerStatsService {
             }
             for (String groupId : monitoredGroups) {
                 try {
-                    Map<TopicPartition, OffsetAndMetadata> groupOffsets = kafkaSettings.getAdminClient().listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata()
+                    Map<TopicPartition, OffsetAndMetadata> groupOffsets = kafkaSettings.getAdmin().getClient().listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata()
                             .get(statsConfig.getKafkaResponseTimeoutMs(), TimeUnit.MILLISECONDS);
                     Map<TopicPartition, Long> endOffsets = consumer.endOffsets(groupOffsets.keySet(), timeoutDuration);
 
@@ -93,8 +81,7 @@ public class TbKafkaConsumerStatsService {
                         log.info("[{}] Topic partitions with lag: [{}].", groupId, builder.toString());
                     }
                 } catch (Exception e) {
-                    log.warn("[{}] Failed to get consumer group stats. Reason - {}.", groupId, e.getMessage());
-                    log.trace("Detailed error: ", e);
+                    log.warn("[{}] Failed to get consumer group stats", groupId, e);
                 }
             }
 
@@ -160,12 +147,14 @@ public class TbKafkaConsumerStatsService {
         @Override
         public String toString() {
             return "[" +
-                    "topic=[" + topic + ']' +
-                    ", partition=[" + partition + "]" +
-                    ", committedOffset=[" + committedOffset + "]" +
-                    ", endOffset=[" + endOffset + "]" +
-                    ", lag=[" + lag + "]" +
-                    "]";
+                   "topic=[" + topic + ']' +
+                   ", partition=[" + partition + "]" +
+                   ", committedOffset=[" + committedOffset + "]" +
+                   ", endOffset=[" + endOffset + "]" +
+                   ", lag=[" + lag + "]" +
+                   "]";
         }
+
     }
+
 }

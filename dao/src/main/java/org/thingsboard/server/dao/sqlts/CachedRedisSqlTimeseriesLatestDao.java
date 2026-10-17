@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sqlts;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -33,18 +20,14 @@ import org.thingsboard.server.common.data.kv.BasicTsKvEntry;
 import org.thingsboard.server.common.data.kv.DeleteTsKvQuery;
 import org.thingsboard.server.common.data.kv.TsKvEntry;
 import org.thingsboard.server.common.data.kv.TsKvLatestRemovingResult;
-import org.thingsboard.server.common.data.page.PageData;
-import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.stats.DefaultCounter;
 import org.thingsboard.server.common.stats.StatsFactory;
 import org.thingsboard.server.dao.cache.CacheExecutorService;
-import org.thingsboard.server.dao.model.sqlts.latest.TsKvLatestEntity;
 import org.thingsboard.server.dao.timeseries.TimeseriesLatestDao;
 import org.thingsboard.server.dao.timeseries.TsLatestCacheKey;
 import org.thingsboard.server.dao.util.SqlTsLatestAnyDaoCachedRedis;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -171,5 +154,19 @@ public class CachedRedisSqlTimeseriesLatestDao extends BaseAbstractSqlTimeseries
         return sqlDao.findAllKeysByEntityIds(tenantId, entityIds);
     }
 
+    @Override
+    public ListenableFuture<List<String>> findAllKeysByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return sqlDao.findAllKeysByEntityIdsAsync(tenantId, entityIds);
+    }
+
+    @Override
+    public List<TsKvEntry> findLatestByEntityIds(TenantId tenantId, List<EntityId> entityIds) {
+        return sqlDao.findLatestByEntityIds(tenantId, entityIds);
+    }
+
+    @Override
+    public ListenableFuture<List<TsKvEntry>> findLatestByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return sqlDao.findLatestByEntityIdsAsync(tenantId, entityIds);
+    }
 
 }

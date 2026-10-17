@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { PageComponent } from '@shared/components/page.component';
 import {
   Component,
@@ -78,10 +64,11 @@ import Timeout = NodeJS.Timeout;
 
 // @dynamic
 @Component({
-  selector: 'tb-widget-editor',
-  templateUrl: './widget-editor.component.html',
-  styleUrls: ['./widget-editor.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-widget-editor',
+    templateUrl: './widget-editor.component.html',
+    styleUrls: ['./widget-editor.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class WidgetEditorComponent extends PageComponent implements OnInit, OnDestroy, HasDirtyFlag {
 
@@ -356,11 +343,12 @@ export class WidgetEditorComponent extends PageComponent implements OnInit, OnDe
         this.jsEditor.on('change', () => {
           this.cleanupJsErrors();
         });
-        if (!(this.jsEditor as any).completer) {
+        if (!this.jsEditor.completer) {
           this.jsEditor.execCommand("startAutocomplete");
-          (this.jsEditor as any).completer.detach();
+          this.jsEditor.completer.detach();
         }
-        (this.jsEditor as any).completer.popup.container.style.width = '500px';
+        (this.jsEditor.completer as Ace.Autocomplete).editor = this.jsEditor;
+        (this.jsEditor.completer as Ace.Autocomplete).getPopup().container.style.width = '500px';
         this.initialCompleters = this.jsEditor.completers || [];
       })
     ));
@@ -816,11 +804,15 @@ export class WidgetEditorComponent extends PageComponent implements OnInit, OnDe
       const ctx: any = {
         modules: deepClone(this.controllerScriptModules)
       };
-      const modulesPanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, JsFuncModulesComponent, ['leftOnly', 'leftTopOnly', 'leftBottomOnly'], true, null,
-        ctx,
-        {},
-        {}, {}, true);
+      const modulesPanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        hostView: this.viewContainerRef,
+        componentType: JsFuncModulesComponent,
+        preferredPlacement: ['leftOnly', 'leftTopOnly', 'leftBottomOnly'],
+        context: ctx,
+        isModal: true
+      });
       modulesPanelPopover.tbComponentRef.instance.popover = modulesPanelPopover;
       modulesPanelPopover.tbComponentRef.instance.modulesApplied.subscribe((modules) => {
         modulesPanelPopover.hide();

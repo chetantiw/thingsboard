@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.lwm2m.server.downlink;
 
 import com.google.gson.JsonParser;
@@ -113,6 +100,7 @@ import static org.eclipse.leshan.core.link.lwm2m.attributes.LwM2mAttributes.SHOR
 import static org.eclipse.leshan.core.link.lwm2m.attributes.LwM2mAttributes.STEP;
 import static org.eclipse.leshan.core.model.ResourceModel.Type.OBJLNK;
 import static org.eclipse.leshan.core.model.ResourceModel.Type.OPAQUE;
+import static org.thingsboard.server.common.transport.util.JsonUtils.isBase64;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.convertMultiResourceValuesFromRpcBody;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.createModelsDefault;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.fromVersionedIdToObjectId;
@@ -399,7 +387,8 @@ public class DefaultLwM2mDownlinkMsgHandler extends LwM2MExecutorAwareService im
                         try {
                             Object valueForMultiResource = request.getValue();
                             if (resultIds.isResourceInstance()) {
-                                String resourceInstance = "{" + resultIds.getResourceInstanceId() + "=" + request.getValue() + "}";
+                                String valueStr =  isBase64(request.getValue().toString()) ? "\"" + request.getValue() + "\"" : request.getValue().toString();
+                                String resourceInstance = "{" + resultIds.getResourceInstanceId() + "=" + valueStr + "}";
                                 valueForMultiResource = JsonParser.parseString(resourceInstance);
                             }
                             Map<Integer, Object> value = convertMultiResourceValuesFromRpcBody(valueForMultiResource, resourceModelWrite.type, request.getObjectId());
@@ -813,7 +802,7 @@ public class DefaultLwM2mDownlinkMsgHandler extends LwM2MExecutorAwareService im
                 LwM2mPath pathSingleOb = singleObs.getPath();
                 LwM2mPath pathObjectId = new LwM2mPath(objectId);
                 if (!pathSingleOb.toString().equals(objectId)) {
-                    List paths = Arrays.asList(pathSingleOb, pathObjectId);
+                    List<LwM2mPath> paths = Arrays.asList(pathSingleOb, pathObjectId);
                     try {
                         LwM2mPath.validateNotOverlapping(paths);
                     } catch (IllegalArgumentException e){

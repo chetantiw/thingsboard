@@ -1,27 +1,14 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
-  AfterViewInit,
   Component,
   ElementRef,
+  EventEmitter,
   forwardRef,
   Input,
   OnChanges,
   OnInit,
+  Output,
   SimpleChanges,
   ViewChild
 } from '@angular/core';
@@ -38,7 +25,7 @@ import { Observable } from 'rxjs';
 import { filter, map, mergeMap, share, tap } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { EntityType } from '@shared/models/entity-type.models';
-import { BaseData } from '@shared/models/base-data';
+import { BaseData, getEntityDisplayName } from '@shared/models/base-data';
 import { EntityId } from '@shared/models/id/entity-id';
 import { EntityService } from '@core/http/entity.service';
 import { MatAutocomplete } from '@angular/material/autocomplete';
@@ -49,23 +36,24 @@ import { coerceBoolean } from '@shared/decorators/coercion';
 import { isArray } from 'lodash';
 
 @Component({
-  selector: 'tb-entity-list',
-  templateUrl: './entity-list.component.html',
-  styleUrls: [],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => EntityListComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => EntityListComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-entity-list',
+    templateUrl: './entity-list.component.html',
+    styleUrls: [],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => EntityListComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => EntityListComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
-export class EntityListComponent implements ControlValueAccessor, OnInit, AfterViewInit, OnChanges {
+export class EntityListComponent implements ControlValueAccessor, OnInit, OnChanges {
 
   entityListFormGroup: UntypedFormGroup;
 
@@ -103,6 +91,7 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, AfterV
   }
 
   @Input()
+  @coerceBoolean()
   disabled: boolean;
 
   @Input()
@@ -115,6 +104,21 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, AfterV
   @coerceBoolean()
   syncIdsWithDB = false;
 
+  @Input()
+  @coerceBoolean()
+  inlineField: boolean;
+
+  @Input()
+  @coerceBoolean()
+  allowCreateNew: boolean;
+
+  @Input()
+  @coerceBoolean()
+  useEntityDisplayName = false;
+
+  @Output()
+  createNew = new EventEmitter<string>();
+
   @ViewChild('entityInput') entityInput: ElementRef<HTMLInputElement>;
   @ViewChild('entityAutocomplete') matAutocomplete: MatAutocomplete;
   @ViewChild('chipList', {static: true}) chipList: MatChipGrid;
@@ -126,9 +130,9 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, AfterV
 
   private dirty = false;
 
-  private propagateChange = (v: any) => { };
+  private propagateChange = (_v: any) => { };
 
-  constructor(public translate: TranslateService,
+  constructor(private translate: TranslateService,
               private entityService: EntityService,
               private fb: UntypedFormBuilder) {
     this.entityListFormGroup = this.fb.group({
@@ -142,11 +146,16 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, AfterV
     this.entityListFormGroup.get('entities').updateValueAndValidity();
   }
 
+  createNewEntity($event: Event, searchText?: string) {
+    $event.stopPropagation();
+    this.createNew.emit(searchText);
+  }
+
   registerOnChange(fn: any): void {
     this.propagateChange = fn;
   }
 
-  registerOnTouched(fn: any): void {
+  registerOnTouched(_fn: any): void {
   }
 
   ngOnInit() {
@@ -178,9 +187,6 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, AfterV
     }
   }
 
-  ngAfterViewInit(): void {
-  }
-
   setDisabledState(isDisabled: boolean): void {
     this.disabled = isDisabled;
     if (isDisabled) {
@@ -194,22 +200,27 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, AfterV
     this.searchText = '';
     if (value != null && value.length > 0) {
       this.modelValue = [...value];
-      this.entityService.getEntities(this.entityType, value).subscribe(
-        (entities) => {
-          this.entities = entities;
+      this.entityService.getEntities(this.entityType, value)
+        .subscribe(resolvedEntities => {
+          this.entities = resolvedEntities;
           this.entityListFormGroup.get('entities').setValue(this.entities);
-          if (this.syncIdsWithDB && this.modelValue.length !== entities.length) {
-            this.modelValue = entities.map(entity => entity.id.id);
+          if (this.syncIdsWithDB && this.modelValue.length !== this.entities.length) {
+            this.modelValue = this.entities.map(entity => entity.id.id);
+            if (!this.modelValue.length) {
+              this.modelValue = null;
+            }
             this.propagateChange(this.modelValue);
           }
-        }
-      );
+        });
     } else {
       this.entities = [];
       this.entityListFormGroup.get('entities').setValue(this.entities);
       this.modelValue = null;
     }
     this.dirty = true;
+    if (this.entityInput) {
+      this.entityInput.nativeElement.value = '';
+    }
   }
 
   validate(): ValidationErrors | null {
@@ -259,7 +270,7 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, AfterV
   }
 
   public displayEntityFn(entity?: BaseData<EntityId>): string | undefined {
-    return entity ? entity.name : undefined;
+    return entity ? (this.useEntityDisplayName ? getEntityDisplayName(entity) : entity.name) : undefined;
   }
 
   private fetchEntities(searchText?: string): Observable<Array<BaseData<EntityId>>> {

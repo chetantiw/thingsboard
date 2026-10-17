@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { NgModule } from '@angular/core';
 
 import { AdminModule } from './admin/admin.module';
@@ -27,6 +13,7 @@ import { UserModule } from '@modules/home/pages/user/user.module';
 import { DeviceModule } from '@modules/home/pages/device/device.module';
 import { AssetModule } from '@modules/home/pages/asset/asset.module';
 import { EntityViewModule } from '@modules/home/pages/entity-view/entity-view.module';
+import { CalculatedFieldPageModule } from '@home/pages/calculated-fields/calculated-field-page.module';
 import { RuleChainModule } from '@modules/home/pages/rulechain/rulechain.module';
 import { WidgetLibraryModule } from '@modules/home/pages/widget/widget-library.module';
 import { DashboardModule } from '@modules/home/pages/dashboard/dashboard.module';
@@ -46,6 +33,8 @@ import { AccountModule } from '@home/pages/account/account.module';
 import { ScadaSymbolModule } from '@home/pages/scada-symbol/scada-symbol.module';
 import { GatewaysModule } from '@home/pages/gateways/gateways.module';
 import { MobileModule } from '@home/pages/mobile/mobile.module';
+import { AiModelModule } from '@home/pages/ai-model/ai-model.module';
+import { IotHubModule } from '@home/pages/iot-hub/iot-hub.module';
 
 @NgModule({
   exports: [
@@ -68,6 +57,7 @@ import { MobileModule } from '@home/pages/mobile/mobile.module';
     EdgeModule,
     EntityViewModule,
     CustomerModule,
+    CalculatedFieldPageModule,
     RuleChainModule,
     WidgetLibraryModule,
     DashboardModule,
@@ -78,7 +68,9 @@ import { MobileModule } from '@home/pages/mobile/mobile.module';
     UserModule,
     VcModule,
     AccountModule,
-    ScadaSymbolModule
+    ScadaSymbolModule,
+    AiModelModule,
+    IotHubModule,
   ]
 })
 export class HomePagesModule { }

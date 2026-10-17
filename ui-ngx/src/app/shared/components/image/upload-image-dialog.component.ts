@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, DestroyRef, Inject, OnInit, SkipSelf } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -41,6 +27,7 @@ import {
   updateScadaSymbolMetadataInContent
 } from '@home/components/widget/lib/scada/scada-symbol.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActionNotificationShow } from '@core/notification/notification.actions';
 
 export interface UploadImageDialogData {
   imageSubType: ResourceSubType;
@@ -53,10 +40,11 @@ export interface UploadImageDialogResult {
 }
 
 @Component({
-  selector: 'tb-upload-image-dialog',
-  templateUrl: './upload-image-dialog.component.html',
-  providers: [{provide: ErrorStateMatcher, useExisting: UploadImageDialogComponent}],
-  styleUrls: []
+    selector: 'tb-upload-image-dialog',
+    templateUrl: './upload-image-dialog.component.html',
+    providers: [{ provide: ErrorStateMatcher, useExisting: UploadImageDialogComponent }],
+    styleUrls: [],
+    standalone: false
 })
 export class UploadImageDialogComponent extends
   DialogComponent<UploadImageDialogComponent, UploadImageDialogResult> implements OnInit, ErrorStateMatcher {
@@ -135,38 +123,48 @@ export class UploadImageDialogComponent extends
   upload(): void {
     this.submitted = true;
     let file: File = this.uploadImageFormGroup.get('file').value;
-    if (this.uploadImage) {
-      const title: string = this.uploadImageFormGroup.get('title').value;
-      if (this.isScada) {
-        if (!this.scadaSymbolMetadata) {
-          this.scadaSymbolMetadata = emptyMetadata();
+    try {
+      if (this.uploadImage) {
+        const title: string = this.uploadImageFormGroup.get('title').value;
+        if (this.isScada) {
+          if (!this.scadaSymbolMetadata) {
+            this.scadaSymbolMetadata = emptyMetadata();
+          }
+          if (this.scadaSymbolMetadata.title !== title) {
+            this.scadaSymbolMetadata.title = title;
+          }
+          const newContent = updateScadaSymbolMetadataInContent(this.scadaSymbolContent, this.scadaSymbolMetadata);
+          file = updateFileContent(file, newContent);
         }
-        if (this.scadaSymbolMetadata.title !== title) {
-          this.scadaSymbolMetadata.title = title;
-        }
-        const newContent = updateScadaSymbolMetadataInContent(this.scadaSymbolContent, this.scadaSymbolMetadata);
-        file = updateFileContent(file, newContent);
-      }
-      forkJoin([
-        this.imageService.uploadImage(file, title, this.data.imageSubType),
-        blobToBase64(file)
-      ]).subscribe(([imageInfo, base64]) => {
-        this.dialogRef.close({image: Object.assign(imageInfo, {base64})});
-      });
-    } else {
-      if (this.isScada) {
-        blobToText(file).subscribe(scadaSymbolContent => {
-          this.dialogRef.close({scadaSymbolContent});
-        });
-      } else {
-        const image = this.data.image;
         forkJoin([
-          this.imageService.updateImage(imageResourceType(image), image.resourceKey, file),
+          this.imageService.uploadImage(file, title, this.data.imageSubType),
           blobToBase64(file)
         ]).subscribe(([imageInfo, base64]) => {
-          this.dialogRef.close({image:Object.assign(imageInfo, {base64})});
+          this.dialogRef.close({image: Object.assign(imageInfo, {base64})});
         });
+      } else {
+        if (this.isScada) {
+          blobToText(file).subscribe(scadaSymbolContent => {
+            this.dialogRef.close({scadaSymbolContent});
+          });
+        } else {
+          const image = this.data.image;
+          forkJoin([
+            this.imageService.updateImage(imageResourceType(image), image.resourceKey, file),
+            blobToBase64(file)
+          ]).subscribe(([imageInfo, base64]) => {
+            this.dialogRef.close({image:Object.assign(imageInfo, {base64})});
+          });
+        }
       }
+    } catch (e) {
+      this.store.dispatch(new ActionNotificationShow({
+        message: e.message,
+        type: 'error',
+        verticalPosition: 'top',
+        horizontalPosition: 'right',
+        target: 'uploadRoot'
+      }));
     }
   }
 }

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.edqs.repo;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -70,7 +57,45 @@ public class RepositoryUtilsTest {
                 Arguments.of("loranet 123", getNameFilter(StringOperation.IN, "loranet 123, loranet 124"), true),
                 Arguments.of("loranet 123", getNameFilter(StringOperation.IN, "loranet 125, loranet 126"), false),
                 Arguments.of("loranet 123", getNameFilter(StringOperation.NOT_IN, "loranet 125, loranet 126"), true),
-                Arguments.of("loranet 123", getNameFilter(StringOperation.NOT_IN, "loranet 123, loranet 126"), false)
+                Arguments.of("loranet 123", getNameFilter(StringOperation.NOT_IN, "loranet 123, loranet 126"), false),
+
+                // Basic CONTAINS
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "%loranet"), false),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "loranet%"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "%ranet%"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "%123"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "%loranx%"), false),
+
+                // Basic STARTS_WITH
+                Arguments.of("loranet 123", getNameFilter(StringOperation.STARTS_WITH, "loranet%"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.STARTS_WITH, "lora%"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.STARTS_WITH, "lorax%"), false),
+
+                // Basic ENDS_WITH
+                Arguments.of("loranet 123", getNameFilter(StringOperation.ENDS_WITH, "%123"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.ENDS_WITH, "%23"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.ENDS_WITH, "%124"), false),
+
+                // CONTAINS with _
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "loranet_123"), true), // '_' = ' '
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "loranet_12_"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "loran_t%"), true),
+
+                // STARTS_WITH with _
+                Arguments.of("loranet 123", getNameFilter(StringOperation.STARTS_WITH, "loranet_"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.STARTS_WITH, "lora__t%"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.STARTS_WITH, "lor_net%"), true),
+
+                // ENDS_WITH with _
+                Arguments.of("loranet 123", getNameFilter(StringOperation.ENDS_WITH, "_23"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.ENDS_WITH, "_2_"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.ENDS_WITH, "_3"), true),
+
+                // Mixed patterns
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "lora__t 1%"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "lora%net%3"), true),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "%o_anet%2_3"), false),
+                Arguments.of("loranet 123", getNameFilter(StringOperation.CONTAINS, "lora___ ___"), true)
         );
     }
 

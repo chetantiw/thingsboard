@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -28,6 +15,7 @@ import org.thingsboard.server.common.data.device.data.DeviceData;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.DeviceProfileId;
+import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.OtaPackageId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.validation.Length;
@@ -142,6 +130,11 @@ public class Device extends BaseDataWithAdditionalInfo<DeviceId> implements HasL
         this.customerId = customerId;
     }
 
+    @JsonIgnore
+    public EntityId getOwnerId() {
+        return customerId != null && !customerId.isNullUid() ? customerId : tenantId;
+    }
+
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Unique Device Name in scope of Tenant", example = "A4B72CCDFF33")
     @Override
     public String getName() {
@@ -170,7 +163,7 @@ public class Device extends BaseDataWithAdditionalInfo<DeviceId> implements HasL
         this.label = label;
     }
 
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "JSON object with Device Profile Id.")
+    @Schema(description = "JSON object with Device Profile Id. If not provided, the type will be used to determine the profile. If neither deviceProfileId nor type is specified, the default device profile will be used.")
     public DeviceProfileId getDeviceProfileId() {
         return deviceProfileId;
     }
@@ -225,7 +218,12 @@ public class Device extends BaseDataWithAdditionalInfo<DeviceId> implements HasL
         this.softwareId = softwareId;
     }
 
-    @Schema(description = "Additional parameters of the device",implementation = com.fasterxml.jackson.databind.JsonNode.class)
+    @Schema(description = "Additional parameters of the device. " +
+            "May include: 'gateway' (boolean, whether the device is a gateway), " +
+            "'description' (string), " +
+            "'lastConnectedGateway' (string, UUID of the last gateway that connected this device).",
+            implementation = com.fasterxml.jackson.databind.JsonNode.class,
+            example = "{\"gateway\":false,\"description\":\"Temperature sensor\",\"lastConnectedGateway\":\"784f394c-42b6-435a-983c-b7beff2784f9\"}")
     @Override
     public JsonNode getAdditionalInfo() {
         return super.getAdditionalInfo();

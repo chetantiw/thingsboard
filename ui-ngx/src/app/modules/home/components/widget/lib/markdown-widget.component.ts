@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { ChangeDetectorRef, Component, Inject, Input, OnInit, Type } from '@angular/core';
 import { PageComponent } from '@shared/components/page.component';
 import { WidgetContext } from '@home/models/widget-component.models';
@@ -50,8 +36,9 @@ interface MarkdownWidgetSettings {
 type MarkdownTextFunction = (data: FormattedData[], ctx: WidgetContext) => string;
 
 @Component({
-  selector: 'tb-markdown-widget',
-  templateUrl: './markdown-widget.component.html'
+    selector: 'tb-markdown-widget',
+    templateUrl: './markdown-widget.component.html',
+    standalone: false
 })
 export class MarkdownWidgetComponent extends PageComponent implements OnInit {
 
@@ -62,6 +49,8 @@ export class MarkdownWidgetComponent extends PageComponent implements OnInit {
 
   @Input()
   ctx: WidgetContext;
+
+  data: FormattedData[];
 
   markdownText: string;
 
@@ -88,8 +77,8 @@ export class MarkdownWidgetComponent extends PageComponent implements OnInit {
       this.markdownClass = 'markdown-widget-' + hashCode(cssString);
       cssParser.cssPreviewNamespace = this.markdownClass;
       cssParser.testMode = false;
-      cssString = cssParser.applyNamespacing(cssString);
-      cssString = cssParser.getCSSForEditor(cssString);
+      const cssObjects = cssParser.applyNamespacing(cssString);
+      cssString = cssParser.getCSSForEditor(cssObjects);
       this.additionalStyles = [cssString];
     }
     if (isDefinedAndNotNull(this.settings.applyDefaultMarkdownStyle)) {
@@ -128,15 +117,15 @@ export class MarkdownWidgetComponent extends PageComponent implements OnInit {
     } else {
       initialData = [];
     }
-    const data = formattedDataFormDatasourceData(initialData);
+    this.data = formattedDataFormDatasourceData(initialData);
 
-    let markdownText = this.settings.useMarkdownTextFunction ?
-      this.markdownTextFunction.pipe(map(markdownTextFunction => safeExecuteTbFunction(markdownTextFunction, [data, this.ctx]))) : this.settings.markdownTextPattern;
+    const markdownText = this.settings.useMarkdownTextFunction ?
+      this.markdownTextFunction.pipe(map(markdownTextFunction => safeExecuteTbFunction(markdownTextFunction, [this.data, this.ctx]))) : this.settings.markdownTextPattern;
     if (typeof markdownText === 'string') {
-      this.updateMarkdownText(markdownText, data);
+      this.updateMarkdownText(markdownText, this.data);
     } else {
       markdownText.subscribe((text) => {
-        this.updateMarkdownText(text, data);
+        this.updateMarkdownText(text, this.data);
       });
     }
   }
@@ -146,8 +135,8 @@ export class MarkdownWidgetComponent extends PageComponent implements OnInit {
     markdownText = createLabelFromPattern(markdownText, allData);
     if (this.markdownText !== markdownText) {
       this.markdownText = this.utils.customTranslation(markdownText, markdownText);
-      this.cd.detectChanges();
     }
+    this.cd.detectChanges();
   }
 
   markdownClick($event: MouseEvent) {

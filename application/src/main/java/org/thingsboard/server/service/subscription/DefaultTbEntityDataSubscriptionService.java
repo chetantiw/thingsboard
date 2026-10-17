@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.subscription;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -34,6 +21,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.thingsboard.common.util.ThingsBoardExecutors;
 import org.thingsboard.common.util.ThingsBoardThreadFactory;
 import org.thingsboard.server.common.data.id.EntityId;
+import org.thingsboard.server.dao.nosql.ResultSetSizeLimitExceededException;
 import org.thingsboard.server.common.data.kv.BaseReadTsKvQuery;
 import org.thingsboard.server.common.data.kv.ReadTsKvQuery;
 import org.thingsboard.server.common.data.kv.ReadTsKvQueryResult;
@@ -242,7 +230,10 @@ public class DefaultTbEntityDataSubscriptionService implements TbEntityDataSubsc
 
                     @Override
                     public void onFailure(Throwable t) {
-                        log.warn("[{}][{}] Failed to process command", finalCtx.getSessionId(), finalCtx.getCmdId());
+                        log.warn("[{}][{}] Failed to process command", finalCtx.getSessionId(), finalCtx.getCmdId(), t);
+                        if (t instanceof ResultSetSizeLimitExceededException) {
+                            sendError(finalCtx, t);
+                        }
                     }
                 }, wsCallBackExecutor);
             }
@@ -258,7 +249,18 @@ public class DefaultTbEntityDataSubscriptionService implements TbEntityDataSubsc
                     handleLatestCmd(ctx, cmd.getLatestCmd());
                 }
                 if (cmd.getTsCmd() != null) {
-                    handleTimeSeriesCmd(ctx, cmd.getTsCmd());
+                    Futures.addCallback(handleTimeSeriesCmd(ctx, cmd.getTsCmd()), new FutureCallback<>() {
+                        @Override
+                        public void onSuccess(TbEntityDataSubCtx result) {}
+
+                        @Override
+                        public void onFailure(Throwable t) {
+                            log.warn("[{}][{}] Failed to process timeseries command", ctx.getSessionId(), ctx.getCmdId(), t);
+                            if (t instanceof ResultSetSizeLimitExceededException) {
+                                sendError(ctx, t);
+                            }
+                        }
+                    }, wsCallBackExecutor);
                 }
             } else {
                 checkAndSendInitialData(ctx);
@@ -266,6 +268,10 @@ public class DefaultTbEntityDataSubscriptionService implements TbEntityDataSubsc
         } catch (RuntimeException e) {
             handleWsCmdRuntimeException(ctx.getSessionId(), e, cmd);
         }
+    }
+
+    private void sendError(TbEntityDataSubCtx ctx, Throwable t) {
+        ctx.sendWsMsg(new EntityDataUpdate(ctx.getCmdId(), SubscriptionErrorCode.INTERNAL_ERROR.getCode(), t.getMessage()));
     }
 
     private void checkAndSendInitialData(@Nullable TbEntityDataSubCtx theCtx) {
@@ -725,7 +731,12 @@ public class DefaultTbEntityDataSubscriptionService implements TbEntityDataSubsc
                             update = new EntityDataUpdate(ctx.getCmdId(), ctx.getData(), null, ctx.getMaxEntitiesPerDataSubscription());
                             ctx.setInitialDataSent(true);
                         } else {
-                            update = new EntityDataUpdate(ctx.getCmdId(), null, ctx.getData().getData(), ctx.getMaxEntitiesPerDataSubscription());
+                            // if ctx has timeseries subscription, timeseries values are cleared after each update and is empty in ctx data,
+                            // so to avoid sending timeseries update with empty map we set it to null
+                            List<EntityData> preparedData = ctx.getData().getData().stream()
+                                    .map(entityData -> new EntityData(entityData.getEntityId(), entityData.getLatest(), null))
+                                    .toList();
+                            update = new EntityDataUpdate(ctx.getCmdId(), null, preparedData, ctx.getMaxEntitiesPerDataSubscription());
                         }
                         ctx.sendWsMsg(update);
                     } finally {

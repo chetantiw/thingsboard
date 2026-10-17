@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -37,7 +23,7 @@ import {
 } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
-import { isDefinedAndNotNull, mergeDeep } from '@core/utils';
+import { isDefinedAndNotNull, mergeDeep, trimDefaultValues } from '@core/utils';
 import {
   defaultFormProperties,
   FormProperty,
@@ -55,21 +41,22 @@ import { ContentType } from '@shared/models/constants';
 import { DomSanitizer } from '@angular/platform-browser';
 
 @Component({
-  selector: 'tb-dynamic-form',
-  templateUrl: './dynamic-form.component.html',
-  styleUrls: ['./dynamic-form.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => DynamicFormComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => DynamicFormComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-dynamic-form',
+    templateUrl: './dynamic-form.component.html',
+    styleUrls: ['./dynamic-form.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => DynamicFormComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => DynamicFormComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class DynamicFormComponent implements OnInit, OnChanges, ControlValueAccessor, Validator {
 
@@ -106,9 +93,15 @@ export class DynamicFormComponent implements OnInit, OnChanges, ControlValueAcce
   @coerceBoolean()
   noBorder = false;
 
+  @Input()
+  @coerceBoolean()
+  trimDefaults = false;
+
   private modelValue: {[id: string]: any};
 
   private propagateChange = null;
+
+  private defaults: {[id: string]: any};
 
   private validatorTriggers: string[];
 
@@ -180,11 +173,13 @@ export class DynamicFormComponent implements OnInit, OnChanges, ControlValueAcce
   private loadMetadata() {
     this.validatorTriggers = [];
     this.propertyGroups = [];
+    this.defaults = {};
 
     for (const control of Object.keys(this.propertiesFormGroup.controls)) {
       this.propertiesFormGroup.removeControl(control, {emitEvent: false});
     }
     if (this.properties) {
+      this.defaults = defaultFormProperties(this.properties);
       for (let property of this.properties) {
         property.disabled = false;
         property.visible = true;
@@ -282,8 +277,7 @@ export class DynamicFormComponent implements OnInit, OnChanges, ControlValueAcce
 
   private setupValue() {
     if (this.properties) {
-      const defaults = defaultFormProperties(this.properties);
-      this.modelValue = mergeDeep<{[id: string]: any}>(defaults, this.modelValue);
+      this.modelValue = mergeDeep<{[id: string]: any}>({}, this.defaults, this.modelValue);
       this.propertiesFormGroup.patchValue(
         this.modelValue, {emitEvent: false}
       );
@@ -295,7 +289,11 @@ export class DynamicFormComponent implements OnInit, OnChanges, ControlValueAcce
   private updateModel() {
     this.modelValue = this.propertiesFormGroup.getRawValue();
     this.calculateControlsState(true);
-    this.propagateChange(this.modelValue);
+    let result = this.modelValue;
+    if (this.trimDefaults) {
+      result = trimDefaultValues(this.modelValue, this.defaults);
+    }
+    this.propagateChange(result);
   }
 
 }

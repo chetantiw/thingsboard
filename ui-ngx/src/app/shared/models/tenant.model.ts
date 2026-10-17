@@ -1,24 +1,15 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { ContactBased } from '@shared/models/contact-based.model';
 import { TenantId } from './id/tenant-id';
 import { TenantProfileId } from '@shared/models/id/tenant-profile-id';
 import { BaseData, ExportableEntity } from '@shared/models/base-data';
 import { QueueInfo } from '@shared/models/queue.models';
+import { FormControl } from '@angular/forms';
+
+export type FormControlsFrom<T> = {
+  [K in keyof T]-?: FormControl<T[K] | null>;
+};
 
 export enum TenantProfileType {
   DEFAULT = 'DEFAULT'
@@ -83,7 +74,10 @@ export interface DefaultTenantProfileConfiguration {
   maxWsSubscriptionsPerPublicUser: number;
   wsUpdatesPerSessionRateLimit: string;
 
-  cassandraQueryTenantRateLimitsConfiguration: string;
+  cassandraWriteQueryTenantCoreRateLimits: string;
+  cassandraReadQueryTenantCoreRateLimits: string;
+  cassandraWriteQueryTenantRuleEngineRateLimits: string;
+  cassandraReadQueryTenantRuleEngineRateLimits: string;
 
   edgeEventRateLimits?: string;
   edgeEventRateLimitsPerEdge?: string;
@@ -98,6 +92,15 @@ export interface DefaultTenantProfileConfiguration {
 
   maxCalculatedFieldsPerEntity: number;
   maxArgumentsPerCF: number;
+  maxRelationLevelPerCfArgument: number;
+  minAllowedDeduplicationIntervalInSecForCF: number;
+  minAllowedAggregationIntervalInSecForCF: number;
+  maxRelatedEntitiesToReturnPerCfArgument: number;
+  minAllowedScheduledUpdateIntervalInSecForCF: number;
+  intermediateAggregationIntervalInSecForCF: number;
+  cfReevaluationCheckInterval: number;
+  alarmsReevaluationInterval: number;
+
   maxDataPointsPerRollingArg: number;
   maxStateSizeInKBytes: number;
   maxSingleValueArgumentSizeInKBytes: number;
@@ -137,7 +140,7 @@ export function createTenantProfileConfiguration(type: TenantProfileType): Tenan
           maxSms: 0,
           smsEnabled: true,
           maxCreatedAlarms: 0,
-          maxDebugModeDurationMinutes: 0,
+          maxDebugModeDurationMinutes: 15,
           tenantServerRestLimitsConfiguration: '',
           customerServerRestLimitsConfiguration: '',
           maxWsSessionsPerTenant: 0,
@@ -150,7 +153,10 @@ export function createTenantProfileConfiguration(type: TenantProfileType): Tenan
           maxWsSubscriptionsPerRegularUser: 0,
           maxWsSubscriptionsPerPublicUser: 0,
           wsUpdatesPerSessionRateLimit: '',
-          cassandraQueryTenantRateLimitsConfiguration: '',
+          cassandraWriteQueryTenantCoreRateLimits: '',
+          cassandraReadQueryTenantCoreRateLimits: '',
+          cassandraWriteQueryTenantRuleEngineRateLimits: '',
+          cassandraReadQueryTenantRuleEngineRateLimits: '',
           defaultStorageTtlDays: 0,
           alarmsTtlDays: 0,
           rpcTtlDays: 0,
@@ -159,6 +165,14 @@ export function createTenantProfileConfiguration(type: TenantProfileType): Tenan
           maxCalculatedFieldsPerEntity: 5,
           maxArgumentsPerCF: 10,
           maxDataPointsPerRollingArg: 1000,
+          maxRelationLevelPerCfArgument: 2,
+          minAllowedDeduplicationIntervalInSecForCF: 10,
+          minAllowedAggregationIntervalInSecForCF: 60,
+          maxRelatedEntitiesToReturnPerCfArgument: 100,
+          minAllowedScheduledUpdateIntervalInSecForCF: 10,
+          intermediateAggregationIntervalInSecForCF: 300,
+          cfReevaluationCheckInterval: 60,
+          alarmsReevaluationInterval: 60,
           maxStateSizeInKBytes: 32,
           maxSingleValueArgumentSizeInKBytes: 2,
           calculatedFieldDebugEventsRateLimit: ''

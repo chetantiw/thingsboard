@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.entityview;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -21,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.common.data.EntitySubtype;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.EntityView;
@@ -44,9 +32,6 @@ import java.util.UUID;
 
 import static org.thingsboard.server.dao.DaoUtil.convertTenantEntityTypesToDto;
 
-/**
- * Created by Victor Basanets on 8/31/2017.
- */
 @Component
 @Slf4j
 @SqlDao
@@ -188,6 +173,11 @@ public class JpaEntityViewDao extends JpaAbstractDao<EntityViewEntity, EntityVie
     }
 
     @Override
+    public List<EntityView> findEntityViewsByTenantIdAndIds(UUID tenantId, List<UUID> entityViewIds) {
+        return DaoUtil.convertDataList(entityViewRepository.findEntityViewsByTenantIdAndIdIn(tenantId, entityViewIds));
+    }
+
+    @Override
     public PageData<EntityView> findEntityViewsByTenantIdAndEdgeIdAndType(UUID tenantId, UUID edgeId, String type, PageLink pageLink) {
         log.debug("Try to find entity views by tenantId [{}], edgeId [{}], type [{}] and pageLink [{}]", tenantId, edgeId, type, pageLink);
         return DaoUtil.toPageData(entityViewRepository
@@ -228,6 +218,11 @@ public class JpaEntityViewDao extends JpaAbstractDao<EntityViewEntity, EntityVie
     @Override
     public List<EntityViewFields> findNextBatch(UUID id, int batchSize) {
         return entityViewRepository.findNextBatch(id, Limit.of(batchSize));
+    }
+
+    @Override
+    public List<EntityInfo> findEntityInfosByNamePrefix(TenantId tenantId, String name) {
+        return entityViewRepository.findEntityInfosByNamePrefix(tenantId.getId(), name);
     }
 
     @Override

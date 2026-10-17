@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -34,7 +20,7 @@ import { AppState } from '@core/core.state';
 import { PageComponent } from '@shared/components/page.component';
 import { AuthUser } from '@shared/models/user.model';
 import { getCurrentAuthUser } from '@core/auth/auth.selectors';
-import { Timewindow, toHistoryTimewindow } from '@shared/models/time/time.models';
+import { initModelFromDefaultTimewindow, Timewindow, toHistoryTimewindow } from '@shared/models/time/time.models';
 import { TimeService } from '@core/services/time.service';
 import { GridsterComponent, GridsterConfig, GridType } from 'angular-gridster2';
 import {
@@ -58,15 +44,15 @@ import { distinct, take } from 'rxjs/operators';
 import { UtilsService } from '@core/services/utils.service';
 import { WidgetComponentAction, WidgetComponentActionType } from '@home/components/widget/widget-container.component';
 import { TbPopoverComponent } from '@shared/components/popover.component';
-import { displayGrids } from 'angular-gridster2/lib/gridsterConfig.interface';
 import { coerceBoolean } from '@shared/decorators/coercion';
 import { TbContextMenuEvent } from '@shared/models/jquery-event.models';
 
 @Component({
-  selector: 'tb-dashboard',
-  templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'tb-dashboard',
+    templateUrl: './dashboard.component.html',
+    styleUrls: ['./dashboard.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class DashboardComponent extends PageComponent implements IDashboardComponent, DoCheck, OnInit, OnDestroy, AfterViewInit, OnChanges {
 
@@ -101,7 +87,7 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
   outerMargin: boolean;
 
   @Input()
-  displayGrid: displayGrids = 'onDrag&Resize';
+  displayGrid: 'always' | 'onDrag&Resize' | 'none' = 'onDrag&Resize';
 
   @Input()
   gridType: GridType;
@@ -223,9 +209,8 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
   ngOnInit(): void {
     this.dashboardWidgets.parentDashboard = this.parentDashboard;
     this.dashboardWidgets.popoverComponent = this.popoverComponent;
-    if (!this.dashboardTimewindow) {
-      this.dashboardTimewindow = this.timeService.defaultTimewindow();
-    }
+    this.dashboardTimewindow = initModelFromDefaultTimewindow(this.dashboardTimewindow,
+      false, false, this.timeService, true, true);
     this.gridsterOpts = {
       gridType: this.gridType || GridType.ScrollVertical,
       keepFixedHeightInMobile: true,
@@ -247,6 +232,7 @@ export class DashboardComponent extends PageComponent implements IDashboardCompo
       defaultItemCols: 8,
       defaultItemRows: 6,
       displayGrid: this.displayGrid,
+      useTransformPositioning: false,
       resizable: {
         enabled: this.isEdit && !this.isEditingWidget,
         delayStart: 50,

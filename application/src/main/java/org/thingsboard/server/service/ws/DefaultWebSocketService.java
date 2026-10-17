@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.ws;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -36,6 +23,7 @@ import org.thingsboard.common.util.ThingsBoardExecutors;
 import org.thingsboard.server.common.data.AttributeScope;
 import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.TenantProfile;
+import org.thingsboard.server.common.data.exception.RateLimitExceededException;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityIdFactory;
@@ -52,7 +40,6 @@ import org.thingsboard.server.common.msg.tools.TbRateLimitsException;
 import org.thingsboard.server.dao.attributes.AttributesService;
 import org.thingsboard.server.dao.tenant.TbTenantProfileCache;
 import org.thingsboard.server.dao.timeseries.TimeseriesService;
-import org.thingsboard.server.dao.util.TenantRateLimitException;
 import org.thingsboard.server.exception.UnauthorizedException;
 import org.thingsboard.server.queue.discovery.TbServiceInfoProvider;
 import org.thingsboard.server.queue.util.TbCoreComponent;
@@ -105,6 +92,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.thingsboard.server.common.data.DataConstants.LATEST_TELEMETRY_SCOPE;
+
 /**
  * Created by ashvayka on 27.03.18.
  */
@@ -142,7 +131,7 @@ public class DefaultWebSocketService implements WebSocketService {
     private final ConcurrentMap<TenantId, Set<String>> tenantSubscriptionsMap = new ConcurrentHashMap<>();
     private final ConcurrentMap<CustomerId, Set<String>> customerSubscriptionsMap = new ConcurrentHashMap<>();
     private final ConcurrentMap<UserId, Set<String>> regularUserSubscriptionsMap = new ConcurrentHashMap<>();
-    private final ConcurrentMap<UserId, Set<String>> publicUserSubscriptionsMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<TenantId, Set<String>> publicUserSubscriptionsMap = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Map<Integer, Integer>> sessionCmdMap = new ConcurrentHashMap<>();
 
     private ExecutorService executor;
@@ -272,7 +261,7 @@ public class DefaultWebSocketService implements WebSocketService {
     @Override
     public void sendUpdate(String sessionId, int cmdId, TelemetrySubscriptionUpdate update) {
         // We substitute the subscriptionId with cmdId for old-style subscriptions.
-        doSendUpdate(sessionId, cmdId, update.copyWithNewSubscriptionId(cmdId));
+        doSendUpdate(sessionId, cmdId, update.withSubscriptionId(cmdId));
     }
 
     @Override
@@ -313,7 +302,7 @@ public class DefaultWebSocketService implements WebSocketService {
         }
     }
 
-    private void processSessionClose(WebSocketSessionRef sessionRef) {
+    void processSessionClose(WebSocketSessionRef sessionRef) {
         var tenantProfileConfiguration = getTenantProfileConfiguration(sessionRef);
         if (tenantProfileConfiguration != null) {
             String sessionId = "[" + sessionRef.getSessionId() + "]";
@@ -338,7 +327,7 @@ public class DefaultWebSocketService implements WebSocketService {
                     }
                 }
                 if (tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser() > 0 && UserPrincipal.Type.PUBLIC_ID.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                    Set<String> publicUserSessions = publicUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                    Set<String> publicUserSessions = publicUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (publicUserSessions) {
                         publicUserSessions.removeIf(subId -> subId.startsWith(sessionId));
                     }
@@ -347,7 +336,7 @@ public class DefaultWebSocketService implements WebSocketService {
         }
     }
 
-    private boolean processSubscription(WebSocketSessionRef sessionRef, SubscriptionCmd cmd) {
+    boolean processSubscription(WebSocketSessionRef sessionRef, SubscriptionCmd cmd) {
         var tenantProfileConfiguration = getTenantProfileConfiguration(sessionRef);
         if (tenantProfileConfiguration == null) return true;
 
@@ -399,9 +388,11 @@ public class DefaultWebSocketService implements WebSocketService {
                     }
                 }
                 if (tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser() > 0 && UserPrincipal.Type.PUBLIC_ID.equals(sessionRef.getSecurityCtx().getUserPrincipal().getType())) {
-                    Set<String> publicUserSessions = publicUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getId(), id -> ConcurrentHashMap.newKeySet());
+                    Set<String> publicUserSessions = publicUserSubscriptionsMap.computeIfAbsent(sessionRef.getSecurityCtx().getTenantId(), id -> ConcurrentHashMap.newKeySet());
                     synchronized (publicUserSessions) {
-                        if (publicUserSessions.size() < tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser()) {
+                        if (cmd.isUnsubscribe()) {
+                            publicUserSessions.remove(subId);
+                        } else if (publicUserSessions.size() < tenantProfileConfiguration.getMaxWsSubscriptionsPerPublicUser()) {
                             publicUserSessions.add(subId);
                         } else {
                             log.info("[{}][{}][{}] Failed to start subscription. Max public user subscriptions limit reached"
@@ -667,24 +658,7 @@ public class DefaultWebSocketService implements WebSocketService {
                 data.forEach(v -> subState.put(v.getKey(), v.getTs()));
 
                 Lock subLock = new ReentrantLock();
-                TbTimeSeriesSubscription sub = TbTimeSeriesSubscription.builder()
-                        .serviceId(serviceId)
-                        .sessionId(sessionId)
-                        .subscriptionId(registerNewSessionSubId(sessionId, sessionRef, cmd.getCmdId()))
-                        .tenantId(sessionRef.getSecurityCtx().getTenantId())
-                        .entityId(entityId)
-                        .updateProcessor((subscription, update) -> {
-                            subLock.lock();
-                            try {
-                                sendUpdate(subscription.getSessionId(), cmd.getCmdId(), update);
-                            } finally {
-                                subLock.unlock();
-                            }
-                        })
-                        .queryTs(queryTs)
-                        .allKeys(true)
-                        .keyStates(subState)
-                        .build();
+                TbTimeSeriesSubscription sub = getTsSubscription(subState, subLock, sessionId, sessionRef, cmd, entityId, queryTs, true);
 
                 subLock.lock();
                 try {
@@ -712,6 +686,28 @@ public class DefaultWebSocketService implements WebSocketService {
                 on(r -> Futures.addCallback(tsService.findAllLatest(sessionRef.getSecurityCtx().getTenantId(), entityId), callback, executor), callback::onFailure));
     }
 
+    private TbTimeSeriesSubscription getTsSubscription(Map<String, Long> subState, Lock subLock, String sessionId, WebSocketSessionRef sessionRef, TimeseriesSubscriptionCmd cmd, EntityId entityId, long queryTs, boolean allKeys) {
+        return TbTimeSeriesSubscription.builder()
+                .serviceId(serviceId)
+                .sessionId(sessionId)
+                .subscriptionId(registerNewSessionSubId(sessionId, sessionRef, cmd.getCmdId()))
+                .tenantId(sessionRef.getSecurityCtx().getTenantId())
+                .entityId(entityId)
+                .updateProcessor((subscription, update) -> {
+                    subLock.lock();
+                    try {
+                        sendUpdate(subscription.getSessionId(), cmd.getCmdId(), update);
+                    } finally {
+                        subLock.unlock();
+                    }
+                })
+                .queryTs(queryTs)
+                .allKeys(allKeys)
+                .keyStates(subState)
+                .latestValues(LATEST_TELEMETRY_SCOPE.equals(cmd.getScope()))
+                .build();
+    }
+
     private FutureCallback<List<TsKvEntry>> getSubscriptionCallback(final WebSocketSessionRef sessionRef, final TimeseriesSubscriptionCmd cmd,
                                                                     final String sessionId, final EntityId entityId, final long queryTs, final long startTs, final List<String> keys) {
         return new FutureCallback<>() {
@@ -722,24 +718,7 @@ public class DefaultWebSocketService implements WebSocketService {
                 data.forEach(v -> subState.put(v.getKey(), v.getTs()));
 
                 Lock subLock = new ReentrantLock();
-                TbTimeSeriesSubscription sub = TbTimeSeriesSubscription.builder()
-                        .serviceId(serviceId)
-                        .sessionId(sessionId)
-                        .subscriptionId(registerNewSessionSubId(sessionId, sessionRef, cmd.getCmdId()))
-                        .tenantId(sessionRef.getSecurityCtx().getTenantId())
-                        .entityId(entityId)
-                        .updateProcessor((subscription, update) -> {
-                            subLock.lock();
-                            try {
-                                sendUpdate(subscription.getSessionId(), cmd.getCmdId(), update);
-                            } finally {
-                                subLock.unlock();
-                            }
-                        })
-                        .queryTs(queryTs)
-                        .allKeys(false)
-                        .keyStates(subState)
-                        .build();
+                TbTimeSeriesSubscription sub = getTsSubscription(subState, subLock, sessionId, sessionRef, cmd, entityId, queryTs, false);
 
                 subLock.lock();
                 try {
@@ -752,7 +731,7 @@ public class DefaultWebSocketService implements WebSocketService {
 
             @Override
             public void onFailure(Throwable e) {
-                if (e instanceof TenantRateLimitException || e.getCause() instanceof TenantRateLimitException) {
+                if (e instanceof RateLimitExceededException || e.getCause() instanceof RateLimitExceededException) {
                     log.trace("[{}] Tenant rate limit detected for subscription: [{}]:{}", sessionRef.getSecurityCtx().getTenantId(), entityId, cmd);
                 } else {
                     log.info(FAILED_TO_FETCH_DATA, e);

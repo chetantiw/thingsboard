@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { NotificationTemplate, NotificationType } from '@shared/models/notification.models';
 import { Component, Inject, OnDestroy, ViewChild } from '@angular/core';
 import { Store } from '@ngrx/store';
@@ -40,12 +26,14 @@ export interface TemplateNotificationDialogData {
   predefinedType?: NotificationType;
   isAdd?: boolean;
   isCopy?: boolean;
+  name?: string;
 }
 
 @Component({
-  selector: 'tb-template-notification-dialog',
-  templateUrl: './template-notification-dialog.component.html',
-  styleUrls: ['./template-notification-dialog.component.scss']
+    selector: 'tb-template-notification-dialog',
+    templateUrl: './template-notification-dialog.component.html',
+    styleUrls: ['./template-notification-dialog.component.scss'],
+    standalone: false
 })
 export class TemplateNotificationDialogComponent
   extends TemplateConfiguration<TemplateNotificationDialogComponent, NotificationTemplate> implements OnDestroy {
@@ -84,6 +72,9 @@ export class TemplateNotificationDialogComponent
     if (isDefinedAndNotNull(this.data?.predefinedType)) {
       this.hideSelectType = true;
       this.templateNotificationForm.get('notificationType').setValue(this.data.predefinedType, {emitEvent: false});
+    }
+    if (isDefinedAndNotNull(this.data?.name)) {
+      this.templateNotificationForm.get('name').setValue(this.data.name, {emitEvent: false});
     }
 
     if (data.isAdd || data.isCopy) {
@@ -177,10 +168,12 @@ export class TemplateNotificationDialogComponent
   private allowNotificationType(): NotificationType[] {
     const sysAdminAllowNotificationTypes = new Set([
       NotificationType.ENTITIES_LIMIT,
+      NotificationType.ENTITIES_LIMIT_INCREASE_REQUEST,
       NotificationType.API_USAGE_LIMIT,
       NotificationType.NEW_PLATFORM_VERSION,
       NotificationType.RATE_LIMITS,
-      NotificationType.TASK_PROCESSING_FAILURE
+      NotificationType.TASK_PROCESSING_FAILURE,
+      NotificationType.RESOURCES_SHORTAGE
     ]);
 
     if (this.isSysAdmin()) {

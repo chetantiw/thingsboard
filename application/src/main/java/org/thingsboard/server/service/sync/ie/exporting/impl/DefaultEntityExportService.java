@@ -1,20 +1,8 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.sync.ie.exporting.impl;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Primary;
@@ -24,6 +12,9 @@ import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.ExportableEntity;
 import org.thingsboard.server.common.data.HasVersion;
 import org.thingsboard.server.common.data.cf.CalculatedField;
+import org.thingsboard.server.common.data.cf.configuration.AlarmCalculatedFieldConfiguration;
+import org.thingsboard.server.common.data.cf.configuration.ArgumentsBasedCalculatedFieldConfiguration;
+import org.thingsboard.server.common.data.cf.configuration.geofencing.GeofencingCalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityIdFactory;
@@ -66,7 +57,8 @@ public class DefaultEntityExportService<I extends EntityId, E extends Exportable
 
     @Override
     public final D getExportData(EntitiesExportCtx<?> ctx, I entityId) throws ThingsboardException {
-        D exportData = newExportData();
+        @SuppressWarnings("unchecked")
+        D exportData = (D) EntityExportData.newInstance(entityId.getEntityType());
 
         E entity = exportableEntitiesService.findEntityByTenantIdAndId(ctx.getTenantId(), entityId);
         if (entity == null) {
@@ -74,7 +66,6 @@ public class DefaultEntityExportService<I extends EntityId, E extends Exportable
         }
 
         exportData.setEntity(entity);
-        exportData.setEntityType(entityId.getEntityType());
         setAdditionalExportData(ctx, entity, exportData);
         if (entity instanceof HasVersion hasVersion) {
             hasVersion.setVersion(null);
@@ -153,11 +144,28 @@ public class DefaultEntityExportService<I extends EntityId, E extends Exportable
         List<CalculatedField> calculatedFields = calculatedFieldService.findCalculatedFieldsByEntityId(ctx.getTenantId(), entityId);
         calculatedFields.forEach(calculatedField -> {
             calculatedField.setEntityId(getExternalIdOrElseInternal(ctx, entityId));
-            calculatedField.getConfiguration().getArguments().values().forEach(argument -> {
-                if (argument.getRefEntityId() != null) {
-                    argument.setRefEntityId(getExternalIdOrElseInternal(ctx, argument.getRefEntityId()));
+            if (calculatedField.getConfiguration() instanceof ArgumentsBasedCalculatedFieldConfiguration argBasedConfig) {
+                if (argBasedConfig instanceof GeofencingCalculatedFieldConfiguration geofencingCfg) {
+                    geofencingCfg.getZoneGroups().values().forEach(zoneGroupConfiguration -> {
+                        if (zoneGroupConfiguration.getRefEntityId() != null) {
+                            zoneGroupConfiguration.setRefEntityId(getExternalIdOrElseInternal(ctx, zoneGroupConfiguration.getRefEntityId()));
+                        }
+                    });
+                } else {
+                    argBasedConfig.getArguments().values().forEach(argument -> {
+                        if (argument.getRefEntityId() != null) {
+                            argument.setRefEntityId(getExternalIdOrElseInternal(ctx, argument.getRefEntityId()));
+                        }
+                    });
                 }
-            });
+            }
+            if (calculatedField.getConfiguration() instanceof AlarmCalculatedFieldConfiguration alarmCfConfig) {
+                alarmCfConfig.getAllRules().map(Pair::getValue).forEach(rule -> {
+                    if (rule.getDashboardId() != null) {
+                        rule.setDashboardId(getExternalIdOrElseInternal(ctx, rule.getDashboardId()));
+                    }
+                });
+            }
         });
         return calculatedFields;
     }
@@ -200,10 +208,6 @@ public class DefaultEntityExportService<I extends EntityId, E extends Exportable
             }
         }
         return internalUuid;
-    }
-
-    protected D newExportData() {
-        return (D) new EntityExportData<E>();
     }
 
 }

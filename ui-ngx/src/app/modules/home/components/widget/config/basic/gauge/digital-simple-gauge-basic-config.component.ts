@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { AbstractControl, UntypedFormBuilder, UntypedFormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
@@ -30,7 +16,7 @@ import {
   getTimewindowConfig,
   setTimewindowConfig
 } from '@home/components/widget/config/timewindow-config-panel.component';
-import { formatValue, isUndefined } from '@core/utils';
+import { formatValue, isDefined, isDefinedAndNotNull, isNumeric, isUndefined } from '@core/utils';
 import { Component } from '@angular/core';
 import {
   convertLevelColorsSettingsToColorProcessor,
@@ -42,11 +28,13 @@ import {
   DigitalGaugeType
 } from '@home/components/widget/lib/digital-gauge.models';
 import { ColorSettings, ColorType } from '@shared/models/widget-settings.models';
+import { getSourceTbUnitSymbol } from '@shared/models/unit.models';
 
 @Component({
-  selector: 'tb-digital-simple-gauge-basic-config',
-  templateUrl: './digital-simple-gauge-basic-config.component.html',
-  styleUrls: ['../basic-config.scss']
+    selector: 'tb-digital-simple-gauge-basic-config',
+    templateUrl: './digital-simple-gauge-basic-config.component.html',
+    styleUrls: ['../basic-config.scss'],
+    standalone: false
 })
 
 export class DigitalSimpleGaugeBasicConfigComponent extends BasicWidgetConfigComponent {
@@ -114,7 +102,7 @@ export class DigitalSimpleGaugeBasicConfigComponent extends BasicWidgetConfigCom
       minMaxColor: [settings.minMaxFont?.color, []],
 
       showValue: [settings.showValue, []],
-      decimals: [configData.config.decimals, []],
+      decimals: [isDefined(configData.config.decimals) ? configData.config.decimals : settings.decimals, []],
       units: [configData.config.units, []],
       valueFont: [settings.valueFont, []],
       valueColor: [settings.valueFont?.color, []],
@@ -156,6 +144,9 @@ export class DigitalSimpleGaugeBasicConfigComponent extends BasicWidgetConfigCom
     this.widgetConfig.config.settings.showValue = config.showValue;
     this.widgetConfig.config.units = config.units;
     this.widgetConfig.config.decimals = config.decimals;
+    if (isDefined(this.widgetConfig.config.settings.decimals)) {
+      delete this.widgetConfig.config.settings.decimals;
+    }
     this.widgetConfig.config.settings.valueFont = config.valueFont;
     this.widgetConfig.config.settings.valueFont.color = config.valueColor;
 
@@ -184,11 +175,10 @@ export class DigitalSimpleGaugeBasicConfigComponent extends BasicWidgetConfigCom
 
   private maxValueValidation(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      const value: string = control.value;
-      if (value) {
-        if (value < control.parent?.get('minValue').value) {
-          return {maxValue: true};
-        }
+      const value: number = control.value;
+      const minValue = control.parent?.get('minValue').value;
+      if (isNumeric(value) && isDefinedAndNotNull(minValue) && value < minValue) {
+        return {maxValue: true};
       }
       return null;
     };
@@ -266,6 +256,6 @@ export class DigitalSimpleGaugeBasicConfigComponent extends BasicWidgetConfigCom
   }
 
   private _valuePreviewFn(units: boolean): string {
-    return formatValue(22, 0, units ? this.simpleGaugeWidgetConfigForm.get('units').value : null, true);
+    return formatValue(22, 0, units ? getSourceTbUnitSymbol(this.simpleGaugeWidgetConfigForm.get('units').value) : null, true);
   }
 }

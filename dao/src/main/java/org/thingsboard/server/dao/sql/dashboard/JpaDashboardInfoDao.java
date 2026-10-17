@@ -1,25 +1,15 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.dashboard;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
 import org.thingsboard.server.common.data.DashboardInfo;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
@@ -125,6 +115,11 @@ public class JpaDashboardInfoDao extends JpaAbstractDao<DashboardInfoEntity, Das
     }
 
     @Override
+    public List<DashboardInfo> findDashboardsByIds(UUID tenantId, List<UUID> dashboardIds) {
+        return DaoUtil.convertDataList(dashboardInfoRepository.findByIdIn(dashboardIds));
+    }
+
+    @Override
     public List<DashboardInfo> findByTenantAndImageLink(TenantId tenantId, String imageLink, int limit) {
         return DaoUtil.convertDataList(dashboardInfoRepository.findByTenantAndImageLink(tenantId.getId(), imageLink, limit));
     }
@@ -135,13 +130,13 @@ public class JpaDashboardInfoDao extends JpaAbstractDao<DashboardInfoEntity, Das
     }
 
     @Override
-    public List<DashboardInfo> findByTenantIdAndResourceLink(TenantId tenantId, String url, int limit) {
-        return DaoUtil.convertDataList(dashboardInfoRepository.findDashboardInfosByTenantIdAndResourceLink(tenantId.getId(), url, limit));
+    public List<EntityInfo> findByTenantIdAndResource(TenantId tenantId, String reference, int limit) {
+        return dashboardInfoRepository.findDashboardInfosByTenantIdAndResourceLink(tenantId.getId(), reference, PageRequest.of(0, limit));
     }
 
     @Override
-    public List<DashboardInfo> findByResourceLink(String link, int limit) {
-        return DaoUtil.convertDataList(dashboardInfoRepository.findDashboardInfosByResourceLink(link, limit));
+    public List<EntityInfo> findByResource(String reference, int limit) {
+        return dashboardInfoRepository.findDashboardInfosByResourceLink(reference, PageRequest.of(0, limit));
     }
 
 }

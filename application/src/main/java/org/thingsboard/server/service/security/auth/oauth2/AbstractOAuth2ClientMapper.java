@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.security.auth.oauth2;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -20,7 +7,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -34,8 +20,8 @@ import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DashboardId;
 import org.thingsboard.server.common.data.id.IdBased;
 import org.thingsboard.server.common.data.id.TenantId;
-import org.thingsboard.server.common.data.oauth2.OAuth2MapperConfig;
 import org.thingsboard.server.common.data.oauth2.OAuth2Client;
+import org.thingsboard.server.common.data.oauth2.OAuth2MapperConfig;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.security.Authority;
@@ -48,17 +34,16 @@ import org.thingsboard.server.dao.tenant.TenantService;
 import org.thingsboard.server.dao.user.UserService;
 import org.thingsboard.server.service.entitiy.tenant.TbTenantService;
 import org.thingsboard.server.service.entitiy.user.TbUserService;
-import org.thingsboard.server.service.install.InstallScripts;
 import org.thingsboard.server.service.security.model.SecurityUser;
 import org.thingsboard.server.service.security.model.UserPrincipal;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 public abstract class AbstractOAuth2ClientMapper {
+
     private static final int DASHBOARDS_REQUEST_LIMIT = 10;
 
     @Autowired
@@ -80,16 +65,10 @@ public abstract class AbstractOAuth2ClientMapper {
     private DashboardService dashboardService;
 
     @Autowired
-    private InstallScripts installScripts;
-
-    @Autowired
     private TbUserService tbUserService;
 
     @Autowired
     protected TbTenantProfileCache tenantProfileCache;
-
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
 
     @Value("${edges.enabled}")
     @Getter
@@ -103,7 +82,7 @@ public abstract class AbstractOAuth2ClientMapper {
 
         UserPrincipal principal = new UserPrincipal(UserPrincipal.Type.USER_NAME, oauth2User.getEmail());
 
-        User user = userService.findUserByEmail(TenantId.SYS_TENANT_ID, oauth2User.getEmail());
+        User user = findUserForClient(oauth2User.getEmail(), oAuth2Client);
 
         if (user == null && !config.isAllowUserCreation()) {
             throw new UsernameNotFoundException("User not found: " + oauth2User.getEmail());
@@ -112,7 +91,7 @@ public abstract class AbstractOAuth2ClientMapper {
         if (user == null) {
             userCreationLock.lock();
             try {
-                user = userService.findUserByEmail(TenantId.SYS_TENANT_ID, oauth2User.getEmail());
+                user = findUserForClient(oauth2User.getEmail(), oAuth2Client);
                 if (user == null) {
                     user = new User();
                     if (oauth2User.getCustomerId() == null && StringUtils.isEmpty(oauth2User.getCustomerName())) {
@@ -120,8 +99,12 @@ public abstract class AbstractOAuth2ClientMapper {
                     } else {
                         user.setAuthority(Authority.CUSTOMER_USER);
                     }
-                    TenantId tenantId = oauth2User.getTenantId() != null ?
-                            oauth2User.getTenantId() : getTenantId(oauth2User.getTenantName());
+                    TenantId tenantId;
+                    if (oAuth2Client.getTenantId().isSysTenantId()) {
+                        tenantId = oauth2User.getTenantId() != null ? oauth2User.getTenantId() : getTenantId(oauth2User.getTenantName());
+                    } else {
+                        tenantId = oAuth2Client.getTenantId();
+                    }
                     user.setTenantId(tenantId);
                     CustomerId customerId = oauth2User.getCustomerId() != null ?
                             oauth2User.getCustomerId() : getCustomerId(user.getTenantId(), oauth2User.getCustomerName());
@@ -173,17 +156,32 @@ public abstract class AbstractOAuth2ClientMapper {
         }
     }
 
-    private TenantId getTenantId(String tenantName) throws Exception {
-        List<Tenant> tenants = tenantService.findTenants(new PageLink(1, 0, tenantName)).getData();
-        Tenant tenant;
-        if (tenants == null || tenants.isEmpty()) {
-            tenant = new Tenant();
-            tenant.setTitle(tenantName);
-            tenant = tbTenantService.save(tenant);
-        } else {
-            tenant = tenants.get(0);
+    /**
+     * The user is matched by email alone, and the email is whatever the provider chose to send. A client registered by a
+     * tenant must therefore only ever resolve users of that same tenant; a system client is platform-wide by design.
+     */
+    private User findUserForClient(String email, OAuth2Client oAuth2Client) {
+        User user = userService.findUserByEmail(TenantId.SYS_TENANT_ID, email);
+        if (user == null || oAuth2Client.getTenantId().isSysTenantId()) {
+            return user;
         }
-        return tenant.getTenantId();
+        if (user.getTenantId().equals(oAuth2Client.getTenantId())) {
+            return user;
+        }
+        log.warn("OAuth2 client [{}] of tenant [{}] cannot resolve user [{}] [{}] of tenant [{}]: outside of the client tenant",
+                oAuth2Client.getId(), oAuth2Client.getTenantId(), user.getId(), email, user.getTenantId());
+        throw new UsernameNotFoundException("User not found: " + email);
+    }
+
+    private TenantId getTenantId(String name) throws Exception {
+        Tenant tenant = tenantService.findTenantByName(name);
+        if (tenant != null) {
+            return tenant.getId();
+        }
+        tenant = new Tenant();
+        tenant.setTitle(name);
+        tenant = tbTenantService.save(tenant);
+        return tenant.getId();
     }
 
     private CustomerId getCustomerId(TenantId tenantId, String customerName) {
@@ -220,4 +218,5 @@ public abstract class AbstractOAuth2ClientMapper {
         } while (dashboardsPage.hasNext());
         return Optional.empty();
     }
+
 }

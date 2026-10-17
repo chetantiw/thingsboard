@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
 import io.swagger.v3.oas.annotations.Parameter;
@@ -81,31 +68,31 @@ public class DomainController extends BaseController {
         return tbDomainService.save(domain, getOAuth2ClientIds(ids), getCurrentUser());
     }
 
-    @ApiOperation(value = "Update oauth2 clients (updateOauth2Clients)",
+    @ApiOperation(value = "Update oauth2 clients (updateDomainOauth2Clients)",
             notes = "Update oauth2 clients for the specified domain. ")
     @PreAuthorize("hasAnyAuthority('SYS_ADMIN')")
     @PutMapping(value = "/domain/{id}/oauth2Clients")
-    public void updateOauth2Clients(@PathVariable UUID id,
-                                    @RequestBody UUID[] clientIds) throws ThingsboardException {
+    public void updateDomainOauth2Clients(@PathVariable UUID id,
+                                          @RequestBody UUID[] clientIds) throws ThingsboardException {
         DomainId domainId = new DomainId(id);
         Domain domain = checkDomainId(domainId, Operation.WRITE);
         List<OAuth2ClientId> oAuth2ClientIds = getOAuth2ClientIds(clientIds);
         tbDomainService.updateOauth2Clients(domain, oAuth2ClientIds, getCurrentUser());
     }
 
-    @ApiOperation(value = "Get Domain infos (getTenantDomainInfos)", notes = SYSTEM_AUTHORITY_PARAGRAPH)
+    @ApiOperation(value = "Get Domain infos (getDomainInfos)", notes = SYSTEM_AUTHORITY_PARAGRAPH)
     @PreAuthorize("hasAnyAuthority('SYS_ADMIN')")
     @GetMapping(value = "/domain/infos")
-    public PageData<DomainInfo> getTenantDomainInfos(@Parameter(description = PAGE_SIZE_DESCRIPTION, required = true)
-                                                     @RequestParam int pageSize,
-                                                     @Parameter(description = PAGE_NUMBER_DESCRIPTION, required = true)
-                                                     @RequestParam int page,
-                                                     @Parameter(description = "Case-insensitive 'substring' filter based on domain's name")
-                                                     @RequestParam(required = false) String textSearch,
-                                                     @Parameter(description = SORT_PROPERTY_DESCRIPTION)
-                                                     @RequestParam(required = false) String sortProperty,
-                                                     @Parameter(description = SORT_ORDER_DESCRIPTION)
-                                                     @RequestParam(required = false) String sortOrder) throws ThingsboardException {
+    public PageData<DomainInfo> getDomainInfos(@Parameter(description = PAGE_SIZE_DESCRIPTION, required = true)
+                                               @RequestParam int pageSize,
+                                               @Parameter(description = PAGE_NUMBER_DESCRIPTION, required = true)
+                                               @RequestParam int page,
+                                               @Parameter(description = "Case-insensitive 'substring' filter based on domain's name")
+                                               @RequestParam(required = false) String textSearch,
+                                               @Parameter(description = SORT_PROPERTY_DESCRIPTION)
+                                               @RequestParam(required = false) String sortProperty,
+                                               @Parameter(description = SORT_ORDER_DESCRIPTION)
+                                               @RequestParam(required = false) String sortOrder) throws ThingsboardException {
         accessControlService.checkPermission(getCurrentUser(), Resource.DOMAIN, Operation.READ);
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
         return domainService.findDomainInfosByTenantId(getTenantId(), pageLink);

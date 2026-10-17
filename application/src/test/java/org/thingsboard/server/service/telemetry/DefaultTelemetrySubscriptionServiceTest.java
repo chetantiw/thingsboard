@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.telemetry;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -40,6 +27,7 @@ import org.thingsboard.server.common.data.ApiUsageStateValue;
 import org.thingsboard.server.common.data.AttributeScope;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.EntityView;
+import org.thingsboard.server.common.data.exception.TenantNotFoundException;
 import org.thingsboard.server.common.data.id.ApiUsageStateId;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DeviceId;
@@ -48,6 +36,7 @@ import org.thingsboard.server.common.data.id.EntityIdFactory;
 import org.thingsboard.server.common.data.id.EntityViewId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.kv.AttributeKvEntry;
+import org.thingsboard.server.common.data.kv.AttributesSaveResult;
 import org.thingsboard.server.common.data.kv.BaseAttributeKvEntry;
 import org.thingsboard.server.common.data.kv.BasicTsKvEntry;
 import org.thingsboard.server.common.data.kv.DoubleDataEntry;
@@ -88,6 +77,7 @@ import java.util.stream.Stream;
 import static com.google.common.util.concurrent.Futures.immediateFailedFuture;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -161,7 +151,7 @@ class DefaultTelemetrySubscriptionServiceTest {
         apiUsageState.setDbStorageState(ApiUsageStateValue.ENABLED);
         lenient().when(apiUsageStateService.getApiUsageState(tenantId)).thenReturn(apiUsageState);
 
-        lenient().when(partitionService.resolve(ServiceType.TB_CORE, tenantId, entityId)).thenReturn(tpi);
+        lenient().when(partitionService.resolve(eq(ServiceType.TB_CORE), eq(tenantId), any())).thenReturn(tpi);
 
         lenient().when(tsService.save(tenantId, entityId, sampleTimeseries, sampleTtl)).thenReturn(immediateFuture(TimeseriesSaveResult.of(sampleTimeseries.size(), listOfNNumbers(sampleTimeseries.size()))));
         lenient().when(tsService.saveWithoutLatest(tenantId, entityId, sampleTimeseries, sampleTtl)).thenReturn(immediateFuture(TimeseriesSaveResult.of(sampleTimeseries.size(), null)));
@@ -309,8 +299,6 @@ class DefaultTelemetrySubscriptionServiceTest {
         given(tbEntityViewService.findEntityViewsByTenantIdAndEntityIdAsync(tenantId, entityId)).willReturn(immediateFuture(List.of(entityView)));
         // mock that save latest call for entity view is successful
         given(tsService.saveLatest(tenantId, entityView.getId(), sampleTimeseries)).willReturn(immediateFuture(TimeseriesSaveResult.of(sampleTimeseries.size(), listOfNNumbers(sampleTimeseries.size()))));
-        // mock TPI for entity view
-        given(partitionService.resolve(ServiceType.TB_CORE, tenantId, entityView.getId())).willReturn(tpi);
 
         var request = TimeseriesSaveRequest.builder()
                 .tenantId(tenantId)
@@ -353,6 +341,43 @@ class DefaultTelemetrySubscriptionServiceTest {
         // THEN
         // should save only time series for the main entity
         then(tsService).should().saveWithoutLatest(tenantId, entityId, sampleTimeseries, sampleTtl);
+        then(tsService).shouldHaveNoMoreInteractions();
+
+        // should not send any WS updates
+        then(subscriptionManagerService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void shouldNotCopyLatestToEntityViewWhenTimeseriesSaveFailedOnMainEntity() {
+        // GIVEN
+        var entityView = new EntityView(new EntityViewId(UUID.randomUUID()));
+        entityView.setTenantId(tenantId);
+        entityView.setCustomerId(customerId);
+        entityView.setEntityId(entityId);
+        entityView.setKeys(new TelemetryEntityView(sampleTimeseries.stream().map(KvEntry::getKey).toList(), new AttributesEntityView()));
+
+        // mock that there is one entity view
+        lenient().when(tbEntityViewService.findEntityViewsByTenantIdAndEntityIdAsync(tenantId, entityId)).thenReturn(immediateFuture(List.of(entityView)));
+        // mock that save latest call for entity view is successful
+        lenient().when(tsService.saveLatest(tenantId, entityView.getId(), sampleTimeseries)).thenReturn(immediateFuture(TimeseriesSaveResult.of(sampleTimeseries.size(), listOfNNumbers(sampleTimeseries.size()))));
+
+        var request = TimeseriesSaveRequest.builder()
+                .tenantId(tenantId)
+                .customerId(customerId)
+                .entityId(entityId)
+                .entries(sampleTimeseries)
+                .ttl(sampleTtl)
+                .strategy(new TimeseriesSaveRequest.Strategy(true, true, false, false))
+                .build();
+
+        given(tsService.save(tenantId, entityId, sampleTimeseries, sampleTtl)).willReturn(immediateFailedFuture(new RuntimeException("failed to save data on main entity")));
+
+        // WHEN
+        telemetryService.saveTimeseries(request);
+
+        // THEN
+        // should save only time series for the main entity
+        then(tsService).should().save(tenantId, entityId, sampleTimeseries, sampleTtl);
         then(tsService).shouldHaveNoMoreInteractions();
 
         // should not send any WS updates
@@ -433,7 +458,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(saveAttributes, sendWsUpdate, processCalculatedFields))
                 .build();
 
-        lenient().when(attrService.save(tenantId, entityId, request.getScope(), request.getEntries())).thenReturn(immediateFuture(listOfNNumbers(request.getEntries().size())));
+        lenient().when(attrService.save(tenantId, entityId, request.getScope(), request.getEntries()))
+                .thenReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(request.getEntries().size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -508,7 +534,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), entries)).willReturn(immediateFuture(listOfNNumbers(entries.size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), entries))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(entries.size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -542,7 +569,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, nonDeviceId, request.getScope(), entries)).willReturn(immediateFuture(listOfNNumbers(entries.size())));
+        given(attrService.save(tenantId, nonDeviceId, request.getScope(), entries))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(entries.size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -574,7 +602,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), entries)).willReturn(immediateFuture(listOfNNumbers(entries.size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), entries))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(entries.size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -601,7 +630,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), entries)).willReturn(immediateFuture(listOfNNumbers(entries.size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), entries))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(entries.size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -676,7 +706,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries())).willReturn(immediateFuture(listOfNNumbers(request.getEntries().size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries()))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(request.getEntries().size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -725,7 +756,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, nonDeviceId, request.getScope(), request.getEntries())).willReturn(immediateFuture(listOfNNumbers(request.getEntries().size())));
+        given(attrService.save(tenantId, nonDeviceId, request.getScope(), request.getEntries()))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(request.getEntries().size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -753,7 +785,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries())).willReturn(immediateFuture(listOfNNumbers(request.getEntries().size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries()))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(request.getEntries().size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -776,7 +809,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries())).willReturn(immediateFuture(listOfNNumbers(request.getEntries().size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries()))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(request.getEntries().size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -804,7 +838,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries())).willReturn(immediateFuture(listOfNNumbers(request.getEntries().size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries()))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(request.getEntries().size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -831,7 +866,8 @@ class DefaultTelemetrySubscriptionServiceTest {
                 .strategy(new AttributesSaveRequest.Strategy(true, false, false))
                 .build();
 
-        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries())).willReturn(immediateFuture(listOfNNumbers(request.getEntries().size())));
+        given(attrService.save(tenantId, deviceId, request.getScope(), request.getEntries()))
+                .willReturn(immediateFuture(AttributesSaveResult.of(listOfNNumbers(request.getEntries().size()))));
 
         // WHEN
         telemetryService.saveAttributes(request);
@@ -1102,6 +1138,26 @@ class DefaultTelemetrySubscriptionServiceTest {
 
         // THEN
         then(deviceStateManager).shouldHaveNoInteractions();
+    }
+
+    /* --- Subscription forwarding --- */
+
+    @Test
+    void shouldSkipSubscriptionForwardWhenTenantWasDeleted() {
+        // GIVEN the tenant was deleted concurrently, so partition resolution fails
+        given(partitionService.resolve(ServiceType.TB_CORE, tenantId, entityId))
+                .willThrow(new TenantNotFoundException(tenantId));
+
+        // WHEN forwarding a subscription update (e.g. from an in-flight async save callback)
+        // THEN it must not propagate the exception
+        assertThatNoException().isThrownBy(() -> telemetryService.forwardToSubscriptionManagerService(
+                tenantId, entityId,
+                sm -> sm.onAttributesUpdate(tenantId, entityId, AttributeScope.SERVER_SCOPE.name(), List.of(), TbCallback.EMPTY),
+                () -> null));
+
+        // AND nothing is forwarded, since there is no partition to route to and no subscribers to notify
+        then(subscriptionManagerService).shouldHaveNoInteractions();
+        then(clusterService).shouldHaveNoInteractions();
     }
 
     // used to emulate versions returned by save APIs

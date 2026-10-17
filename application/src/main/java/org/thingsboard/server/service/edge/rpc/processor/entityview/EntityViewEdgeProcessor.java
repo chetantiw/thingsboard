@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.edge.rpc.processor.entityview;
 
 import com.google.common.util.concurrent.Futures;
@@ -32,8 +19,9 @@ import org.thingsboard.server.common.data.id.EntityViewId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.msg.TbMsgType;
 import org.thingsboard.server.common.msg.TbMsgMetaData;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.gen.edge.v1.DownlinkMsg;
+import org.thingsboard.server.gen.edge.v1.EdgeVersion;
 import org.thingsboard.server.gen.edge.v1.EntityViewUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.UpdateMsgType;
 import org.thingsboard.server.queue.util.TbCoreComponent;
@@ -53,21 +41,17 @@ public class EntityViewEdgeProcessor extends BaseEntityViewProcessor implements 
         try {
             edgeSynchronizationManager.getEdgeId().set(edge.getId());
 
-            switch (entityViewUpdateMsg.getMsgType()) {
-                case ENTITY_CREATED_RPC_MESSAGE:
-                case ENTITY_UPDATED_RPC_MESSAGE:
+            return switch (entityViewUpdateMsg.getMsgType()) {
+                case ENTITY_CREATED_RPC_MESSAGE, ENTITY_UPDATED_RPC_MESSAGE -> {
                     saveOrUpdateEntityView(tenantId, entityViewId, entityViewUpdateMsg, edge);
-                    return Futures.immediateFuture(null);
-                case ENTITY_DELETED_RPC_MESSAGE:
-                    EntityView entityViewToDelete = edgeCtx.getEntityViewService().findEntityViewById(tenantId, entityViewId);
-                    if (entityViewToDelete != null) {
-                        edgeCtx.getEntityViewService().unassignEntityViewFromEdge(tenantId, entityViewId, edge.getId());
-                    }
-                    return Futures.immediateFuture(null);
-                case UNRECOGNIZED:
-                default:
-                    return handleUnsupportedMsgType(entityViewUpdateMsg.getMsgType());
-            }
+                    yield Futures.immediateFuture(null);
+                }
+                case ENTITY_DELETED_RPC_MESSAGE -> {
+                    deleteEntityView(tenantId, edge, entityViewId);
+                    yield Futures.immediateFuture(null);
+                }
+                default -> handleUnsupportedMsgType(entityViewUpdateMsg.getMsgType());
+            };
         } catch (DataValidationException e) {
             if (e.getMessage().contains("limit reached")) {
                 log.warn("[{}] Number of allowed entity views violated {}", tenantId, entityViewUpdateMsg, e);
@@ -95,18 +79,12 @@ public class EntityViewEdgeProcessor extends BaseEntityViewProcessor implements 
     }
 
     private void pushEntityViewCreatedEventToRuleEngine(TenantId tenantId, Edge edge, EntityViewId entityViewId) {
-        try {
-            EntityView entityView = edgeCtx.getEntityViewService().findEntityViewById(tenantId, entityViewId);
-            String entityViewAsString = JacksonUtil.toString(entityView);
-            TbMsgMetaData msgMetaData = getEdgeActionTbMsgMetaData(edge, entityView.getCustomerId());
-            pushEntityEventToRuleEngine(tenantId, entityViewId, entityView.getCustomerId(), TbMsgType.ENTITY_CREATED, entityViewAsString, msgMetaData);
-        } catch (Exception e) {
-            log.warn("[{}][{}] Failed to push entity view action to rule engine: {}", tenantId, entityViewId, TbMsgType.ENTITY_CREATED.name(), e);
-        }
+        EntityView entityView = edgeCtx.getEntityViewService().findEntityViewById(tenantId, entityViewId);
+        pushEntityEventToRuleEngine(tenantId, edge, entityView, TbMsgType.ENTITY_CREATED);
     }
 
     @Override
-    public DownlinkMsg convertEdgeEventToDownlink(EdgeEvent edgeEvent) {
+    public DownlinkMsg convertEdgeEventToDownlink(EdgeEvent edgeEvent, EdgeVersion edgeVersion) {
         EntityViewId entityViewId = new EntityViewId(edgeEvent.getEntityId());
         switch (edgeEvent.getAction()) {
             case ADDED, UPDATED, ASSIGNED_TO_EDGE, ASSIGNED_TO_CUSTOMER, UNASSIGNED_FROM_CUSTOMER -> {

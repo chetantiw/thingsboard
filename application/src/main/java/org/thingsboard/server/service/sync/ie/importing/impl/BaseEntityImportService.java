@@ -1,25 +1,15 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.sync.ie.importing.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.api.client.util.Objects;
 import com.google.common.util.concurrent.FutureCallback;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -33,6 +23,9 @@ import org.thingsboard.server.common.data.HasVersion;
 import org.thingsboard.server.common.data.User;
 import org.thingsboard.server.common.data.audit.ActionType;
 import org.thingsboard.server.common.data.cf.CalculatedField;
+import org.thingsboard.server.common.data.cf.configuration.AlarmCalculatedFieldConfiguration;
+import org.thingsboard.server.common.data.cf.configuration.ArgumentsBasedCalculatedFieldConfiguration;
+import org.thingsboard.server.common.data.cf.configuration.geofencing.GeofencingCalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityIdFactory;
@@ -69,7 +62,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -117,10 +109,10 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
 
         E prepared = prepare(ctx, entity, existingEntity, exportData, idProvider);
 
-        boolean saveOrUpdate = existingEntity == null || compare(ctx, exportData, prepared, existingEntity);
+        CompareResult compareResult = compare(ctx, exportData, prepared, existingEntity);
 
-        if (saveOrUpdate) {
-            E savedEntity = saveOrUpdate(ctx, prepared, exportData, idProvider);
+        if (compareResult.isUpdateNeeded()) {
+            E savedEntity = saveOrUpdate(ctx, prepared, exportData, idProvider, compareResult);
             boolean created = existingEntity == null;
             importResult.setCreated(created);
             importResult.setUpdated(!created);
@@ -137,6 +129,18 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
         return importResult;
     }
 
+    @Data
+    @AllArgsConstructor
+    static class CompareResult {
+        private boolean updateNeeded;
+        private boolean externalIdChangedOnly;
+
+        public CompareResult(boolean updateNeeded) {
+            this.updateNeeded = updateNeeded;
+        }
+
+    }
+
     protected boolean updateRelatedEntitiesIfUnmodified(EntitiesImportCtx ctx, E prepared, D exportData, IdProvider idProvider) {
         return importCalculatedFields(ctx, prepared, exportData, idProvider);
     }
@@ -148,18 +152,30 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
 
     protected abstract E prepare(EntitiesImportCtx ctx, E entity, E oldEntity, D exportData, IdProvider idProvider);
 
-    protected boolean compare(EntitiesImportCtx ctx, D exportData, E prepared, E existing) {
+    protected CompareResult compare(EntitiesImportCtx ctx, D exportData, E prepared, E existing) {
+        if (existing == null) {
+            log.debug("[{}] Found new entity.", prepared.getId());
+            return new CompareResult(true);
+        }
         var newCopy = deepCopy(prepared);
         var existingCopy = deepCopy(existing);
         cleanupForComparison(newCopy);
         cleanupForComparison(existingCopy);
-        var result = !newCopy.equals(existingCopy);
-        if (result) {
+        var updateNeeded = isUpdateNeeded(ctx, exportData, newCopy, existingCopy);
+        boolean externalIdChangedOnly = false;
+        if (updateNeeded) {
             log.debug("[{}] Found update.", prepared.getId());
             log.debug("[{}] From: {}", prepared.getId(), newCopy);
             log.debug("[{}] To: {}", prepared.getId(), existingCopy);
+            cleanupExternalId(newCopy);
+            cleanupExternalId(existingCopy);
+            externalIdChangedOnly = newCopy.equals(existingCopy);
         }
-        return result;
+        return new CompareResult(updateNeeded, externalIdChangedOnly);
+    }
+
+    protected boolean isUpdateNeeded(EntitiesImportCtx ctx, D exportData, E prepared, E existing) {
+        return !prepared.equals(existing);
     }
 
     protected abstract E deepCopy(E e);
@@ -172,8 +188,11 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
         }
     }
 
-    protected abstract E saveOrUpdate(EntitiesImportCtx ctx, E entity, D exportData, IdProvider idProvider);
+    protected void cleanupExternalId(E e) {
+        e.setExternalId(null);
+    }
 
+    protected abstract E saveOrUpdate(EntitiesImportCtx ctx, E entity, D exportData, IdProvider idProvider, CompareResult compareResult);
 
     protected void processAfterSaved(EntitiesImportCtx ctx, EntityImportResult<E> importResult, D exportData, IdProvider idProvider) throws ThingsboardException {
         E savedEntity = importResult.getSavedEntity();
@@ -293,11 +312,28 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
                 .peek(calculatedField -> {
                     calculatedField.setTenantId(ctx.getTenantId());
                     calculatedField.setEntityId(savedEntity.getId());
-                    calculatedField.getConfiguration().getArguments().values().forEach(argument -> {
-                        if (argument.getRefEntityId() != null) {
-                            argument.setRefEntityId(idProvider.getInternalId(argument.getRefEntityId(), ctx.isFinalImportAttempt()));
+                    if (calculatedField.getConfiguration() instanceof ArgumentsBasedCalculatedFieldConfiguration argBasedConfig) {
+                        if (argBasedConfig instanceof GeofencingCalculatedFieldConfiguration geofencingCfg) {
+                            geofencingCfg.getZoneGroups().values().forEach(zoneGroupConfiguration -> {
+                                if (zoneGroupConfiguration.getRefEntityId() != null) {
+                                    zoneGroupConfiguration.setRefEntityId(idProvider.getInternalId(zoneGroupConfiguration.getRefEntityId(), ctx.isFinalImportAttempt()));
+                                }
+                            });
+                        } else {
+                            argBasedConfig.getArguments().values().forEach(argument -> {
+                                if (argument.getRefEntityId() != null) {
+                                    argument.setRefEntityId(idProvider.getInternalId(argument.getRefEntityId(), ctx.isFinalImportAttempt()));
+                                }
+                            });
                         }
-                    });
+                    }
+                    if (calculatedField.getConfiguration() instanceof AlarmCalculatedFieldConfiguration alarmCfConfig) {
+                        alarmCfConfig.getAllRules().map(Pair::getValue).forEach(rule -> {
+                            if (rule.getDashboardId() != null) {
+                                rule.setDashboardId(idProvider.getInternalId(rule.getDashboardId(), ctx.isFinalImportAttempt()));
+                            }
+                        });
+                    }
                 }).toList();
 
         for (CalculatedField existingField : existing) {
@@ -376,7 +412,9 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
         }
 
         public <ID extends EntityId> ID getInternalId(ID externalId, boolean throwExceptionIfNotFound) {
-            if (externalId == null || externalId.isNullUid()) return null;
+            if (externalId == null || externalId.isNullUid()) {
+                return null;
+            }
 
             if (EntityType.TENANT.equals(externalId.getEntityType())) {
                 return (ID) ctx.getTenantId();
@@ -403,7 +441,9 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
         }
 
         public Optional<EntityId> getInternalIdByUuid(UUID externalUuid, boolean fetchAllUUIDs, Set<EntityType> hints) {
-            if (externalUuid.equals(EntityId.NULL_UUID)) return Optional.empty();
+            if (externalUuid.equals(EntityId.NULL_UUID)) {
+                return Optional.empty();
+            }
 
             for (EntityType entityType : EntityType.values()) {
                 Optional<EntityId> externalId = buildEntityId(entityType, externalUuid);
@@ -452,10 +492,6 @@ public abstract class BaseEntityImportService<I extends EntityId, E extends Expo
             }
         }
 
-    }
-
-    protected <T extends EntityId, O> T getOldEntityField(O oldEntity, Function<O, T> getter) {
-        return oldEntity == null ? null : getter.apply(oldEntity);
     }
 
     protected void replaceIdsRecursively(EntitiesImportCtx ctx, IdProvider idProvider, JsonNode json,

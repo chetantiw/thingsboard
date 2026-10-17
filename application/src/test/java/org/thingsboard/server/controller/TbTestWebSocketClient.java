@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,6 +18,7 @@ import org.thingsboard.server.service.ws.AuthCmd;
 import org.thingsboard.server.service.ws.WsCmd;
 import org.thingsboard.server.service.ws.WsCommandsWrapper;
 import org.thingsboard.server.service.ws.telemetry.cmd.v1.AttributesSubscriptionCmd;
+import org.thingsboard.server.service.ws.telemetry.cmd.v1.TimeseriesSubscriptionCmd;
 import org.thingsboard.server.service.ws.telemetry.cmd.v2.AlarmCountUpdate;
 import org.thingsboard.server.service.ws.telemetry.cmd.v2.EntityCountUpdate;
 import org.thingsboard.server.service.ws.telemetry.cmd.v2.EntityDataCmd;
@@ -38,6 +26,7 @@ import org.thingsboard.server.service.ws.telemetry.cmd.v2.EntityDataUpdate;
 import org.thingsboard.server.service.ws.telemetry.cmd.v2.EntityHistoryCmd;
 import org.thingsboard.server.service.ws.telemetry.cmd.v2.LatestValueCmd;
 import org.thingsboard.server.service.ws.telemetry.cmd.v2.TimeSeriesCmd;
+import org.thingsboard.server.service.ws.telemetry.sub.TelemetrySubscriptionUpdate;
 
 import java.net.URI;
 import java.nio.channels.NotYetConnectedException;
@@ -269,6 +258,18 @@ public class TbTestWebSocketClient extends WebSocketClient {
         EntityDataQuery edq = new EntityDataQuery(entityFilter, new EntityDataPageLink(1, 0, null, null),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         return sendEntityDataQuery(edq);
+    }
+
+    public JsonNode sendTimeseriesCmd(EntityId entityId, String scope) {
+        log.warn("sendTimeseriesCmd entityId: {}, scope: {}", entityId, scope);
+        TimeseriesSubscriptionCmd cmd = new TimeseriesSubscriptionCmd(0, 0, 0, 10,  null);
+        cmd.setEntityId(entityId.getId().toString());
+        cmd.setEntityType(entityId.getEntityType().toString());
+        cmd.setCmdId(1);
+        cmd.setScope(scope);
+        send(cmd);
+        String msg = this.waitForReply();
+        return JacksonUtil.fromString(msg, JsonNode.class);
     }
 
     public void send(WsCmd... cmds) {

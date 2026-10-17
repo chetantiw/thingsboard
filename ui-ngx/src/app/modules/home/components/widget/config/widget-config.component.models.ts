@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { WidgetActionCallbacks } from '@home/components/widget/action/manage-widget-actions.component.models';
 import { DatasourceCallbacks } from '@home/components/widget/config/datasource.component.models';
 import { WidgetConfigComponentData } from '@home/models/widget-component.models';
@@ -23,11 +9,19 @@ import { PageComponent } from '@shared/components/page.component';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
 import { AbstractControl, UntypedFormGroup } from '@angular/forms';
-import { DataKey, DatasourceType, Widget, WidgetConfigMode, widgetType } from '@shared/models/widget.models';
+import {
+  DataKey,
+  DatasourceType,
+  Widget,
+  widgetTypeCanHaveTimewindow,
+  WidgetConfigMode,
+  widgetType
+} from '@shared/models/widget.models';
 import { WidgetConfigComponent } from '@home/components/widget/widget-config.component';
-import { isDefinedAndNotNull } from '@core/utils';
+import { isDefinedAndNotNull, isUndefinedOrNull } from '@core/utils';
 import { IAliasController } from '@core/api/widget-api.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { initModelFromDefaultTimewindow } from '@shared/models/time/time.models';
 
 export type WidgetConfigCallbacks = DatasourceCallbacks & WidgetActionCallbacks;
 
@@ -106,6 +100,11 @@ export abstract class BasicWidgetConfigComponent extends PageComponent implement
   protected setupConfig(widgetConfig: WidgetConfigComponentData) {
     if (this.isAdd) {
       this.setupDefaults(widgetConfig);
+    }
+    if (widgetTypeCanHaveTimewindow(widgetConfig.widgetType) && isUndefinedOrNull(widgetConfig.config.timewindow)) {
+      widgetConfig.config.timewindow = initModelFromDefaultTimewindow(null,
+        widgetConfig.widgetType === widgetType.latest, false, this.widgetConfigComponent.timeService,
+        widgetConfig.widgetType === widgetType.timeseries);
     }
     this.onConfigSet(widgetConfig);
     this.updateValidators(false);

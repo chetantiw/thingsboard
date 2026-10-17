@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.mqtt.mqttv3.attributes;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -34,6 +21,7 @@ import org.thingsboard.server.common.data.device.profile.ProtoTransportPayloadCo
 import org.thingsboard.server.common.data.device.profile.TransportPayloadTypeConfiguration;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.page.PageData;
+import org.thingsboard.server.common.data.query.AliasEntityId;
 import org.thingsboard.server.common.data.query.DeviceTypeFilter;
 import org.thingsboard.server.common.data.query.EntityData;
 import org.thingsboard.server.common.data.query.EntityKey;
@@ -339,7 +327,7 @@ public abstract class AbstractMqttAttributesIntegrationTest extends AbstractMqtt
         MqttTestClient client = new MqttTestClient();
         client.connectAndWait(accessToken);
         SingleEntityFilter dtf = new SingleEntityFilter();
-        dtf.setSingleEntity(savedDevice.getId());
+        dtf.setSingleEntity(AliasEntityId.fromEntityId(savedDevice.getId()));
         String clientKeysStr = "clientStr,clientBool,clientDbl,clientLong,clientJson";
         String sharedKeysStr = "sharedStr,sharedBool,sharedDbl,sharedLong,sharedJson";
         List<String> clientKeysList = List.of(clientKeysStr.split(","));
@@ -419,6 +407,7 @@ public abstract class AbstractMqttAttributesIntegrationTest extends AbstractMqtt
 
         Awaitility.await()
                 .atMost(10, TimeUnit.SECONDS)
+                .ignoreExceptions()
                 .until(() -> {
                     List<Map<String, Object>> attributes = doGetAsyncTyped(attributeValuesUrl, new TypeReference<>() {
                     });
@@ -426,7 +415,7 @@ public abstract class AbstractMqttAttributesIntegrationTest extends AbstractMqtt
                 });
 
         SingleEntityFilter dtf = new SingleEntityFilter();
-        dtf.setSingleEntity(device.getId());
+        dtf.setSingleEntity(AliasEntityId.fromEntityId(device.getId()));
         String sharedKeysStr = "sharedStr,sharedBool,sharedDbl,sharedLong,sharedJson";
         List<String> clientKeysList = List.of(clientKeysStr.split(","));
         List<String> sharedKeysList = List.of(sharedKeysStr.split(","));
@@ -481,7 +470,7 @@ public abstract class AbstractMqttAttributesIntegrationTest extends AbstractMqtt
         assertNotNull(device);
 
         SingleEntityFilter dtf = new SingleEntityFilter();
-        dtf.setSingleEntity(device.getId());
+        dtf.setSingleEntity(AliasEntityId.fromEntityId(device.getId()));
         String sharedKeysStr = "sharedStr,sharedBool,sharedDbl,sharedLong,sharedJson";
         List<String> sharedKeysList = List.of(sharedKeysStr.split(","));
         List<EntityKey> csKeys = getEntityKeys(clientKeysList, CLIENT_ATTRIBUTE);

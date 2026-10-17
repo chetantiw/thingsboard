@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -21,7 +7,8 @@ import {
   Component,
   ElementRef,
   EventEmitter,
-  Input, NgZone,
+  Input,
+  NgZone,
   OnChanges,
   OnDestroy,
   OnInit,
@@ -59,7 +46,7 @@ import { EntityTypeTranslation } from '@shared/models/entity-type.models';
 import { DialogService } from '@core/services/dialog.service';
 import { AddEntityDialogComponent } from './add-entity-dialog.component';
 import { AddEntityDialogData, EntityAction } from '@home/models/entity/entity-component.models';
-import { calculateIntervalStartEndTime, HistoryWindowType, Timewindow } from '@shared/models/time/time.models';
+import { getTimePageLinkInterval, Timewindow } from '@shared/models/time/time.models';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TbAnchorComponent } from '@shared/components/tb-anchor.component';
 import { isDefined, isEqual, isNotEmptyStr, isUndefined } from '@core/utils';
@@ -70,10 +57,11 @@ import { EntityDetailsPanelComponent } from '@home/components/entity/entity-deta
 import { FormBuilder } from '@angular/forms';
 
 @Component({
-  selector: 'tb-entities-table',
-  templateUrl: './entities-table.component.html',
-  styleUrls: ['./entities-table.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'tb-entities-table',
+    templateUrl: './entities-table.component.html',
+    styleUrls: ['./entities-table.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class EntitiesTableComponent extends PageComponent implements IEntitiesTableComponent, AfterViewInit, OnInit, OnChanges, OnDestroy {
 
@@ -259,7 +247,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
 
     if (this.entitiesTableConfig.useTimePageLink) {
       this.timewindow = this.entitiesTableConfig.defaultTimewindowInterval;
-      const interval = this.getTimePageLinkInterval();
+      const interval = getTimePageLinkInterval(this.timewindow);
       this.pageLink = new TimePageLink(10, 0, null, sortOrder,
         interval.startTime, interval.endTime);
     } else {
@@ -424,7 +412,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
     }
     if (this.entitiesTableConfig.useTimePageLink) {
       const timePageLink = this.pageLink as TimePageLink;
-      const interval = this.getTimePageLinkInterval();
+      const interval = getTimePageLinkInterval(this.timewindow);
       timePageLink.startTime = interval.startTime;
       timePageLink.endTime = interval.endTime;
     }
@@ -432,31 +420,6 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
     if (reloadEntity && this.isDetailsOpen && this.entityDetailsPanel) {
       this.entityDetailsPanel.reloadEntity();
     }
-  }
-
-  private getTimePageLinkInterval(): {startTime?: number; endTime?: number} {
-    const interval: {startTime?: number; endTime?: number} = {};
-    switch (this.timewindow.history.historyType) {
-      case HistoryWindowType.LAST_INTERVAL:
-        const currentTime = Date.now();
-        interval.startTime = currentTime - this.timewindow.history.timewindowMs;
-        interval.endTime = currentTime;
-        break;
-      case HistoryWindowType.FIXED:
-        interval.startTime = this.timewindow.history.fixedTimewindow.startTimeMs;
-        interval.endTime = this.timewindow.history.fixedTimewindow.endTimeMs;
-        break;
-      case HistoryWindowType.INTERVAL:
-        const startEndTime = calculateIntervalStartEndTime(this.timewindow.history.quickInterval);
-        interval.startTime = startEndTime[0];
-        interval.endTime = startEndTime[1];
-        break;
-      case HistoryWindowType.FOR_ALL_TIME:
-        interval.startTime = null;
-        interval.endTime = null;
-        break;
-    }
-    return interval;
   }
 
   private dataLoaded(col?: number, row?: number) {

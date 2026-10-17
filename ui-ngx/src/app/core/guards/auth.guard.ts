@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Injectable, NgZone } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
@@ -104,6 +90,16 @@ export class AuthGuard  {
               }
               this.authService.logout();
               return of(this.authService.defaultUrl(false));
+            } else if (path === 'login.force-mfa') {
+              if (authState.authUser?.authority === Authority.MFA_CONFIGURATION_TOKEN) {
+                return this.authService.getAvailableTwoFaProviders().pipe(
+                  map(() => {
+                    return true;
+                  })
+                );
+              }
+              this.authService.logout();
+              return of(this.authService.defaultUrl(false));
             } else {
               return of(true);
             }
@@ -121,7 +117,7 @@ export class AuthGuard  {
             }
           }
           if (this.mobileService.isMobileApp() && !path.startsWith('dashboard.')) {
-            this.mobileService.handleMobileNavigation(path, params);
+            this.mobileService.handleMobileNavigation(path, params, lastChild.queryParams);
             return of(false);
           }
           if (authState.authUser.authority === Authority.PRE_VERIFICATION_TOKEN) {

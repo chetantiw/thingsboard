@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   Component,
   DestroyRef,
@@ -32,22 +18,23 @@ import { MapSettingsContext } from '@home/components/widget/lib/settings/common/
 import {
   WidgetActionSettingsPanelComponent
 } from '@home/components/widget/lib/settings/common/action/widget-action-settings-panel.component';
-import { MatButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { TranslateService } from '@ngx-translate/core';
 import { deepClone } from '@core/utils';
 
 @Component({
-  selector: 'tb-map-tooltip-tag-actions-panel',
-  templateUrl: './map-tooltip-tag-actions.component.html',
-  styleUrls: ['./map-tooltip-tag-actions.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => MapTooltipTagActionsComponent),
-      multi: true
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-map-tooltip-tag-actions-panel',
+    templateUrl: './map-tooltip-tag-actions.component.html',
+    styleUrls: ['./map-tooltip-tag-actions.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => MapTooltipTagActionsComponent),
+            multi: true
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class MapTooltipTagActionsComponent implements ControlValueAccessor, OnInit {
 
@@ -108,7 +95,7 @@ export class MapTooltipTagActionsComponent implements ControlValueAccessor, OnIn
     }
   }
 
-  addAction($event: Event, matButton: MatButton): void {
+  addAction($event: Event, matButton: MatIconButton): void {
     if ($event) {
       $event.stopPropagation();
     }
@@ -127,7 +114,7 @@ export class MapTooltipTagActionsComponent implements ControlValueAccessor, OnIn
     });
   }
 
-  editAction($event: Event, matButton: MatButton, index: number): void {
+  editAction($event: Event, matButton: MatIconButton, index: number): void {
     if ($event) {
       $event.stopPropagation();
     }
@@ -151,21 +138,23 @@ export class MapTooltipTagActionsComponent implements ControlValueAccessor, OnIn
     } else {
       const title = this.translate.instant(isAdd ? 'widgets.maps.data-layer.add-tooltip-tag-action' : 'widgets.maps.data-layer.edit-tooltip-tag-action');
       const applyTitle = this.translate.instant(isAdd ? 'action.add' : 'action.apply');
-      const ctx: any = {
-        widgetAction: action,
-        withName: true,
-        actionNames,
-        panelTitle: title,
-        applyTitle,
-        widgetType: widgetType.latest,
-        callbacks: this.context.callbacks
-      };
-      const widgetActionSettingsPanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, WidgetActionSettingsPanelComponent,
-        ['leftTopOnly', 'leftOnly', 'leftBottomOnly'], true, null,
-        ctx,
-        {},
-        {}, {}, true);
+      const widgetActionSettingsPanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: WidgetActionSettingsPanelComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: ['leftTopOnly', 'leftOnly', 'leftBottomOnly'],
+        context: {
+          widgetAction: action,
+          withName: true,
+          actionNames,
+          panelTitle: title,
+          applyTitle,
+          widgetType: widgetType.latest,
+          callbacks: this.context.callbacks
+        },
+        isModal: true
+      });
       widgetActionSettingsPanelPopover.tbComponentRef.instance.widgetActionApplied.subscribe((widgetAction) => {
         widgetActionSettingsPanelPopover.hide();
         callback(widgetAction);

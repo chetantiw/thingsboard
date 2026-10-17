@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { NgModule, SecurityContext } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FooterComponent } from '@shared/components/footer.component';
@@ -64,10 +50,12 @@ import { ShareButtonDirective } from 'ngx-sharebuttons';
 import { HotkeyModule } from 'angular2-hotkeys';
 import { ColorPickerModule } from '@iplab/ngx-color-picker';
 import { NgxHmCarouselComponent, NgxHmCarouselDynamicDirective, NgxHmCarouselItemDirective } from 'ngx-hm-carousel';
-import { EditorModule, TINYMCE_SCRIPT_SRC } from '@tinymce/tinymce-angular';
+import { EditorModule, HUGERTE_SCRIPT_SRC } from '@hugerte/hugerte-angular';
+import { HUGERTE_ASSETS_PATH } from '@shared/models/hugerte/hugerte.models';
 import { UserMenuComponent } from '@shared/components/user-menu.component';
 import { TruncateWithTooltipDirective } from '@shared/directives/truncate-with-tooltip.directive';
 import { ContextMenuDirective } from '@shared/directives/context-menu.directive';
+import { ChipOverflowDirective } from '@shared/directives/chip-overflow.directive';
 import { NospacePipe } from '@shared/pipe/nospace.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 import { TbCheckboxComponent } from '@shared/components/tb-checkbox.component';
@@ -146,7 +134,6 @@ import { QueueAutocompleteComponent } from '@shared/components/queue/queue-autoc
 import { ContactComponent } from '@shared/components/contact.component';
 import { TimezoneSelectComponent } from '@shared/components/time/timezone-select.component';
 import { FileSizePipe } from '@shared/pipe/file-size.pipe';
-import { WidgetsBundleSearchComponent } from '@shared/components/widgets-bundle-search.component';
 import { SelectableColumnsPipe } from '@shared/pipe/selectable-columns.pipe';
 import { QuickTimeIntervalComponent } from '@shared/components/time/quick-time-interval.component';
 import { OtaPackageAutocompleteComponent } from '@shared/components/ota-package/ota-package-autocomplete.component';
@@ -185,6 +172,7 @@ import { ToggleHeaderComponent, ToggleOption } from '@shared/components/toggle-h
 import { RuleChainSelectComponent } from '@shared/components/rule-chain/rule-chain-select.component';
 import { ToggleSelectComponent } from '@shared/components/toggle-select.component';
 import { UnitInputComponent } from '@shared/components/unit-input.component';
+import { UnitSettingsPanelComponent } from '@shared/components/unit-settings-panel.component';
 import { MaterialIconsComponent } from '@shared/components/material-icons.component';
 import { ColorPickerPanelComponent } from '@shared/components/color-picker/color-picker-panel.component';
 import { TbIconComponent } from '@shared/components/icon.component';
@@ -219,13 +207,32 @@ import { CountryData } from '@shared/models/country.models';
 import { SvgXmlComponent } from '@shared/components/svg-xml.component';
 import { DatapointsLimitComponent } from '@shared/components/time/datapoints-limit.component';
 import { AggregationTypeSelectComponent } from '@shared/components/time/aggregation/aggregation-type-select.component';
-import { AggregationOptionsConfigPanelComponent } from '@shared/components/time/aggregation/aggregation-options-config-panel.component';
+import {
+  AggregationOptionsConfigPanelComponent
+} from '@shared/components/time/aggregation/aggregation-options-config-panel.component';
 import { IntervalOptionsConfigPanelComponent } from '@shared/components/time/interval-options-config-panel.component';
-import { GroupingIntervalOptionsComponent } from '@shared/components/time/aggregation/grouping-interval-options.component';
+import {
+  GroupingIntervalOptionsComponent
+} from '@shared/components/time/aggregation/grouping-interval-options.component';
 import { JsFuncModulesComponent } from '@shared/components/js-func-modules.component';
 import { JsFuncModuleRowComponent } from '@shared/components/js-func-module-row.component';
 import { EntityKeyAutocompleteComponent } from '@shared/components/entity/entity-key-autocomplete.component';
 import { DurationLeftPipe } from '@shared/pipe/duration-left.pipe';
+import { MqttVersionSelectComponent } from '@shared/components/mqtt-version-select.component';
+import { PasswordRequirementsTooltipComponent } from '@shared/components/password-requirements-tooltip.component';
+import { StringPatternAutocompleteComponent } from '@shared/components/string-pattern-autocomplete.component';
+import { TimeUnitInputComponent } from '@shared/components/time-unit-input.component';
+import { DateExpirationPipe } from '@shared/pipe/date-expiration.pipe';
+import { EntityLimitExceededDialogComponent } from '@shared/components/dialog/entity-limit-exceeded-dialog.component';
+import { DynamicMatDialogModule } from '@shared/components/dialog/dynamic/dynamic-dialog.module';
+import { MAT_BUTTON_TOGGLE_DEFAULT_OPTIONS } from '@angular/material/button-toggle';
+import { RgbaInputComponent } from '@shared/components/color-picker/rgba-input.component';
+import { HslaInputComponent } from '@shared/components/color-picker/hsla-input.component';
+import { InputChangeDirective } from '@shared/components/color-picker/input-change.directive';
+import { PhotoSwipeGalleryDirective } from '@shared/directives/photoswipe-gallery.directive';
+import {
+  AutocompleteAutoScrollRepositionDirective
+} from '@shared/directives/autocomplete-auto-scroll-reposition.directive';
 
 export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService) {
   return markedOptionsService;
@@ -234,6 +241,7 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
 @NgModule({
   providers: [
     DatePipe,
+    SelectableColumnsPipe,
     MillisecondsToTimeStringPipe,
     EnumToArrayPipe,
     HighlightPipe,
@@ -251,8 +259,8 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
       useValue: Flow
     },
     {
-      provide: TINYMCE_SCRIPT_SRC,
-      useValue: 'assets/tinymce/tinymce.min.js'
+      provide: HUGERTE_SCRIPT_SRC,
+      useValue: `${HUGERTE_ASSETS_PATH}/hugerte.min.js`
     },
     {
       provide: MAT_DATE_LOCALE,
@@ -281,6 +289,13 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
       provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
       useValue: {
         disableTooltipInteractivity: true
+      }
+    },
+    {
+      provide: MAT_BUTTON_TOGGLE_DEFAULT_OPTIONS,
+      useValue: {
+        hideSingleSelectionIndicator: true,
+        hideMultipleSelectionIndicator: true
       }
     },
     CountryData
@@ -361,6 +376,7 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     TodoDialogComponent,
     ColorPickerDialogComponent,
     MaterialIconsDialogComponent,
+    EntityLimitExceededDialogComponent,
     ColorInputComponent,
     MaterialIconSelectComponent,
     NodeScriptTestDialogComponent,
@@ -374,6 +390,9 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     MarkdownEditorComponent,
     TruncateWithTooltipDirective,
     ContextMenuDirective,
+    ChipOverflowDirective,
+    PhotoSwipeGalleryDirective,
+    AutocompleteAutoScrollRepositionDirective,
     NospacePipe,
     MillisecondsToTimeStringPipe,
     EnumToArrayPipe,
@@ -388,13 +407,13 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     ShortNumberPipe,
     SelectableColumnsPipe,
     KeyboardShortcutPipe,
+    DateExpirationPipe,
     TbJsonToStringDirective,
     JsonObjectEditDialogComponent,
     HistorySelectorComponent,
     EntityGatewaySelectComponent,
     ContactComponent,
     OtaPackageAutocompleteComponent,
-    WidgetsBundleSearchComponent,
     CopyButtonComponent,
     TogglePasswordComponent,
     WidgetButtonToggleComponent,
@@ -413,6 +432,7 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     ToggleOption,
     ToggleSelectComponent,
     UnitInputComponent,
+    UnitSettingsPanelComponent,
     StringAutocompleteComponent,
     MaterialIconsComponent,
     RuleChainSelectComponent,
@@ -437,6 +457,13 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     HexInputComponent,
     ScadaSymbolInputComponent,
     EntityKeyAutocompleteComponent,
+    MqttVersionSelectComponent,
+    PasswordRequirementsTooltipComponent,
+    TimeUnitInputComponent,
+    StringPatternAutocompleteComponent,
+    RgbaInputComponent,
+    HslaInputComponent,
+    InputChangeDirective
   ],
   imports: [
     CommonModule,
@@ -499,7 +526,8 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
         useFactory: MarkedOptionsFactory,
         deps: [MarkedOptionsService]
       }
-    })
+    }),
+    DynamicMatDialogModule
   ],
   exports: [
     FooterComponent,
@@ -624,6 +652,7 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     TodoDialogComponent,
     ColorPickerDialogComponent,
     MaterialIconsDialogComponent,
+    EntityLimitExceededDialogComponent,
     ColorInputComponent,
     MaterialIconSelectComponent,
     NodeScriptTestDialogComponent,
@@ -637,6 +666,9 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     MarkdownEditorComponent,
     TruncateWithTooltipDirective,
     ContextMenuDirective,
+    ChipOverflowDirective,
+    PhotoSwipeGalleryDirective,
+    AutocompleteAutoScrollRepositionDirective,
     NospacePipe,
     MillisecondsToTimeStringPipe,
     EnumToArrayPipe,
@@ -651,6 +683,7 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     SafePipe,
     ShortNumberPipe,
     SelectableColumnsPipe,
+    DateExpirationPipe,
     RouterModule,
     TranslateModule,
     JsonObjectEditDialogComponent,
@@ -658,7 +691,6 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     EntityGatewaySelectComponent,
     ContactComponent,
     OtaPackageAutocompleteComponent,
-    WidgetsBundleSearchComponent,
     CopyButtonComponent,
     TogglePasswordComponent,
     WidgetButtonToggleComponent,
@@ -700,6 +732,11 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     WidgetButtonComponent,
     ScadaSymbolInputComponent,
     EntityKeyAutocompleteComponent,
+    MqttVersionSelectComponent,
+    PasswordRequirementsTooltipComponent,
+    TimeUnitInputComponent,
+    StringPatternAutocompleteComponent,
+    DynamicMatDialogModule
   ]
 })
 export class SharedModule { }

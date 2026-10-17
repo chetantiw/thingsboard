@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.provider;
 
 import lombok.RequiredArgsConstructor;
@@ -22,10 +9,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.thingsboard.server.common.data.queue.Queue;
 import org.thingsboard.server.common.msg.queue.ServiceType;
+import org.thingsboard.server.common.msg.queue.TopicPartitionInfo;
 import org.thingsboard.server.gen.js.JsInvokeProtos;
 import org.thingsboard.server.gen.transport.TransportProtos;
 import org.thingsboard.server.gen.transport.TransportProtos.CalculatedFieldStateProto;
 import org.thingsboard.server.gen.transport.TransportProtos.FromEdqsMsg;
+import org.thingsboard.server.gen.transport.TransportProtos.JobStatsMsg;
 import org.thingsboard.server.gen.transport.TransportProtos.ToEdqsMsg;
 import org.thingsboard.server.queue.TbQueueAdmin;
 import org.thingsboard.server.queue.TbQueueConsumer;
@@ -37,10 +26,10 @@ import org.thingsboard.server.queue.common.TbProtoQueueMsg;
 import org.thingsboard.server.queue.discovery.TbServiceInfoProvider;
 import org.thingsboard.server.queue.discovery.TopicService;
 import org.thingsboard.server.queue.edqs.EdqsConfig;
-import org.thingsboard.server.queue.edqs.EdqsQueue;
 import org.thingsboard.server.queue.memory.InMemoryStorage;
 import org.thingsboard.server.queue.memory.InMemoryTbQueueConsumer;
 import org.thingsboard.server.queue.memory.InMemoryTbQueueProducer;
+import org.thingsboard.server.queue.settings.TasksQueueConfig;
 import org.thingsboard.server.queue.settings.TbQueueCalculatedFieldSettings;
 import org.thingsboard.server.queue.settings.TbQueueCoreSettings;
 import org.thingsboard.server.queue.settings.TbQueueEdgeSettings;
@@ -66,6 +55,7 @@ public class InMemoryMonolithQueueFactory implements TbCoreQueueFactory, TbRuleE
     private final TbQueueEdgeSettings edgeSettings;
     private final TbQueueCalculatedFieldSettings calculatedFieldSettings;
     private final EdqsConfig edqsConfig;
+    private final TasksQueueConfig tasksQueueConfig;
     private final InMemoryStorage storage;
 
     @Override
@@ -134,7 +124,7 @@ public class InMemoryMonolithQueueFactory implements TbCoreQueueFactory, TbRuleE
     }
 
     @Override
-    public TbQueueConsumer<TbProtoQueueMsg<TransportProtos.ToCalculatedFieldMsg>> createToCalculatedFieldMsgConsumer() {
+    public TbQueueConsumer<TbProtoQueueMsg<TransportProtos.ToCalculatedFieldMsg>> createToCalculatedFieldMsgConsumer(TopicPartitionInfo tpi) {
         return new InMemoryTbQueueConsumer<>(storage, topicService.buildTopicName(calculatedFieldSettings.getEventTopic()));
     }
 
@@ -149,7 +139,7 @@ public class InMemoryMonolithQueueFactory implements TbCoreQueueFactory, TbRuleE
     }
 
     @Override
-    public TbQueueConsumer<TbProtoQueueMsg<TransportProtos.ToCalculatedFieldNotificationMsg>> createToCalculatedFieldNotificationsMsgConsumer() {
+    public TbQueueConsumer<TbProtoQueueMsg<TransportProtos.ToCalculatedFieldNotificationMsg>> createToCalculatedFieldNotificationMsgConsumer() {
         return new InMemoryTbQueueConsumer<>(storage, topicService.getCalculatedFieldNotificationsTopic(serviceInfoProvider.getServiceId()).getFullTopicName());
     }
 
@@ -239,8 +229,8 @@ public class InMemoryMonolithQueueFactory implements TbCoreQueueFactory, TbRuleE
     }
 
     @Override
-    public TbQueueProducer<TbProtoQueueMsg<ToEdqsMsg>> createEdqsMsgProducer(EdqsQueue queue) {
-        return new InMemoryTbQueueProducer<>(storage, queue.getTopic());
+    public TbQueueProducer<TbProtoQueueMsg<ToEdqsMsg>> createEdqsEventsProducer() {
+        return new InMemoryTbQueueProducer<>(storage, edqsConfig.getEventsTopic());
     }
 
     @Override
@@ -258,9 +248,13 @@ public class InMemoryMonolithQueueFactory implements TbCoreQueueFactory, TbRuleE
                 .build();
     }
 
+    @Override
+    public TbQueueConsumer<TbProtoQueueMsg<JobStatsMsg>> createJobStatsConsumer() {
+        return new InMemoryTbQueueConsumer<>(storage, tasksQueueConfig.getStatsTopic());
+    }
+
     @Scheduled(fixedRateString = "${queue.in_memory.stats.print-interval-ms:60000}")
     private void printInMemoryStats() {
         storage.printStats();
     }
-
 }

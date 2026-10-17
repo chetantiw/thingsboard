@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.edqs.util;
 
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -67,10 +53,10 @@ import static org.thingsboard.server.common.data.query.ComplexFilterPredicate.Co
 @Slf4j
 public class RepositoryUtils {
 
-    public static final Comparator<SortableEntityData> SORT_ASC = Comparator.comparing((SortableEntityData sed) -> Optional.ofNullable(sed.getSortValue()).orElse(""))
+    public static final Comparator<SortableEntityData> SORT_ASC = Comparator.comparing(SortableEntityData::getSortValue, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(sp -> sp.getId().toString());
 
-    public static final Comparator<SortableEntityData> SORT_DESC = Comparator.comparing((SortableEntityData sed) -> Optional.ofNullable(sed.getSortValue()).orElse(""))
+    public static final Comparator<SortableEntityData> SORT_DESC =  Comparator.comparing(SortableEntityData::getSortValue, Comparator.nullsFirst(Comparator.naturalOrder()))
             .thenComparing(sp -> sp.getId().toString()).reversed();
 
     public static EntityType resolveEntityType(EntityFilter entityFilter) {
@@ -249,11 +235,11 @@ public class RepositoryUtils {
         }
         return switch (predicate.getOperation()) {
             case EQUAL -> value.equals(predicateValue);
-            case STARTS_WITH -> value.startsWith(predicateValue);
-            case ENDS_WITH -> value.endsWith(predicateValue);
+            case STARTS_WITH -> toSqlLikePattern(predicateValue, "^", ".*").matcher(value).matches();
+            case ENDS_WITH -> toSqlLikePattern(predicateValue, ".*", "$").matcher(value).matches();
             case NOT_EQUAL -> !value.equals(predicateValue);
-            case CONTAINS -> value.contains(predicateValue);
-            case NOT_CONTAINS -> !value.contains(predicateValue);
+            case CONTAINS -> toSqlLikePattern(predicateValue, ".*", ".*").matcher(value).matches();
+            case NOT_CONTAINS -> !toSqlLikePattern(predicateValue, ".*", ".*").matcher(value).matches();
             case IN -> equalsAny(value, splitByCommaWithoutQuotes(predicateValue));
             case NOT_IN -> !equalsAny(value, splitByCommaWithoutQuotes(predicateValue));
         };
@@ -304,6 +290,15 @@ public class RepositoryUtils {
             return true;
         } else if (filterPredicates.getOperation() == OR) {
             for (KeyFilterPredicate filterPredicate : filterPredicates.getPredicates()) {
+
+                // Emulate the SQL-like behavior of ThingsBoard's Entity Data Query service:
+                // for COMPLEX filters, return no results if filter value is empty
+                if (filterPredicate instanceof StringFilterPredicate stringFilterPredicate) {
+                    if (StringUtils.isEmpty(stringFilterPredicate.getValue().getValue())) {
+                        continue;
+                    }
+                }
+
                 if (simpleKeyFilter.check(value, filterPredicate)) {
                     return true;
                 }
@@ -314,23 +309,32 @@ public class RepositoryUtils {
         }
     }
 
-    public static Pattern toSqlLikePattern(String nameFilter) {
-        if (StringUtils.isNotBlank(nameFilter)) {
-            boolean percentSymbolOnStart = nameFilter.startsWith("%");
-            boolean percentSymbolOnEnd = nameFilter.endsWith("%");
-            if (percentSymbolOnStart) {
-                nameFilter = nameFilter.substring(1);
-            }
-            if (percentSymbolOnEnd) {
-                nameFilter = nameFilter.substring(0, nameFilter.length() - 1);
-            }
-            if (percentSymbolOnStart || percentSymbolOnEnd) {
-                return Pattern.compile((percentSymbolOnStart ? ".*" : "") + Pattern.quote(nameFilter) + (percentSymbolOnEnd ? ".*" : ""), Pattern.CASE_INSENSITIVE);
-            } else {
-                return Pattern.compile(Pattern.quote(nameFilter) + ".*", Pattern.CASE_INSENSITIVE);
-            }
+    public static Pattern toEntityNameSqlLikePattern(String filter) {
+        if (StringUtils.isNotBlank(filter)) {
+            return toSqlLikePattern(filter, "", ".*", true);
         }
         return null;
+    }
+
+    private static Pattern toSqlLikePattern(String value, String prefix, String suffix) {
+        return toSqlLikePattern(value, prefix, suffix, false);
+    }
+
+    private static Pattern toSqlLikePattern(String value, String prefix, String suffix, boolean ignoreCase) {
+        String regexValue;
+        if (value.contains("%") || value.contains("_")) {
+            regexValue = value
+                    .replace("_", ".")
+                    .replace("%", ".*");
+            if ("^".equals(prefix)) {
+                regexValue = "^" + regexValue + (regexValue.endsWith(".*") ? "" : ".*");
+            } else if ("$".equals(suffix)) {
+                regexValue = (regexValue.startsWith(".*") ? "" : ".*") + regexValue + "$";
+            }
+        } else {
+            regexValue = prefix + Pattern.quote(value) + suffix;
+        }
+        return ignoreCase ? Pattern.compile(regexValue, Pattern.CASE_INSENSITIVE) : Pattern.compile(regexValue);
     }
 
     @FunctionalInterface
@@ -344,28 +348,15 @@ public class RepositoryUtils {
         if (dp != null) {
             return new TsValue(dp.getTs() > 0 ? dp.getTs() : ts, dp.valueToString());
         } else {
-            return new TsValue(ts, "");
+            return TsValue.EMPTY;
         }
     }
 
-    public static String getSortValue(EntityData entity, DataKey sortKey) {
+    public static DataPoint getSortValue(EntityData entity, DataKey sortKey, QueryContext queryContext) {
         if (sortKey == null) {
             return null;
         }
-        switch (sortKey.type()) {
-            case ENTITY_FIELD -> {
-                return entity.getField(sortKey.key());
-            }
-            case ATTRIBUTE, CLIENT_ATTRIBUTE, SHARED_ATTRIBUTE, SERVER_ATTRIBUTE -> {
-                var dp = entity.getAttr(sortKey.keyId(), sortKey.type());
-                return dp != null ? dp.valueToString() : "";
-            }
-            case TIME_SERIES -> {
-                var dp = entity.getTs(sortKey.keyId());
-                return dp != null ? dp.valueToString() : "";
-            }
-            default -> throw new IllegalStateException("toSortKey is not implemented for type: " + sortKey.type());
-        }
+       return entity.getDataPoint(sortKey, queryContext);
     }
 
     public static boolean checkFilters(EdqsQuery query, EntityData entity) {

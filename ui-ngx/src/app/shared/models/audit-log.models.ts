@@ -1,25 +1,12 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { BaseData } from './base-data';
 import { AuditLogId } from './id/audit-log-id';
 import { CustomerId } from './id/customer-id';
 import { EntityId } from './id/entity-id';
 import { UserId } from './id/user-id';
 import { TenantId } from './id/tenant-id';
+import { isArraysEqualIgnoreUndefined } from "@core/utils";
 
 export enum AuditLogMode {
   TENANT,
@@ -64,7 +51,10 @@ export enum ActionType {
   TIMESERIES_DELETED = 'TIMESERIES_DELETED',
   ASSIGNED_TO_EDGE = 'ASSIGNED_TO_EDGE',
   UNASSIGNED_FROM_EDGE = 'UNASSIGNED_FROM_EDGE',
-  SMS_SENT = 'SMS_SENT'
+  SMS_SENT = 'SMS_SENT',
+  COMMUNITY_GRANT_OFFLINE_CHECKER_RUN = 'COMMUNITY_GRANT_OFFLINE_CHECKER_RUN',
+  COMMUNITY_GRANT_REQUEST_ACCESS = 'COMMUNITY_GRANT_REQUEST_ACCESS',
+  COMMUNITY_GRANT_ENROLLMENT = 'COMMUNITY_GRANT_ENROLLMENT'
 }
 
 export enum ActionStatus {
@@ -110,6 +100,9 @@ export const actionTypeTranslations = new Map<ActionType, string>(
     [ActionType.ASSIGNED_TO_EDGE, 'audit-log.type-assigned-to-edge'],
     [ActionType.UNASSIGNED_FROM_EDGE, 'audit-log.type-unassigned-from-edge'],
     [ActionType.SMS_SENT, 'audit-log.type-sms-sent'],
+    [ActionType.COMMUNITY_GRANT_OFFLINE_CHECKER_RUN, 'audit-log.type-community-grant-offline-checker-run'],
+    [ActionType.COMMUNITY_GRANT_REQUEST_ACCESS, 'audit-log.type-community-grant-request-access'],
+    [ActionType.COMMUNITY_GRANT_ENROLLMENT, 'audit-log.type-community-grant-enrollment'],
   ]
 );
 
@@ -132,3 +125,11 @@ export interface AuditLog extends BaseData<AuditLogId> {
   actionStatus: ActionStatus;
   actionFailureDetails: string;
 }
+
+export interface AuditLogFilter {
+  actionTypes: string[];
+}
+
+export const auditLogFilterEquals = (filter1?: AuditLogFilter, filter2?: AuditLogFilter): boolean => {
+  return isArraysEqualIgnoreUndefined(filter1.actionTypes, filter2.actionTypes);
+};

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.msg;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -32,6 +19,7 @@ import org.thingsboard.server.common.data.id.RuleChainId;
 import org.thingsboard.server.common.data.id.RuleNodeId;
 import org.thingsboard.server.common.data.msg.TbMsgType;
 import org.thingsboard.server.common.msg.gen.MsgProtos;
+import org.thingsboard.server.common.msg.gen.MsgProtos.TbMsgProto;
 import org.thingsboard.server.common.msg.queue.TbMsgCallback;
 
 import java.io.Serializable;
@@ -40,9 +28,6 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * Created by ashvayka on 13.01.18.
- */
 @Data
 @Slf4j
 public final class TbMsg implements Serializable {
@@ -109,11 +94,10 @@ public final class TbMsg implements Serializable {
                 .build();
     }
 
-    public TbMsg copyWithNewCtx() {
+    public TbMsgBuilder copyWithNewCtx() {
         return copy()
                 .ctx(ctx.copy())
-                .callback(TbMsgCallback.EMPTY)
-                .build();
+                .callback(TbMsgCallback.EMPTY);
     }
 
     private TbMsg(String queueName, UUID id, long ts, TbMsgType internalType, String type, EntityId originator, CustomerId customerId, TbMsgMetaData metaData, TbMsgDataType dataType, String data,
@@ -151,12 +135,8 @@ public final class TbMsg implements Serializable {
         this.callback = Objects.requireNonNullElse(callback, TbMsgCallback.EMPTY);
     }
 
-    public static ByteString toByteString(TbMsg msg) {
-        return ByteString.copyFrom(toByteArray(msg));
-    }
-
-    public static byte[] toByteArray(TbMsg msg) {
-        MsgProtos.TbMsgProto.Builder builder = MsgProtos.TbMsgProto.newBuilder();
+    public static TbMsgProto toProto(TbMsg msg) {
+        TbMsgProto.Builder builder = TbMsgProto.newBuilder();
         builder.setId(msg.getId().toString());
         builder.setTs(msg.getTs());
         builder.setType(msg.getType());
@@ -205,56 +185,43 @@ public final class TbMsg implements Serializable {
         }
 
         builder.setCtx(msg.ctx.toProto());
-        return builder.build().toByteArray();
+        return builder.build();
     }
 
-    public static TbMsg fromBytes(String queueName, byte[] data, TbMsgCallback callback) {
-        try {
-            MsgProtos.TbMsgProto proto = MsgProtos.TbMsgProto.parseFrom(data);
-            TbMsgMetaData metaData = new TbMsgMetaData(proto.getMetaData().getDataMap());
-            EntityId entityId = EntityIdFactory.getByTypeAndUuid(proto.getEntityType(), new UUID(proto.getEntityIdMSB(), proto.getEntityIdLSB()));
-            CustomerId customerId = null;
-            RuleChainId ruleChainId = null;
-            RuleNodeId ruleNodeId = null;
-            UUID correlationId = null;
-            Integer partition = null;
-            List<CalculatedFieldId> calculatedFieldIds = new CopyOnWriteArrayList<>();
-            if (proto.getCustomerIdMSB() != 0L && proto.getCustomerIdLSB() != 0L) {
-                customerId = new CustomerId(new UUID(proto.getCustomerIdMSB(), proto.getCustomerIdLSB()));
-            }
-            if (proto.getRuleChainIdMSB() != 0L && proto.getRuleChainIdLSB() != 0L) {
-                ruleChainId = new RuleChainId(new UUID(proto.getRuleChainIdMSB(), proto.getRuleChainIdLSB()));
-            }
-            if (proto.getRuleNodeIdMSB() != 0L && proto.getRuleNodeIdLSB() != 0L) {
-                ruleNodeId = new RuleNodeId(new UUID(proto.getRuleNodeIdMSB(), proto.getRuleNodeIdLSB()));
-            }
-            if (proto.getCorrelationIdMSB() != 0L && proto.getCorrelationIdLSB() != 0L) {
-                correlationId = new UUID(proto.getCorrelationIdMSB(), proto.getCorrelationIdLSB());
-                partition = proto.getPartition();
-            }
-
-            for (MsgProtos.CalculatedFieldIdProto cfIdProto : proto.getCalculatedFieldsList()) {
-                CalculatedFieldId calculatedFieldId = new CalculatedFieldId(new UUID(
-                        cfIdProto.getCalculatedFieldIdMSB(),
-                        cfIdProto.getCalculatedFieldIdLSB()
-                ));
-                calculatedFieldIds.add(calculatedFieldId);
-            }
-
-            TbMsgProcessingCtx ctx;
-            if (proto.hasCtx()) {
-                ctx = TbMsgProcessingCtx.fromProto(proto.getCtx());
-            } else {
-                // Backward compatibility with unprocessed messages fetched from queue after update.
-                ctx = new TbMsgProcessingCtx(proto.getRuleNodeExecCounter());
-            }
-
-            TbMsgDataType dataType = TbMsgDataType.values()[proto.getDataType()];
-            return new TbMsg(queueName, UUID.fromString(proto.getId()), proto.getTs(), null, proto.getType(), entityId, customerId,
-                    metaData, dataType, proto.getData(), ruleChainId, ruleNodeId, correlationId, partition, calculatedFieldIds, ctx, callback);
-        } catch (InvalidProtocolBufferException e) {
-            throw new IllegalStateException("Could not parse protobuf for TbMsg", e);
+    public static TbMsg fromProto(String queueName, TbMsgProto proto, TbMsgCallback callback) {
+        TbMsgMetaData metaData = new TbMsgMetaData(proto.getMetaData().getDataMap());
+        EntityId entityId = EntityIdFactory.getByTypeAndUuid(proto.getEntityType(), new UUID(proto.getEntityIdMSB(), proto.getEntityIdLSB()));
+        CustomerId customerId = null;
+        RuleChainId ruleChainId = null;
+        RuleNodeId ruleNodeId = null;
+        UUID correlationId = null;
+        Integer partition = null;
+        List<CalculatedFieldId> calculatedFieldIds = new CopyOnWriteArrayList<>();
+        if (proto.getCustomerIdMSB() != 0L && proto.getCustomerIdLSB() != 0L) {
+            customerId = new CustomerId(new UUID(proto.getCustomerIdMSB(), proto.getCustomerIdLSB()));
         }
+        if (proto.getRuleChainIdMSB() != 0L && proto.getRuleChainIdLSB() != 0L) {
+            ruleChainId = new RuleChainId(new UUID(proto.getRuleChainIdMSB(), proto.getRuleChainIdLSB()));
+        }
+        if (proto.getRuleNodeIdMSB() != 0L && proto.getRuleNodeIdLSB() != 0L) {
+            ruleNodeId = new RuleNodeId(new UUID(proto.getRuleNodeIdMSB(), proto.getRuleNodeIdLSB()));
+        }
+        if (proto.getCorrelationIdMSB() != 0L && proto.getCorrelationIdLSB() != 0L) {
+            correlationId = new UUID(proto.getCorrelationIdMSB(), proto.getCorrelationIdLSB());
+            partition = proto.getPartition();
+        }
+
+        for (MsgProtos.CalculatedFieldIdProto cfIdProto : proto.getCalculatedFieldsList()) {
+            CalculatedFieldId calculatedFieldId = new CalculatedFieldId(new UUID(
+                    cfIdProto.getCalculatedFieldIdMSB(),
+                    cfIdProto.getCalculatedFieldIdLSB()
+            ));
+            calculatedFieldIds.add(calculatedFieldId);
+        }
+        TbMsgProcessingCtx ctx = TbMsgProcessingCtx.fromProto(proto.getCtx());
+        TbMsgDataType dataType = TbMsgDataType.values()[proto.getDataType()];
+        return new TbMsg(queueName, UUID.fromString(proto.getId()), proto.getTs(), null, proto.getType(), entityId, customerId,
+                metaData, dataType, proto.getData(), ruleChainId, ruleNodeId, correlationId, partition, calculatedFieldIds, ctx, callback);
     }
 
     public int getAndIncrementRuleNodeCounter() {
@@ -268,6 +235,10 @@ public final class TbMsg implements Serializable {
 
     public void pushToStack(RuleChainId ruleChainId, RuleNodeId ruleNodeId) {
         ctx.push(ruleChainId, ruleNodeId);
+    }
+
+    public boolean isAlreadyInStack(RuleChainId ruleChainId, RuleNodeId ruleNodeId) {
+        return ctx.isAlreadyInStack(ruleChainId, ruleNodeId);
     }
 
     public TbMsgProcessingStackItem popFormStack() {

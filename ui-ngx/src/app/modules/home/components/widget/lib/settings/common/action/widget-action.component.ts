@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ControlValueAccessor,
   FormControl,
@@ -26,7 +12,7 @@ import {
   ValidatorFn,
   Validators
 } from '@angular/forms';
-import { Component, ElementRef, forwardRef, Input, OnInit, ViewChild } from '@angular/core';
+import { Component, computed, ElementRef, forwardRef, input, Input, OnInit, ViewChild } from '@angular/core';
 import {
   MapItemType,
   mapItemTypeTranslationMap,
@@ -48,7 +34,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { PopoverPlacement, PopoverPlacements } from '@shared/components/popover.models';
 import {
   CustomActionEditorCompleter,
-  toCustomAction
+  toCustomAction,
+  toPlaceMapItemAction
 } from '@home/components/widget/lib/settings/common/action/custom-action.models';
 import { coerceBoolean } from '@shared/decorators/coercion';
 
@@ -65,21 +52,22 @@ const stateDisplayTypesTranslations = new Map<stateDisplayType, string>(
 );
 
 @Component({
-  selector: 'tb-widget-action',
-  templateUrl: './widget-action.component.html',
-  styleUrls: [],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => WidgetActionComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => WidgetActionComponent),
-      multi: true,
-    }
-  ]
+    selector: 'tb-widget-action',
+    templateUrl: './widget-action.component.html',
+    styleUrls: [],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => WidgetActionComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => WidgetActionComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class WidgetActionComponent implements ControlValueAccessor, OnInit, Validator {
 
@@ -101,19 +89,16 @@ export class WidgetActionComponent implements ControlValueAccessor, OnInit, Vali
   @Input()
   actionNames: string[];
 
-  @Input()
-  set additionalWidgetActionTypes(value: WidgetActionType[]) {
-    if (this.widgetActionFormGroup && !widgetActionTypes.includes(this.widgetActionFormGroup.get('type').value)) {
-      this.widgetActionFormGroup.get('type').setValue(WidgetActionType.doNothing);
-    }
-    if (value?.length) {
-      this.widgetActionTypes = widgetActionTypes.concat(value);
-    } else {
-      this.widgetActionTypes = widgetActionTypes;
-    }
-  }
+  additionalWidgetActionTypes = input<WidgetActionType[]>(null);
 
-  widgetActionTypes = widgetActionTypes;
+  actionTypes = computed(() => {
+    const predefinedActionTypes = widgetActionTypes;
+    if (this.additionalWidgetActionTypes()?.length) {
+      return predefinedActionTypes.concat(this.additionalWidgetActionTypes());
+    }
+    return predefinedActionTypes;
+  });
+
   widgetActionTypeTranslations = widgetActionTypeTranslationMap;
   widgetActionType = WidgetActionType;
 
@@ -190,9 +175,6 @@ export class WidgetActionComponent implements ControlValueAccessor, OnInit, Vali
     ).subscribe(() => {
       this.widgetActionUpdated();
     });
-    if (this.additionalWidgetActionTypes) {
-      this.widgetActionTypes = this.widgetActionTypes.concat(this.additionalWidgetActionTypes);
-    }
   }
 
   writeValue(widgetAction?: WidgetAction): void {
@@ -334,9 +316,10 @@ export class WidgetActionComponent implements ControlValueAccessor, OnInit, Vali
             'mapItemType',
             this.fb.control(action?.mapItemType ?? MapItemType.marker, [Validators.required])
           );
+          this.actionTypeFormGroup.addControl('mapItemTooltips', this.fb.control(action?.mapItemTooltips ?? {}));
           this.actionTypeFormGroup.addControl(
             'customAction',
-            this.fb.control(toCustomAction(action), [Validators.required])
+            this.fb.control(toPlaceMapItemAction(action), [Validators.required])
           );
           break;
       }
@@ -533,7 +516,8 @@ export class WidgetActionComponent implements ControlValueAccessor, OnInit, Vali
       result = {
         ...this.widgetActionFormGroup.value,
         ...this.actionTypeFormGroup.get('customAction').value,
-        mapItemType: this.actionTypeFormGroup.get('mapItemType').value
+        mapItemType: this.actionTypeFormGroup.get('mapItemType').value,
+        mapItemTooltips: this.actionTypeFormGroup.get('mapItemTooltips').value,
       };
     } else {
       result = {...this.widgetActionFormGroup.value, ...this.actionTypeFormGroup.value};

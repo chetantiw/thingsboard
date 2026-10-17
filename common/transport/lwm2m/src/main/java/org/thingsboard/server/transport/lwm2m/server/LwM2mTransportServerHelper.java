@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.lwm2m.server;
 
 import com.google.gson.JsonParser;
@@ -38,6 +25,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -180,8 +168,16 @@ public class LwM2mTransportServerHelper {
                 case BOOLEAN:
                     kvProto.setType(BOOLEAN_V).setBoolV((Boolean) value).build();
                     break;
-                case STRING:
                 case TIME:
+                    if (value instanceof Date) {
+                        kvProto.setType(TransportProtos.KeyValueType.LONG_V).setLongV(((Date) value).getTime());
+                    } else if (value instanceof Integer || value instanceof Long) {
+                        kvProto.setType(TransportProtos.KeyValueType.LONG_V).setLongV((long) (value));
+                    } else {
+                        kvProto.setType(TransportProtos.KeyValueType.STRING_V).setStringV(value.toString());
+                    }
+                    break;
+                case STRING:
                 case OPAQUE:
                 case OBJLNK:
                     kvProto.setType(TransportProtos.KeyValueType.STRING_V).setStringV((String) value);

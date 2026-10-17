@@ -1,23 +1,11 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.queue.processing;
 
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.thingsboard.common.util.ThingsBoardExecutors;
 import org.thingsboard.common.util.ThingsBoardThreadFactory;
@@ -25,16 +13,17 @@ import org.thingsboard.server.actors.ActorSystemContext;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.id.AssetId;
 import org.thingsboard.server.common.data.id.AssetProfileId;
-import org.thingsboard.server.common.data.id.CalculatedFieldId;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.DeviceProfileId;
+import org.thingsboard.server.common.data.id.TbResourceId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.id.TenantProfileId;
 import org.thingsboard.server.common.data.plugin.ComponentLifecycleEvent;
 import org.thingsboard.server.common.msg.plugin.ComponentLifecycleMsg;
 import org.thingsboard.server.common.msg.queue.ServiceType;
 import org.thingsboard.server.common.msg.queue.TbCallback;
+import org.thingsboard.server.dao.resource.TbResourceDataCache;
 import org.thingsboard.server.dao.tenant.TbTenantProfileCache;
 import org.thingsboard.server.queue.TbQueueConsumer;
 import org.thingsboard.server.queue.common.TbProtoQueueMsg;
@@ -44,7 +33,6 @@ import org.thingsboard.server.queue.discovery.TbApplicationEventListener;
 import org.thingsboard.server.queue.discovery.event.PartitionChangeEvent;
 import org.thingsboard.server.queue.util.AfterStartUp;
 import org.thingsboard.server.service.apiusage.TbApiUsageStateService;
-import org.thingsboard.server.service.cf.CalculatedFieldCache;
 import org.thingsboard.server.service.profile.TbAssetProfileCache;
 import org.thingsboard.server.service.profile.TbDeviceProfileCache;
 import org.thingsboard.server.service.queue.TbPackCallback;
@@ -62,15 +50,16 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@Slf4j
 @RequiredArgsConstructor
 public abstract class AbstractConsumerService<N extends com.google.protobuf.GeneratedMessageV3> extends TbApplicationEventListener<PartitionChangeEvent> {
+
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     protected final ActorSystemContext actorContext;
     protected final TbTenantProfileCache tenantProfileCache;
     protected final TbDeviceProfileCache deviceProfileCache;
     protected final TbAssetProfileCache assetProfileCache;
-    protected final CalculatedFieldCache calculatedFieldCache;
+    protected final TbResourceDataCache tbResourceDataCache;
     protected final TbApiUsageStateService apiUsageStateService;
     protected final PartitionService partitionService;
     protected final ApplicationEventPublisher eventPublisher;
@@ -192,14 +181,9 @@ public abstract class AbstractConsumerService<N extends com.google.protobuf.Gene
             if (componentLifecycleMsg.getEvent() == ComponentLifecycleEvent.DELETED) {
                 apiUsageStateService.onCustomerDelete((CustomerId) componentLifecycleMsg.getEntityId());
             }
-        } else if (EntityType.CALCULATED_FIELD.equals(componentLifecycleMsg.getEntityId().getEntityType())) {
-            if (componentLifecycleMsg.getEvent() == ComponentLifecycleEvent.CREATED) {
-                calculatedFieldCache.addCalculatedField(tenantId, (CalculatedFieldId) componentLifecycleMsg.getEntityId());
-            } else if (componentLifecycleMsg.getEvent() == ComponentLifecycleEvent.UPDATED) {
-                calculatedFieldCache.updateCalculatedField(tenantId, (CalculatedFieldId) componentLifecycleMsg.getEntityId());
-            } else {
-                calculatedFieldCache.evict((CalculatedFieldId) componentLifecycleMsg.getEntityId());
-            }
+        } else if (EntityType.TB_RESOURCE.equals(componentLifecycleMsg.getEntityId().getEntityType())) {
+            tbResourceDataCache.evictResourceData(tenantId, new TbResourceId(componentLifecycleMsg.getEntityId().getId()));
+            return;
         }
 
         eventPublisher.publishEvent(componentLifecycleMsg);

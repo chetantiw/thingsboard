@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.telemetry;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -28,7 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.thingsboard.common.util.DonAsynchron;
-import org.thingsboard.common.util.ThingsBoardThreadFactory;
+import org.thingsboard.common.util.ThingsBoardExecutors;
 import org.thingsboard.rule.engine.api.AttributesDeleteRequest;
 import org.thingsboard.rule.engine.api.AttributesSaveRequest;
 import org.thingsboard.rule.engine.api.DeviceStateManager;
@@ -45,6 +32,7 @@ import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.kv.AttributeKvEntry;
+import org.thingsboard.server.common.data.kv.AttributesSaveResult;
 import org.thingsboard.server.common.data.kv.KvEntry;
 import org.thingsboard.server.common.data.kv.TimeseriesSaveResult;
 import org.thingsboard.server.common.data.kv.TsKvEntry;
@@ -62,14 +50,12 @@ import org.thingsboard.server.service.state.DefaultDeviceStateService;
 import org.thingsboard.server.service.subscription.TbSubscriptionUtils;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import static java.util.Comparator.comparing;
@@ -96,6 +82,8 @@ public class DefaultTelemetrySubscriptionService extends AbstractSubscriptionSer
 
     @Value("${sql.ts.value_no_xss_validation:false}")
     private boolean valueNoXssValidation;
+    @Value("${sql.ts.callback_thread_pool_size:12}")
+    private int callbackThreadPoolSize;
 
     public DefaultTelemetrySubscriptionService(AttributesService attrService,
                                                TimeseriesService tsService,
@@ -116,7 +104,7 @@ public class DefaultTelemetrySubscriptionService extends AbstractSubscriptionSer
     @PostConstruct
     public void initExecutor() {
         super.initExecutor();
-        tsCallBackExecutor = Executors.newSingleThreadExecutor(ThingsBoardThreadFactory.forName("ts-service-ts-callback"));
+        tsCallBackExecutor = ThingsBoardExecutors.newWorkStealingPool(callbackThreadPoolSize, "ts-service-ts-callback");
     }
 
     @Override
@@ -177,8 +165,8 @@ public class DefaultTelemetrySubscriptionService extends AbstractSubscriptionSer
         if (strategy.sendWsUpdate()) {
             addWsCallback(resultFuture, success -> onTimeSeriesUpdate(tenantId, entityId, request.getEntries()));
         }
-        if (strategy.saveLatest()) {
-            copyLatestToEntityViews(tenantId, entityId, request.getEntries());
+        if (strategy.saveLatest() && entityId.getEntityType().isOneOf(EntityType.DEVICE, EntityType.ASSET)) {
+            addMainCallback(resultFuture, __ -> copyLatestToEntityViews(tenantId, entityId, request.getEntries()));
         }
         return resultFuture;
     }
@@ -190,17 +178,16 @@ public class DefaultTelemetrySubscriptionService extends AbstractSubscriptionSer
     }
 
     @Override
-    public void saveAttributesInternal(AttributesSaveRequest request) {
-        log.trace("Executing saveInternal [{}]", request);
+    public ListenableFuture<AttributesSaveResult> saveAttributesInternal(AttributesSaveRequest request) {
         TenantId tenantId = request.getTenantId();
         EntityId entityId = request.getEntityId();
         AttributesSaveRequest.Strategy strategy = request.getStrategy();
-        ListenableFuture<List<Long>> resultFuture;
+        ListenableFuture<AttributesSaveResult> resultFuture;
 
         if (strategy.saveAttributes()) {
             resultFuture = attrService.save(tenantId, entityId, request.getScope(), request.getEntries());
         } else {
-            resultFuture = Futures.immediateFuture(Collections.emptyList());
+            resultFuture = Futures.immediateFuture(AttributesSaveResult.EMPTY);
         }
 
         addMainCallback(resultFuture, result -> {
@@ -228,6 +215,7 @@ public class DefaultTelemetrySubscriptionService extends AbstractSubscriptionSer
         if (strategy.sendWsUpdate()) {
             addWsCallback(resultFuture, success -> onAttributesUpdate(tenantId, entityId, request.getScope().name(), request.getEntries()));
         }
+        return resultFuture;
     }
 
     private static boolean shouldSendSharedAttributesUpdatedNotification(AttributesSaveRequest request) {
@@ -333,58 +321,56 @@ public class DefaultTelemetrySubscriptionService extends AbstractSubscriptionSer
     }
 
     private void copyLatestToEntityViews(TenantId tenantId, EntityId entityId, List<TsKvEntry> ts) {
-        if (EntityType.DEVICE.equals(entityId.getEntityType()) || EntityType.ASSET.equals(entityId.getEntityType())) {
-            Futures.addCallback(this.tbEntityViewService.findEntityViewsByTenantIdAndEntityIdAsync(tenantId, entityId),
-                    new FutureCallback<>() {
-                        @Override
-                        public void onSuccess(@Nullable List<EntityView> result) {
-                            if (result != null && !result.isEmpty()) {
-                                Map<String, List<TsKvEntry>> tsMap = new HashMap<>();
-                                for (TsKvEntry entry : ts) {
-                                    tsMap.computeIfAbsent(entry.getKey(), s -> new ArrayList<>()).add(entry);
+        Futures.addCallback(tbEntityViewService.findEntityViewsByTenantIdAndEntityIdAsync(tenantId, entityId),
+                new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(@Nullable List<EntityView> result) {
+                        if (result != null && !result.isEmpty()) {
+                            Map<String, List<TsKvEntry>> tsMap = new HashMap<>();
+                            for (TsKvEntry entry : ts) {
+                                tsMap.computeIfAbsent(entry.getKey(), s -> new ArrayList<>()).add(entry);
+                            }
+                            for (EntityView entityView : result) {
+                                List<String> keys = entityView.getKeys() != null && entityView.getKeys().getTimeseries() != null ?
+                                        entityView.getKeys().getTimeseries() : new ArrayList<>(tsMap.keySet());
+                                List<TsKvEntry> entityViewLatest = new ArrayList<>();
+                                long startTs = entityView.getStartTimeMs();
+                                long endTs = entityView.getEndTimeMs() == 0 ? Long.MAX_VALUE : entityView.getEndTimeMs();
+                                for (String key : keys) {
+                                    List<TsKvEntry> entries = tsMap.get(key);
+                                    if (entries != null) {
+                                        Optional<TsKvEntry> tsKvEntry = entries.stream()
+                                                .filter(entry -> entry.getTs() > startTs && entry.getTs() <= endTs)
+                                                .max(comparingLong(TsKvEntry::getTs));
+                                        tsKvEntry.ifPresent(entityViewLatest::add);
+                                    }
                                 }
-                                for (EntityView entityView : result) {
-                                    List<String> keys = entityView.getKeys() != null && entityView.getKeys().getTimeseries() != null ?
-                                            entityView.getKeys().getTimeseries() : new ArrayList<>(tsMap.keySet());
-                                    List<TsKvEntry> entityViewLatest = new ArrayList<>();
-                                    long startTs = entityView.getStartTimeMs();
-                                    long endTs = entityView.getEndTimeMs() == 0 ? Long.MAX_VALUE : entityView.getEndTimeMs();
-                                    for (String key : keys) {
-                                        List<TsKvEntry> entries = tsMap.get(key);
-                                        if (entries != null) {
-                                            Optional<TsKvEntry> tsKvEntry = entries.stream()
-                                                    .filter(entry -> entry.getTs() > startTs && entry.getTs() <= endTs)
-                                                    .max(comparingLong(TsKvEntry::getTs));
-                                            tsKvEntry.ifPresent(entityViewLatest::add);
-                                        }
-                                    }
-                                    if (!entityViewLatest.isEmpty()) {
-                                        saveTimeseries(TimeseriesSaveRequest.builder()
-                                                .tenantId(tenantId)
-                                                .entityId(entityView.getId())
-                                                .entries(entityViewLatest)
-                                                .strategy(TimeseriesSaveRequest.Strategy.LATEST_AND_WS)
-                                                .callback(new FutureCallback<>() {
-                                                    @Override
-                                                    public void onSuccess(@Nullable Void tmp) {}
+                                if (!entityViewLatest.isEmpty()) {
+                                    saveTimeseries(TimeseriesSaveRequest.builder()
+                                            .tenantId(tenantId)
+                                            .entityId(entityView.getId())
+                                            .entries(entityViewLatest)
+                                            .strategy(TimeseriesSaveRequest.Strategy.LATEST_AND_WS)
+                                            .callback(new FutureCallback<>() {
+                                                @Override
+                                                public void onSuccess(@Nullable Void tmp) {}
 
-                                                    @Override
-                                                    public void onFailure(Throwable t) {
-                                                        log.error("[{}][{}] Failed to save entity view latest timeseries: {}", tenantId, entityView.getId(), entityViewLatest, t);
-                                                    }
-                                                })
-                                                .build());
-                                    }
+                                                @Override
+                                                public void onFailure(Throwable t) {
+                                                    log.error("[{}][{}] Failed to save entity view latest timeseries: {}", tenantId, entityView.getId(), entityViewLatest, t);
+                                                }
+                                            })
+                                            .build());
                                 }
                             }
                         }
+                    }
 
-                        @Override
-                        public void onFailure(Throwable t) {
-                            log.error("Error while finding entity views by tenantId and entityId", t);
-                        }
-                    }, MoreExecutors.directExecutor());
-        }
+                    @Override
+                    public void onFailure(Throwable t) {
+                        log.error("Error while finding entity views by tenantId and entityId", t);
+                    }
+                }, MoreExecutors.directExecutor());
     }
 
     private void onAttributesUpdate(TenantId tenantId, EntityId entityId, String scope, List<AttributeKvEntry> attributes) {

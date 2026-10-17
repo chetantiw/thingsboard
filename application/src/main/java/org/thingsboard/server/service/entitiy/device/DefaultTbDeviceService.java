@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.entitiy.device;
 
 import com.google.common.util.concurrent.Futures;
@@ -25,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.thingsboard.server.common.data.Customer;
 import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.EntityType;
+import org.thingsboard.server.common.data.NameConflictStrategy;
 import org.thingsboard.server.common.data.Tenant;
 import org.thingsboard.server.common.data.User;
 import org.thingsboard.server.common.data.audit.ActionType;
@@ -56,10 +44,15 @@ public class DefaultTbDeviceService extends AbstractTbEntityService implements T
 
     @Override
     public Device save(Device device, String accessToken, User user) throws Exception {
+        return save(device, accessToken, NameConflictStrategy.DEFAULT, user);
+    }
+
+    @Override
+    public Device save(Device device, String accessToken, NameConflictStrategy nameConflictStrategy, User user) throws Exception {
         ActionType actionType = device.getId() == null ? ActionType.ADDED : ActionType.UPDATED;
         TenantId tenantId = device.getTenantId();
         try {
-            Device savedDevice = checkNotNull(deviceService.saveDeviceWithAccessToken(device, accessToken));
+            Device savedDevice = checkNotNull(deviceService.saveDeviceWithAccessToken(device, accessToken, nameConflictStrategy));
             autoCommit(user, savedDevice.getId());
             logEntityActionService.logEntityAction(tenantId, savedDevice.getId(), savedDevice, savedDevice.getCustomerId(),
                     actionType, user);
@@ -73,10 +66,15 @@ public class DefaultTbDeviceService extends AbstractTbEntityService implements T
 
     @Override
     public Device saveDeviceWithCredentials(Device device, DeviceCredentials credentials, User user) throws ThingsboardException {
+        return saveDeviceWithCredentials(device, credentials, NameConflictStrategy.DEFAULT, user);
+    }
+
+    @Override
+    public Device saveDeviceWithCredentials(Device device, DeviceCredentials credentials, NameConflictStrategy nameConflictStrategy, User user) throws ThingsboardException {
         ActionType actionType = device.getId() == null ? ActionType.ADDED : ActionType.UPDATED;
         TenantId tenantId = device.getTenantId();
         try {
-            Device savedDevice = checkNotNull(deviceService.saveDeviceWithCredentials(device, credentials));
+            Device savedDevice = checkNotNull(deviceService.saveDeviceWithCredentials(device, credentials, nameConflictStrategy));
             logEntityActionService.logEntityAction(tenantId, savedDevice.getId(), savedDevice, savedDevice.getCustomerId(),
                     actionType, user);
 

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -28,7 +15,7 @@ import org.mockito.Mockito;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ContextConfiguration;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.alarm.Alarm;
@@ -44,10 +31,13 @@ import org.thingsboard.server.dao.service.DaoSqlTest;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.thingsboard.server.common.data.alarm.AlarmCommentSubType.COMMENT_DELETED;
 
 @Slf4j
 @ContextConfiguration(classes = {AlarmCommentControllerTest.Config.class})
@@ -159,6 +149,25 @@ public class AlarmCommentControllerTest extends AbstractControllerTest {
     }
 
     @Test
+    public void testEditOthersAlarmCommentIsProhibited() throws Exception {
+        loginCustomerUser();
+        AlarmComment alarmComment = createAlarmComment(alarm.getId());
+
+        JsonNode newComment = JacksonUtil.newObjectNode().set("text", new TextNode("Second customer rewrite"));
+        alarmComment.setComment(newComment);
+
+        loginSecondCustomerUser();
+        doPost("/api/alarm/" + alarm.getId() + "/comment", alarmComment)
+                .andExpect(status().isForbidden())
+                .andExpect(statusReason(containsString("User is not allowed to edit other user's comment")));
+
+        loginTenantAdmin();
+        doPost("/api/alarm/" + alarm.getId() + "/comment", alarmComment)
+                .andExpect(status().isForbidden())
+                .andExpect(statusReason(containsString("User is not allowed to edit other user's comment")));
+    }
+
+    @Test
     public void testUpdateAlarmViaDifferentTenant() throws Exception {
         loginTenantAdmin();
         AlarmComment savedComment = createAlarmComment(alarm.getId());
@@ -204,13 +213,37 @@ public class AlarmCommentControllerTest extends AbstractControllerTest {
         doDelete("/api/alarm/" + alarm.getId() + "/comment/" + alarmComment.getId())
                 .andExpect(status().isOk());
 
-        AlarmComment expectedAlarmComment = AlarmComment.builder()
-                .alarmId(alarm.getId())
-                .type(AlarmCommentType.SYSTEM)
-                .comment(JacksonUtil.newObjectNode().put("text", String.format("User %s deleted his comment",
-                        CUSTOMER_USER_EMAIL)))
-                .build();
-        testLogEntityActionEntityEqClass(alarm, alarm.getId(), tenantId, customerId, customerUserId, CUSTOMER_USER_EMAIL, ActionType.DELETED_COMMENT, 1, expectedAlarmComment);
+        alarmComment.setType(AlarmCommentType.SYSTEM);
+        alarmComment.setUserId(null);
+        alarmComment.setComment(JacksonUtil.newObjectNode()
+                .put("text", String.format(COMMENT_DELETED.getText(), CUSTOMER_USER_EMAIL))
+                .put("subtype", COMMENT_DELETED.name())
+                .put("userName", CUSTOMER_USER_EMAIL));
+        testLogEntityActionEntityEqClass(alarm, alarm.getId(), tenantId, customerId, customerUserId, CUSTOMER_USER_EMAIL, ActionType.DELETED_COMMENT, 1, alarmComment);
+    }
+
+    @Test
+    public void testDeleteOthersAlarmCommentIsAllowedForAuthorOrTenantAdmin() throws Exception {
+        loginCustomerUser();
+        AlarmComment alarmComment = createAlarmComment(alarm.getId());
+
+        loginSecondCustomerUser();
+        Mockito.reset(tbClusterService, auditLogService);
+
+        doDelete("/api/alarm/" + alarm.getId() + "/comment/" + alarmComment.getId())
+                .andExpect(status().isForbidden())
+                .andExpect(statusReason(containsString("User is not allowed to delete other user's comment")));
+
+        loginTenantAdmin();
+        doDelete("/api/alarm/" + alarm.getId() + "/comment/" + alarmComment.getId())
+                .andExpect(status().isOk());
+        alarmComment.setType(AlarmCommentType.SYSTEM);
+        alarmComment.setUserId(null);
+        alarmComment.setComment(JacksonUtil.newObjectNode()
+                .put("text", String.format(COMMENT_DELETED.getText(), TENANT_ADMIN_EMAIL))
+                .put("subtype", COMMENT_DELETED.name())
+                .put("userName", TENANT_ADMIN_EMAIL));
+        testLogEntityActionEntityEqClass(alarm, alarm.getId(), tenantId, customerId, tenantAdminUserId, TENANT_ADMIN_EMAIL, ActionType.DELETED_COMMENT, 1, alarmComment);
     }
 
     @Test
@@ -223,13 +256,25 @@ public class AlarmCommentControllerTest extends AbstractControllerTest {
         doDelete("/api/alarm/" + alarm.getId() + "/comment/" + alarmComment.getId())
                 .andExpect(status().isOk());
 
-        AlarmComment expectedAlarmComment = AlarmComment.builder()
-                .alarmId(alarm.getId())
-                .type(AlarmCommentType.SYSTEM)
-                .comment(JacksonUtil.newObjectNode().put("text", String.format("User %s deleted his comment",
-                        TENANT_ADMIN_EMAIL)))
-                .build();
-        testLogEntityActionEntityEqClass(alarm, alarm.getId(), tenantId, customerId, tenantAdminUserId, TENANT_ADMIN_EMAIL, ActionType.DELETED_COMMENT, 1, expectedAlarmComment);
+        Optional<AlarmCommentInfo> systemCommentOpt = doGetTyped(
+                "/api/alarm/" + alarm.getId() + "/comment" + "?page=0&pageSize=10", new TypeReference<PageData<AlarmCommentInfo>>() {
+                }
+        ).getData().stream().filter(alarmCommentInfo -> alarmCommentInfo.getType().equals(AlarmCommentType.SYSTEM)).findFirst();
+        assertThat(systemCommentOpt).isPresent();
+        AlarmCommentInfo systemComment = systemCommentOpt.get();
+
+        assertThat(systemComment.getId()).isEqualTo(alarmComment.getId());
+        assertThat(systemComment.getType()).isEqualTo(AlarmCommentType.SYSTEM);
+        assertThat(systemComment.getComment().get("text").asText()).isEqualTo(String.format("Comment was deleted by user %s",
+                TENANT_ADMIN_EMAIL));
+
+        alarmComment.setType(AlarmCommentType.SYSTEM);
+        alarmComment.setUserId(null);
+        alarmComment.setComment(JacksonUtil.newObjectNode()
+                .put("text", String.format(COMMENT_DELETED.getText(), TENANT_ADMIN_EMAIL))
+                .put("subtype", COMMENT_DELETED.name())
+                .put("userName", TENANT_ADMIN_EMAIL));
+        testLogEntityActionEntityEqClass(alarm, alarm.getId(), tenantId, customerId, tenantAdminUserId, TENANT_ADMIN_EMAIL, ActionType.DELETED_COMMENT, 1, alarmComment);
     }
 
     @Test
@@ -273,7 +318,7 @@ public class AlarmCommentControllerTest extends AbstractControllerTest {
         final int size = 10;
         for (int i = 0; i < size; i++) {
             createdAlarmComments.add(
-                    createAlarmComment(alarm.getId(), RandomStringUtils.randomAlphanumeric(10))
+                    createAlarmComment(alarm.getId(), RandomStringUtils.secure().nextAlphanumeric(10))
             );
         }
 
@@ -304,7 +349,7 @@ public class AlarmCommentControllerTest extends AbstractControllerTest {
         List<AlarmComment> createdAlarmComments = new LinkedList<>();
         for (int i = 0; i < size; i++) {
             createdAlarmComments.add(
-                    createAlarmComment(alarm.getId(), RandomStringUtils.randomAlphanumeric(10))
+                    createAlarmComment(alarm.getId(), RandomStringUtils.secure().nextAlphanumeric(10))
             );
         }
 
@@ -354,6 +399,39 @@ public class AlarmCommentControllerTest extends AbstractControllerTest {
         AlarmCommentInfo alarmCommentInfo = pageData.getData().get(0);
         boolean equals = alarmComment.getId().equals(alarmCommentInfo.getId()) && alarmComment.getComment().equals(alarmCommentInfo.getComment());
         Assert.assertTrue("Created alarm doesn't match the found one!", equals);
+    }
+
+    @Test
+    public void testShouldNotCreateOrUpdateSystemAlarmComment() throws Exception {
+        loginTenantAdmin();
+
+        AlarmComment alarmComment = AlarmComment.builder()
+                .type(AlarmCommentType.SYSTEM)
+                .comment(JacksonUtil.newObjectNode().set("text", new TextNode("Acknowledged by tenant admin")))
+                .build();
+        AlarmComment created = doPost("/api/alarm/" + alarm.getId() + "/comment", alarmComment, AlarmComment.class);
+        assertThat(created.getType()).isEqualTo(AlarmCommentType.OTHER);
+
+        // acknowledge alarm to create system comment
+        doPost("/api/alarm/" + alarm.getId() + "/ack").andExpect(status().isOk());
+
+        Optional<AlarmCommentInfo> systemCommentOpt = doGetTyped(
+                "/api/alarm/" + alarm.getId() + "/comment" + "?page=0&pageSize=10", new TypeReference<PageData<AlarmCommentInfo>>() {
+                }
+        ).getData().stream().filter(alarmCommentInfo -> alarmCommentInfo.getType().equals(AlarmCommentType.SYSTEM)).findFirst();
+        assertThat(systemCommentOpt).isPresent();
+        AlarmCommentInfo systemComment = systemCommentOpt.get();
+
+        // system comment can't be updated with other type
+        systemComment.setType(AlarmCommentType.OTHER);
+        doPost("/api/alarm/" + alarm.getId() + "/comment", systemComment).andExpect(status().isBadRequest())
+                .andExpect(statusReason(containsString("System alarm comment can't be updated!")));
+
+        // system comment can't be updated with other text
+        systemComment.setType(AlarmCommentType.SYSTEM);
+        systemComment.setComment(JacksonUtil.newObjectNode().set("text", new TextNode("New system comment")));
+        doPost("/api/alarm/" + alarm.getId() + "/comment", systemComment).andExpect(status().isBadRequest())
+                .andExpect(statusReason(containsString("System alarm comment can't be updated!")));
     }
 
     private AlarmComment createAlarmComment(AlarmId alarmId, String text) {

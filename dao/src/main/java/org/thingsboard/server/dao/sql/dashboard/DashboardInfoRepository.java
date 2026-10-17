@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.dashboard;
 
 import org.springframework.data.domain.Page;
@@ -20,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.thingsboard.server.common.data.DashboardInfo;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.dao.model.sql.DashboardInfoEntity;
 
 import java.util.List;
@@ -87,12 +76,17 @@ public interface DashboardInfoRepository extends JpaRepository<DashboardInfoEnti
     )
     List<DashboardInfoEntity> findByImageLink(@Param("imageLink") String imageLink, @Param("limit") int limit);
 
-    @Query(value = "SELECT * FROM dashboard d WHERE d.tenant_id = :tenantId and d.configuration ILIKE CONCAT('%', :link, '%') limit :limit",
-            nativeQuery = true)
-    List<DashboardInfoEntity> findDashboardInfosByTenantIdAndResourceLink(@Param("tenantId") UUID tenantId, @Param("link") String link, @Param("limit") int limit);
+    @Query("SELECT new org.thingsboard.server.common.data.EntityInfo(d.id, 'DASHBOARD', d.title) " +
+            "FROM DashboardEntity d WHERE d.tenantId = :tenantId AND ilike(cast(d.configuration as string), CONCAT('%', :link, '%')) = true")
+    List<EntityInfo> findDashboardInfosByTenantIdAndResourceLink(@Param("tenantId") UUID tenantId,
+                                                                 @Param("link") String link,
+                                                                 Pageable pageable);
 
-    @Query(value = "SELECT * FROM dashboard d WHERE d.configuration ILIKE CONCAT('%', :link, '%') limit :limit",
-            nativeQuery = true)
-    List<DashboardInfoEntity> findDashboardInfosByResourceLink(@Param("link") String link, @Param("limit") int limit);
+    @Query("SELECT new org.thingsboard.server.common.data.EntityInfo(d.id, 'DASHBOARD', d.title) " +
+            "FROM DashboardEntity d WHERE ilike(cast(d.configuration as string), CONCAT('%', :link, '%')) = true")
+    List<EntityInfo> findDashboardInfosByResourceLink(@Param("link") String link,
+                                                      Pageable pageable);
+
+    List<DashboardInfoEntity> findByIdIn(List<UUID> dashboardIds);
 
 }

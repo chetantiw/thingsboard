@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component } from '@angular/core';
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
@@ -31,13 +17,15 @@ import {
   valueStepperTypeTranslations,
   ValueStepperWidgetSettings
 } from '@home/components/widget/lib/rpc/value-stepper-widget.models';
+import { getSourceTbUnitSymbol } from '@shared/models/unit.models';
 
 type ButtonAppearanceType = 'left' | 'right';
 
 @Component({
-  selector: 'tb-value-stepper-basic-config',
-  templateUrl: './value-stepper-basic-config.component.html',
-  styleUrls: ['../basic-config.scss']
+    selector: 'tb-value-stepper-basic-config',
+    templateUrl: './value-stepper-basic-config.component.html',
+    styleUrls: ['../basic-config.scss'],
+    standalone: false
 })
 export class ValueStepperBasicConfigComponent extends BasicWidgetConfigComponent {
 
@@ -218,7 +206,7 @@ export class ValueStepperBasicConfigComponent extends BasicWidgetConfigComponent
   }
 
   private _valuePreviewFn(): string {
-    const units: string = this.valueStepperWidgetConfigForm.get('appearance').get('valueUnits').value;
+    const units: string = getSourceTbUnitSymbol(this.valueStepperWidgetConfigForm.get('appearance').get('valueUnits').value);
     const decimals: number = this.valueStepperWidgetConfigForm.get('appearance').get('valueDecimals').value;
     return formatValue(48, decimals, units, false);
   }

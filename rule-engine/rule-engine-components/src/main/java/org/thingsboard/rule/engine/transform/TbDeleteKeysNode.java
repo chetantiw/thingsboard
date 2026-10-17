@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.transform;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -47,22 +34,22 @@ import java.util.stream.Collectors;
                 "keys and/or regular expressions.<br><br>" +
                 "Output connections: <code>Success</code>, <code>Failure</code>.",
         configDirective = "tbTransformationNodeDeleteKeysConfig",
-        icon = "remove_circle"
+        icon = "remove_circle",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/transformation/delete-key-value-pairs/"
 )
 public class TbDeleteKeysNode extends TbAbstractTransformNodeWithTbMsgSource {
 
-    private TbDeleteKeysNodeConfiguration config;
     private TbMsgSource deleteFrom;
     private List<Pattern> compiledKeyPatterns;
 
     @Override
     public void init(TbContext ctx, TbNodeConfiguration configuration) throws TbNodeException {
-        this.config = TbNodeUtils.convert(configuration, TbDeleteKeysNodeConfiguration.class);
-        this.deleteFrom = config.getDeleteFrom();
+        var config = TbNodeUtils.convert(configuration, TbDeleteKeysNodeConfiguration.class);
+        deleteFrom = config.getDeleteFrom();
         if (deleteFrom == null) {
             throw new TbNodeException("DeleteFrom can't be null! Allowed values: " + Arrays.toString(TbMsgSource.values()));
         }
-        this.compiledKeyPatterns = config.getKeys().stream().map(Pattern::compile).collect(Collectors.toList());
+        compiledKeyPatterns = config.getKeys().stream().map(Pattern::compile).collect(Collectors.toList());
     }
 
     @Override
@@ -76,7 +63,7 @@ public class TbDeleteKeysNode extends TbAbstractTransformNodeWithTbMsgSource {
                 var mdKeysToDelete = metaDataMap.keySet()
                         .stream()
                         .filter(this::matches)
-                        .collect(Collectors.toList());
+                        .toList();
                 mdKeysToDelete.forEach(metaDataMap::remove);
                 metaDataCopy = new TbMsgMetaData(metaDataMap);
                 hasNoChanges = mdKeysToDelete.isEmpty();

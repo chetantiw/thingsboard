@@ -1,22 +1,8 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import 'hammerjs';
 
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 
 import { environment as env } from '@env/environment';
 
@@ -35,11 +21,12 @@ import { SETTINGS_KEY } from '@core/settings/settings.effects';
 import { initCustomJQueryEvents } from '@shared/models/jquery-event.models';
 
 @Component({
-  selector: 'tb-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+    selector: 'tb-root',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.scss'],
+    standalone: false
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
 
   constructor(private store: Store<AppState>,
               private storageService: LocalStorageService,
@@ -87,7 +74,7 @@ export class AppComponent implements OnInit {
     if (!env.production) {
       console.log(`Default Lang: ${env.defaultLang}`);
     }
-    this.translate.setDefaultLang(env.defaultLang);
+    this.translate.setFallbackLang(env.defaultLang);
   }
 
   setupAuth() {
@@ -108,10 +95,7 @@ export class AppComponent implements OnInit {
     this.authService.reloadUser();
   }
 
-  ngOnInit() {
-  }
-
-  onActivateComponent($event: any) {
+  onActivateComponent(_$event: any) {
     const loadingElement = $('div#tb-loading-spinner');
     if (loadingElement.length) {
       loadingElement.remove();

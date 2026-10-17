@@ -1,44 +1,33 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.edge.rpc.processor.dashboard;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.Dashboard;
 import org.thingsboard.server.common.data.EdgeUtils;
 import org.thingsboard.server.common.data.ShortCustomerInfo;
 import org.thingsboard.server.common.data.edge.Edge;
 import org.thingsboard.server.common.data.edge.EdgeEvent;
 import org.thingsboard.server.common.data.edge.EdgeEventType;
+import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DashboardId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.msg.TbMsgType;
-import org.thingsboard.server.common.msg.TbMsgMetaData;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.gen.edge.v1.DashboardUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.DownlinkMsg;
+import org.thingsboard.server.gen.edge.v1.EdgeVersion;
 import org.thingsboard.server.gen.edge.v1.UpdateMsgType;
 import org.thingsboard.server.queue.util.TbCoreComponent;
 import org.thingsboard.server.service.edge.EdgeMsgConstructorUtils;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -58,10 +47,7 @@ public class DashboardEdgeProcessor extends BaseDashboardProcessor implements Da
                     saveOrUpdateDashboard(tenantId, dashboardId, dashboardUpdateMsg, edge);
                     return Futures.immediateFuture(null);
                 case ENTITY_DELETED_RPC_MESSAGE:
-                    Dashboard dashboardToDelete = edgeCtx.getDashboardService().findDashboardById(tenantId, dashboardId);
-                    if (dashboardToDelete != null) {
-                        edgeCtx.getDashboardService().unassignDashboardFromEdge(tenantId, dashboardId, edge.getId());
-                    }
+                    deleteDashboard(tenantId, edge, dashboardId);
                     return Futures.immediateFuture(null);
                 case UNRECOGNIZED:
                 default:
@@ -89,18 +75,12 @@ public class DashboardEdgeProcessor extends BaseDashboardProcessor implements Da
     }
 
     private void pushDashboardCreatedEventToRuleEngine(TenantId tenantId, Edge edge, DashboardId dashboardId) {
-        try {
-            Dashboard dashboard = edgeCtx.getDashboardService().findDashboardById(tenantId, dashboardId);
-            String dashboardAsString = JacksonUtil.toString(dashboard);
-            TbMsgMetaData msgMetaData = getEdgeActionTbMsgMetaData(edge, null);
-            pushEntityEventToRuleEngine(tenantId, dashboardId, null, TbMsgType.ENTITY_CREATED, dashboardAsString, msgMetaData);
-        } catch (Exception e) {
-            log.warn("[{}][{}] Failed to push dashboard action to rule engine: {}", tenantId, dashboardId, TbMsgType.ENTITY_CREATED.name(), e);
-        }
+        Dashboard dashboard = edgeCtx.getDashboardService().findDashboardById(tenantId, dashboardId);
+        pushEntityEventToRuleEngine(tenantId, edge, dashboard, TbMsgType.ENTITY_CREATED);
     }
 
     @Override
-    public DownlinkMsg convertEdgeEventToDownlink(EdgeEvent edgeEvent) {
+    public DownlinkMsg convertEdgeEventToDownlink(EdgeEvent edgeEvent, EdgeVersion edgeVersion) {
         DashboardId dashboardId = new DashboardId(edgeEvent.getEntityId());
         switch (edgeEvent.getAction()) {
             case ADDED, UPDATED, ASSIGNED_TO_EDGE, ASSIGNED_TO_CUSTOMER, UNASSIGNED_FROM_CUSTOMER -> {
@@ -126,14 +106,24 @@ public class DashboardEdgeProcessor extends BaseDashboardProcessor implements Da
     }
 
     @Override
-    protected Set<ShortCustomerInfo> filterNonExistingCustomers(TenantId tenantId, Set<ShortCustomerInfo> currentAssignedCustomers, Set<ShortCustomerInfo> newAssignedCustomers) {
-        newAssignedCustomers.addAll(currentAssignedCustomers);
-        return newAssignedCustomers;
+    protected Set<ShortCustomerInfo> filterNonExistingCustomers(TenantId tenantId, CustomerId edgeCustomerId, Set<ShortCustomerInfo> currentAssignedCustomers, Set<ShortCustomerInfo> newAssignedCustomers) {
+        boolean edgeCustomerPresentInNewAssignments = newAssignedCustomers.stream()
+                .map(ShortCustomerInfo::getCustomerId)
+                .anyMatch(edgeCustomerId::equals);
+
+        if (edgeCustomerPresentInNewAssignments) {
+            Set<ShortCustomerInfo> result = new HashSet<>(newAssignedCustomers);
+            result.addAll(currentAssignedCustomers);
+            return result;
+        } else {
+            return currentAssignedCustomers.stream()
+                    .filter(info -> !edgeCustomerId.equals(info.getCustomerId()))
+                    .collect(Collectors.toSet());
+        }
     }
 
     @Override
     public EdgeEventType getEdgeEventType() {
         return EdgeEventType.DASHBOARD;
     }
-
 }

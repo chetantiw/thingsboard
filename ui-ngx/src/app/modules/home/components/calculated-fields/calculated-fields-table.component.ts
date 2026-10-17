@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -34,14 +20,18 @@ import { CalculatedFieldsTableConfig } from '@home/components/calculated-fields/
 import { CalculatedFieldsService } from '@core/http/calculated-fields.service';
 import { ImportExportService } from '@shared/import-export/import-export.service';
 import { EntityDebugSettingsService } from '@home/components/entity/debug/entity-debug-settings.service';
+import { IotHubActionsService } from '@home/components/iot-hub/iot-hub-actions.service';
 import { DatePipe } from '@angular/common';
+import { UtilsService } from "@core/services/utils.service";
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
-  selector: 'tb-calculated-fields-table',
-  templateUrl: './calculated-fields-table.component.html',
-  styleUrls: ['./calculated-fields-table.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [EntityDebugSettingsService]
+    selector: 'tb-calculated-fields-table',
+    templateUrl: './calculated-fields-table.component.html',
+    styleUrls: ['./calculated-fields-table.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [EntityDebugSettingsService],
+    standalone: false
 })
 export class CalculatedFieldsTableComponent {
 
@@ -50,8 +40,11 @@ export class CalculatedFieldsTableComponent {
   active = input<boolean>();
   entityId = input<EntityId>();
   entityName = input<string>();
+  ownerId = input<EntityId>();
 
   calculatedFieldsTableConfig: CalculatedFieldsTableConfig;
+
+  pageMode: boolean = false;
 
   constructor(private calculatedFieldsService: CalculatedFieldsService,
               private translate: TranslateService,
@@ -62,10 +55,15 @@ export class CalculatedFieldsTableComponent {
               private renderer: Renderer2,
               private importExportService: ImportExportService,
               private entityDebugSettingsService: EntityDebugSettingsService,
-              private destroyRef: DestroyRef) {
-
+              private utilsService: UtilsService,
+              private destroyRef: DestroyRef,
+              private route: ActivatedRoute,
+              private router: Router,
+              private iotHubActions: IotHubActionsService
+  ) {
+    this.pageMode = !!this.route.snapshot.data.isPage;
     effect(() => {
-      if (this.active()) {
+      if (this.active() || this.pageMode) {
         this.calculatedFieldsTableConfig = new CalculatedFieldsTableConfig(
           this.calculatedFieldsService,
           this.translate,
@@ -76,8 +74,13 @@ export class CalculatedFieldsTableComponent {
           this.destroyRef,
           this.renderer,
           this.entityName(),
+          this.ownerId(),
           this.importExportService,
           this.entityDebugSettingsService,
+          this.utilsService,
+          this.router,
+          this.iotHubActions,
+          this.pageMode,
         );
         this.cd.markForCheck();
       }

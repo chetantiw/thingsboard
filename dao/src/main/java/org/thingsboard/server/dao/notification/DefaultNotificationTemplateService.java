@@ -1,20 +1,8 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.notification;
 
+import com.google.common.util.concurrent.FluentFuture;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.thingsboard.server.common.data.EntityType;
@@ -36,6 +24,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 @Service
 @RequiredArgsConstructor
@@ -142,6 +132,12 @@ public class DefaultNotificationTemplateService extends AbstractEntityService im
     @Override
     public Optional<HasId<?>> findEntity(TenantId tenantId, EntityId entityId) {
         return Optional.ofNullable(findNotificationTemplateById(tenantId, new NotificationTemplateId(entityId.getId())));
+    }
+
+    @Override
+    public FluentFuture<Optional<HasId<?>>> findEntityAsync(TenantId tenantId, EntityId entityId) {
+        return FluentFuture.from(notificationTemplateDao.findByIdAsync(tenantId, entityId.getId()))
+                .transform(Optional::ofNullable, directExecutor());
     }
 
     @Override

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.edqs.data;
 
 import lombok.Getter;
@@ -20,6 +7,7 @@ import lombok.Setter;
 import lombok.ToString;
 import org.thingsboard.server.common.data.AttributeScope;
 import org.thingsboard.server.common.data.EntityType;
+import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.edqs.fields.EntityFields;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.permission.QueryContext;
@@ -98,8 +86,13 @@ public abstract class BaseEntityData<T extends EntityFields> implements EntityDa
     }
 
     @Override
-    public EntityType getOwnerType() {
-        return customerId != null ? EntityType.CUSTOMER : EntityType.TENANT;
+    public String getOwnerName() {
+        return repo.getOwnerEntityName(isTenantEntity() ? repo.getTenantId() : new CustomerId(getCustomerId()));
+    }
+
+    @Override
+    public String getOwnerType() {
+        return isTenantEntity() ? EntityType.TENANT.name() :  EntityType.CUSTOMER.name();
     }
 
     @Override
@@ -120,7 +113,7 @@ public abstract class BaseEntityData<T extends EntityFields> implements EntityDa
         return switch (key) {
             case "createdTime" -> new LongDataPoint(System.currentTimeMillis(), fields.getCreatedTime());
             case "edgeTemplate" -> new BoolDataPoint(System.currentTimeMillis(), fields.isEdgeTemplate());
-            case "parentId" -> new StringDataPoint(System.currentTimeMillis(), getRelatedParentId(ctx));
+            case "parentId" -> new StringDataPoint(System.currentTimeMillis(), getRelatedParentId(ctx), false);
             default -> new StringDataPoint(System.currentTimeMillis(), getField(key), false);
         };
     }
@@ -132,20 +125,40 @@ public abstract class BaseEntityData<T extends EntityFields> implements EntityDa
         }
         return switch (name) {
             case "name" -> getEntityName();
-            case "ownerName" -> getEntityOwnerName();
-            case "ownerType" -> customerId != null ? EntityType.CUSTOMER.name() : EntityType.TENANT.name();
+            case "ownerName" -> getOwnerName();
+            case "ownerType" -> getOwnerType();
+            case "displayName" -> getDisplayName();
             case "entityType" -> Optional.ofNullable(getEntityType()).map(EntityType::name).orElse("");
             default -> fields.getAsString(name);
         };
     }
 
-    public String getEntityOwnerName() {
-        return repo.getOwnerName(getCustomerId() == null || CustomerId.NULL_UUID.equals(getCustomerId()) ? null :
-                new CustomerId(getCustomerId()));
+    public String getDisplayName(){
+        return switch (getEntityType()) {
+            case DEVICE, ASSET -> StringUtils.isNotBlank(fields.getLabel()) ? fields.getLabel() : fields.getName();
+            case USER -> {
+                boolean firstNameSet = StringUtils.isNotBlank(fields.getFirstName());
+                boolean lastNameSet = StringUtils.isNotBlank(fields.getLastName());
+                if(firstNameSet && lastNameSet) {
+                    yield fields.getFirstName() + " " + fields.getLastName();
+                } else if(firstNameSet) {
+                    yield fields.getFirstName();
+                } else if  (lastNameSet) {
+                    yield fields.getLastName();
+                } else {
+                    yield fields.getEmail();
+                }
+            }
+            default -> fields.getName();
+        };
     }
 
     public String getEntityName() {
         return getFields().getName();
+    }
+
+    private boolean isTenantEntity() {
+        return getCustomerId() == null || CustomerId.NULL_UUID.equals(getCustomerId());
     }
 
     private String getRelatedParentId(QueryContext ctx) {

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sqlts;
 
 import com.google.common.collect.Lists;
@@ -22,9 +9,9 @@ import com.google.common.util.concurrent.MoreExecutors;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 import org.thingsboard.server.common.data.id.DeviceProfileId;
 import org.thingsboard.server.common.data.id.EntityId;
@@ -38,8 +25,6 @@ import org.thingsboard.server.common.data.kv.ReadTsKvQueryResult;
 import org.thingsboard.server.common.data.kv.StringDataEntry;
 import org.thingsboard.server.common.data.kv.TsKvEntry;
 import org.thingsboard.server.common.data.kv.TsKvLatestRemovingResult;
-import org.thingsboard.server.common.data.page.PageData;
-import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.stats.StatsFactory;
 import org.thingsboard.server.dao.DaoUtil;
 import org.thingsboard.server.dao.dictionary.KeyDictionaryDao;
@@ -57,6 +42,7 @@ import org.thingsboard.server.dao.timeseries.TimeseriesLatestDao;
 import org.thingsboard.server.dao.util.SqlTsLatestAnyDao;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -64,7 +50,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -185,11 +170,30 @@ public class SqlTimeseriesLatestDao extends BaseAbstractSqlTimeseriesDao impleme
 
     @Override
     public List<String> findAllKeysByEntityIds(TenantId tenantId, List<EntityId> entityIds) {
-        return tsKvLatestRepository.findAllKeysByEntityIds(entityIds.stream().map(EntityId::getId).collect(Collectors.toList()));
+        return tsKvLatestRepository.findAllKeysByEntityIds(entityIds.stream().map(EntityId::getId).toList());
     }
 
+    @Override
+    public ListenableFuture<List<String>> findAllKeysByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return service.submit(() -> findAllKeysByEntityIds(tenantId, entityIds));
+    }
 
-    private ListenableFuture<TsKvLatestRemovingResult> getNewLatestEntryFuture(TenantId tenantId, EntityId entityId, DeleteTsKvQuery query) {
+    @Override
+    public List<TsKvEntry> findLatestByEntityIds(TenantId tenantId, List<EntityId> entityIds) {
+        if (CollectionUtils.isEmpty(entityIds)) {
+            return Collections.emptyList();
+        }
+        return DaoUtil.convertDataList(
+                searchTsKvLatestRepository.findLatestByEntityIds(entityIds.stream().map(EntityId::getId).toList())
+        );
+    }
+
+    @Override
+    public ListenableFuture<List<TsKvEntry>> findLatestByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return service.submit(() -> findLatestByEntityIds(tenantId, entityIds));
+    }
+
+    private ListenableFuture<TsKvLatestRemovingResult> getNewLatestEntryFuture(TenantId tenantId, EntityId entityId, DeleteTsKvQuery query, Long version) {
         ListenableFuture<List<TsKvEntry>> future = findNewLatestEntryFuture(tenantId, entityId, query);
         return Futures.transformAsync(future, entryList -> {
             if (entryList.size() == 1) {
@@ -198,7 +202,7 @@ public class SqlTimeseriesLatestDao extends BaseAbstractSqlTimeseriesDao impleme
             } else {
                 log.trace("Could not find new latest value for [{}], key - {}", entityId, query.getKey());
             }
-            return Futures.immediateFuture(new TsKvLatestRemovingResult(query.getKey(), true));
+            return Futures.immediateFuture(new TsKvLatestRemovingResult(query.getKey(), true, version));
         }, service);
     }
 
@@ -211,7 +215,7 @@ public class SqlTimeseriesLatestDao extends BaseAbstractSqlTimeseriesDao impleme
                 ReadTsKvQueryResult::getData, MoreExecutors.directExecutor());
     }
 
-   protected TsKvEntry doFindLatestSync(EntityId entityId, String key) {
+    protected TsKvEntry doFindLatestSync(EntityId entityId, String key) {
         TsKvLatestCompositeKey compositeKey =
                 new TsKvLatestCompositeKey(
                         entityId.getId(),
@@ -241,7 +245,7 @@ public class SqlTimeseriesLatestDao extends BaseAbstractSqlTimeseriesDao impleme
                         rs -> rs.next() ? rs.getLong(1) : null, entityId.getId(), keyDictionaryDao.getOrSaveKeyId(query.getKey())));
                 isRemoved = true;
                 if (query.getRewriteLatestIfDeleted()) {
-                    return getNewLatestEntryFuture(tenantId, entityId, query);
+                    return getNewLatestEntryFuture(tenantId, entityId, query, version);
                 }
             }
             return Futures.immediateFuture(new TsKvLatestRemovingResult(query.getKey(), isRemoved, version));

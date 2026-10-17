@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,15 +18,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
-import org.thingsboard.server.common.data.id.MobileAppBundleId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.mobile.app.MobileApp;
-import org.thingsboard.server.common.data.mobile.qrCodeSettings.QrCodeSettings;
 import org.thingsboard.server.common.data.mobile.app.StoreInfo;
-import org.thingsboard.server.common.data.oauth2.PlatformType;
+import org.thingsboard.server.common.data.mobile.qrCodeSettings.QrCodeSettings;
 import org.thingsboard.server.common.data.security.model.JwtPair;
 import org.thingsboard.server.config.annotations.ApiOperation;
-import org.thingsboard.server.dao.mobile.MobileAppService;
 import org.thingsboard.server.dao.mobile.QrCodeSettingService;
 import org.thingsboard.server.queue.util.TbCoreComponent;
 import org.thingsboard.server.service.mobile.secret.MobileAppSecretService;
@@ -132,7 +116,7 @@ public class QrCodeSettingsController extends BaseController {
         return qrCodeSettingService.saveQrCodeSettings(currentUser.getTenantId(), qrCodeSettings);
     }
 
-    @ApiOperation(value = "Get Mobile application settings (getMobileAppSettings)",
+    @ApiOperation(value = "Get Mobile application settings (getQrCodeSettings)",
             notes = "The response payload contains configuration for android/iOS applications and platform qr code widget settings." + AVAILABLE_FOR_ANY_AUTHORIZED_USER)
     @PreAuthorize("hasAnyAuthority('SYS_ADMIN', 'TENANT_ADMIN', 'CUSTOMER_USER')")
     @GetMapping(value = "/api/mobile/qr/settings")

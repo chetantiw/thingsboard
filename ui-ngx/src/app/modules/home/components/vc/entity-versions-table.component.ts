@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -47,7 +33,7 @@ import { BranchAutocompleteComponent } from '@shared/components/vc/branch-autoco
 import { isNotEmptyStr } from '@core/utils';
 import { TbPopoverService } from '@shared/components/popover.service';
 import { EntityVersionCreateComponent } from '@home/components/vc/entity-version-create.component';
-import { MatButton } from '@angular/material/button';
+import { MatButton, MatIconButton } from '@angular/material/button';
 import { EntityVersionRestoreComponent } from '@home/components/vc/entity-version-restore.component';
 import { EntityVersionDiffComponent } from '@home/components/vc/entity-version-diff.component';
 import { ComplexVersionCreateComponent } from '@home/components/vc/complex-version-create.component';
@@ -57,9 +43,10 @@ import { AdminService } from '@core/http/admin.service';
 import { FormBuilder } from '@angular/forms';
 
 @Component({
-  selector: 'tb-entity-versions-table',
-  templateUrl: './entity-versions-table.component.html',
-  styleUrls: ['./entity-versions-table.component.scss']
+    selector: 'tb-entity-versions-table',
+    templateUrl: './entity-versions-table.component.html',
+    styleUrls: ['./entity-versions-table.component.scss'],
+    standalone: false
 })
 export class EntityVersionsTableComponent extends PageComponent implements OnInit, AfterViewInit, OnDestroy {
 
@@ -211,9 +198,13 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const createVersionPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, EntityVersionCreateComponent, 'leftTop', true, null,
-        {
+      const createVersionPopover =  this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: EntityVersionCreateComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: 'leftTop',
+        context: {
           branch: this.branch,
           entityId: this.entityId,
           entityName: this.entityName,
@@ -229,8 +220,11 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
             }
           }
         },
-        {maxHeight: '100vh', height: '100%', padding: '10px'},
-        {width: '400px', minWidth: '100%', maxWidth: '100%'}, {}, false);
+        showCloseButton: false,
+        overlayStyle: {maxHeight: '100vh', height: '100%', padding: '10px'},
+        popoverStyle: {width: '400px', minWidth: '100%', maxWidth: '100%'},
+        isModal: true
+      });
       createVersionPopover.tbComponentRef.instance.popoverComponent = createVersionPopover;
     }
   }
@@ -243,9 +237,13 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const complexCreateVersionPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, ComplexVersionCreateComponent, 'leftTop', true, null,
-        {
+      const complexCreateVersionPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: ComplexVersionCreateComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: 'leftTop',
+        context: {
           branch: this.branch,
           onClose: (result: VersionCreationResult | null, branch: string | null) => {
             complexCreateVersionPopover.hide();
@@ -258,13 +256,15 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
             }
           }
         },
-        {maxHeight: '90vh', height: '100%', padding: '10px'},
-        {}, {}, false);
+        showCloseButton: false,
+        overlayStyle: {maxHeight: '90vh', height: '100%', padding: '10px'},
+        isModal: true
+      });
       complexCreateVersionPopover.tbComponentRef.instance.popoverComponent = complexCreateVersionPopover;
     }
   }
 
-  toggleShowVersionDiff($event: Event, diffVersionButton: MatButton, entityVersion: EntityVersion) {
+  toggleShowVersionDiff($event: Event, diffVersionButton: MatIconButton, entityVersion: EntityVersion) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -272,14 +272,21 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const diffVersionPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, EntityVersionDiffComponent, 'leftTop', true, null,
-        {
+      const diffVersionPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: EntityVersionDiffComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: 'leftTop',
+        context: {
           versionName: entityVersion.name,
           versionId: entityVersion.id,
           entityId: this.entityId,
           externalEntityId: this.externalEntityIdValue
-        }, {}, {}, {}, false);
+        },
+        showCloseButton: false,
+        isModal: true
+      });
       diffVersionPopover.tbComponentRef.instance.popoverComponent = diffVersionPopover;
       diffVersionPopover.tbComponentRef.instance.versionRestored.subscribe(() => {
         this.versionRestored.emit();
@@ -287,7 +294,7 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
     }
   }
 
-  toggleRestoreEntityVersion($event: Event, restoreVersionButton: MatButton, entityVersion: EntityVersion) {
+  toggleRestoreEntityVersion($event: Event, restoreVersionButton: MatIconButton, entityVersion: EntityVersion) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -295,9 +302,13 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const restoreVersionPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, EntityVersionRestoreComponent, 'leftTop', true, null,
-        {
+      const restoreVersionPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: EntityVersionRestoreComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: 'leftTop',
+        context: {
           versionName: entityVersion.name,
           versionId: entityVersion.id,
           externalEntityId: this.externalEntityIdValue,
@@ -308,13 +319,16 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
             }
           }
         },
-        {maxHeight: '100vh', height: '100%', padding: '10px'},
-        {width: '400px', minWidth: '100%', maxWidth: '100%'}, {}, false);
+        showCloseButton: false,
+        overlayStyle: {maxHeight: '100vh', height: '100%', padding: '10px'},
+        popoverStyle: {width: '400px', minWidth: '100%', maxWidth: '100%'},
+        isModal: true
+      });
       restoreVersionPopover.tbComponentRef.instance.popoverComponent = restoreVersionPopover;
     }
   }
 
-  toggleRestoreEntitiesVersion($event: Event, restoreEntitiesVersionButton: MatButton, entityVersion: EntityVersion) {
+  toggleRestoreEntitiesVersion($event: Event, restoreEntitiesVersionButton: MatIconButton, entityVersion: EntityVersion) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -322,17 +336,23 @@ export class EntityVersionsTableComponent extends PageComponent implements OnIni
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const restoreEntitiesVersionPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, ComplexVersionLoadComponent, 'leftTop', true, null,
-        {
+      const restoreEntitiesVersionPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: ComplexVersionLoadComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: 'leftTop',
+        context: {
           versionName: entityVersion.name,
           versionId: entityVersion.id,
           onClose: (result: VersionLoadResult | null) => {
             restoreEntitiesVersionPopover.hide();
           }
         },
-        {maxHeight: '80vh', height: '100%', padding: '10px'},
-        {}, {}, false);
+        showCloseButton: false,
+        overlayStyle: {maxHeight: '80vh', height: '100%', padding: '10px'},
+        isModal: true
+      });
       restoreEntitiesVersionPopover.tbComponentRef.instance.popoverComponent = restoreEntitiesVersionPopover;
     }
   }

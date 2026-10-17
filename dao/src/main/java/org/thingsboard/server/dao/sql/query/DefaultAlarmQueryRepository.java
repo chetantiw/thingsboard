@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.query;
 
 import lombok.extern.slf4j.Slf4j;
@@ -83,6 +70,7 @@ public class DefaultAlarmQueryRepository implements AlarmQueryRepository {
         alarmFieldColumnMap.put(ASSIGNEE_FIRST_NAME_KEY, ModelConstants.ALARM_ASSIGNEE_FIRST_NAME_PROPERTY);
         alarmFieldColumnMap.put(ASSIGNEE_LAST_NAME_KEY, ModelConstants.ALARM_ASSIGNEE_LAST_NAME_PROPERTY);
         alarmFieldColumnMap.put(ASSIGNEE_EMAIL_KEY, ModelConstants.ALARM_ASSIGNEE_EMAIL_PROPERTY);
+        alarmFieldColumnMap.put("originatorDisplayName", ModelConstants.ALARM_ORIGINATOR_DISPLAY_NAME_PROPERTY);
     }
 
     private static final String FIELDS_SELECTION = "select a.id as id," +
@@ -106,6 +94,7 @@ public class DefaultAlarmQueryRepository implements AlarmQueryRepository {
             " a.type as type, " +
             " a.originator_name as originator_name, " +
             " a.originator_label as originator_label, " +
+            " coalesce(a.originator_label, a.originator_name) as originator_display_name, " +
             " a.assignee_first_name as assignee_first_name, " +
             " a.assignee_last_name as assignee_last_name, " +
             " a.assignee_email as assignee_email, " +
@@ -319,7 +308,11 @@ public class DefaultAlarmQueryRepository implements AlarmQueryRepository {
         SqlQueryContext ctx = new SqlQueryContext(new QueryContext(tenantId, null, EntityType.ALARM));
 
         if (query.isSearchPropagatedAlarms()) {
-            ctx.append("select count(distinct(a.id)) from alarm_info a ");
+            if (query.getEntityFilter() == null) {
+                ctx.append("select count(distinct(a.id)) from alarm_info a ");
+            } else {
+                ctx.append("select count(a.id) from alarm_info a ");
+            }
             ctx.append(JOIN_ENTITY_ALARMS);
             if (orderedEntityIds != null) {
                 if (orderedEntityIds.isEmpty()) {

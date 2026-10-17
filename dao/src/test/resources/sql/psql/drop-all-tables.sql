@@ -14,6 +14,7 @@ DROP VIEW IF EXISTS device_info_active_attribute_view CASCADE;
 DROP VIEW IF EXISTS device_info_active_ts_view CASCADE;
 DROP VIEW IF EXISTS device_info_view CASCADE;
 DROP VIEW IF EXISTS alarm_info CASCADE;
+DROP VIEW IF EXISTS edge_acitve_attribute_view CASCADE;
 
 DROP TABLE IF EXISTS admin_settings;
 DROP TABLE IF EXISTS entity_alarm;
@@ -53,6 +54,7 @@ DROP TABLE IF EXISTS rule_node_state;
 DROP TABLE IF EXISTS rule_node;
 DROP TABLE IF EXISTS rule_chain;
 DROP TABLE IF EXISTS tb_schema_settings;
+DROP TABLE IF EXISTS tb_cluster;
 DROP TABLE IF EXISTS oauth2_mobile;
 DROP TABLE IF EXISTS oauth2_domain;
 DROP TABLE IF EXISTS oauth2_registration;

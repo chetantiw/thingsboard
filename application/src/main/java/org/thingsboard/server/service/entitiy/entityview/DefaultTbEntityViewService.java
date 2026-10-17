@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.entitiy.entityview;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -33,6 +20,7 @@ import org.thingsboard.server.common.data.AttributeScope;
 import org.thingsboard.server.common.data.Customer;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.EntityView;
+import org.thingsboard.server.common.data.NameConflictStrategy;
 import org.thingsboard.server.common.data.User;
 import org.thingsboard.server.common.data.audit.ActionType;
 import org.thingsboard.server.common.data.edge.Edge;
@@ -80,10 +68,15 @@ public class DefaultTbEntityViewService extends AbstractTbEntityService implemen
 
     @Override
     public EntityView save(EntityView entityView, EntityView existingEntityView, User user) throws Exception {
+        return save(entityView, existingEntityView, NameConflictStrategy.DEFAULT, user);
+    }
+
+    @Override
+    public EntityView save(EntityView entityView, EntityView existingEntityView, NameConflictStrategy nameConflictStrategy, User user) throws Exception {
         ActionType actionType = entityView.getId() == null ? ActionType.ADDED : ActionType.UPDATED;
         TenantId tenantId = entityView.getTenantId();
         try {
-            EntityView savedEntityView = checkNotNull(entityViewService.saveEntityView(entityView));
+            EntityView savedEntityView = checkNotNull(entityViewService.saveEntityView(entityView, nameConflictStrategy));
             this.updateEntityViewAttributes(tenantId, savedEntityView, existingEntityView, user);
             autoCommit(user, savedEntityView.getId());
             logEntityActionService.logEntityAction(savedEntityView.getTenantId(), savedEntityView.getId(), savedEntityView,

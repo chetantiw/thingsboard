@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.timeseries;
 
 import com.google.common.base.Function;
@@ -55,9 +42,6 @@ import java.util.stream.Collectors;
 
 import static org.thingsboard.server.common.data.StringUtils.isBlank;
 
-/**
- * @author Andrew Shvayka
- */
 @Service
 @Slf4j
 public class BaseTimeseriesService implements TimeseriesService {
@@ -157,6 +141,21 @@ public class BaseTimeseriesService implements TimeseriesService {
     }
 
     @Override
+    public ListenableFuture<List<String>> findAllKeysByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return timeseriesLatestDao.findAllKeysByEntityIdsAsync(tenantId, entityIds);
+    }
+
+    @Override
+    public List<TsKvEntry> findLatestByEntityIds(TenantId tenantId, List<EntityId> entityIds) {
+        return timeseriesLatestDao.findLatestByEntityIds(tenantId, entityIds);
+    }
+
+    @Override
+    public ListenableFuture<List<TsKvEntry>> findLatestByEntityIdsAsync(TenantId tenantId, List<EntityId> entityIds) {
+        return timeseriesLatestDao.findLatestByEntityIdsAsync(tenantId, entityIds);
+    }
+
+    @Override
     public void cleanup(long systemTtl) {
         timeseriesDao.cleanup(systemTtl);
     }
@@ -196,7 +195,8 @@ public class BaseTimeseriesService implements TimeseriesService {
             if (saveLatest) {
                 latestFutures.add(Futures.transform(timeseriesLatestDao.saveLatest(tenantId, entityId, tsKvEntry), version -> {
                     if (version != null) {
-                        edqsService.onUpdate(tenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, tsKvEntry, version));
+                        TenantId edqsTenantId = entityId.getEntityType() == EntityType.TENANT ? (TenantId) entityId : tenantId;
+                        edqsService.onUpdate(edqsTenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, tsKvEntry, version));
                     }
                     return version;
                 }, MoreExecutors.directExecutor()));
@@ -205,8 +205,8 @@ public class BaseTimeseriesService implements TimeseriesService {
         ListenableFuture<Integer> dpsFuture = saveTs ? Futures.transform(Futures.allAsList(tsFutures), SUM_ALL_INTEGERS, MoreExecutors.directExecutor()) : Futures.immediateFuture(0);
         ListenableFuture<List<Long>> versionsFuture = saveLatest ? Futures.allAsList(latestFutures) : Futures.immediateFuture(null);
         return Futures.whenAllComplete(dpsFuture, versionsFuture).call(() -> {
-            Integer dataPoints = Futures.getUnchecked(dpsFuture);
-            List<Long> versions = Futures.getUnchecked(versionsFuture);
+            Integer dataPoints = dpsFuture.get();
+            List<Long> versions = versionsFuture.get();
             return TimeseriesSaveResult.of(dataPoints, versions);
         }, MoreExecutors.directExecutor());
     }
@@ -276,7 +276,8 @@ public class BaseTimeseriesService implements TimeseriesService {
         return Futures.transform(timeseriesLatestDao.removeLatest(tenantId, entityId, query), result -> {
             if (result.isRemoved()) {
                 Long version = result.getVersion();
-                edqsService.onDelete(tenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, query.getKey(), version));
+                TenantId edqsTenantId = entityId.getEntityType() == EntityType.TENANT ? (TenantId) entityId : tenantId;
+                edqsService.onDelete(edqsTenantId, ObjectType.LATEST_TS_KV, new LatestTsKv(entityId, query.getKey(), version));
             }
             return result;
         }, MoreExecutors.directExecutor());
@@ -295,7 +296,12 @@ public class BaseTimeseriesService implements TimeseriesService {
             throw new IncorrectParameterException("Incorrect ReadTsKvQuery. Aggregation can't be empty");
         }
         if (!Aggregation.NONE.equals(query.getAggregation())) {
-            long step = Math.max(query.getInterval(), 1000);
+            long interval = query.getInterval();
+            if (interval < 1) {
+                throw new IncorrectParameterException("Invalid TsKvQuery: 'interval' must be greater than 0, but got " + interval +
+                        ". Please check your query parameters and ensure 'endTs' is greater than 'startTs' or increase 'interval'.");
+            }
+            long step = Math.max(interval, 1000);
             long intervalCounts = (query.getEndTs() - query.getStartTs()) / step;
             if (intervalCounts > maxTsIntervals || intervalCounts < 0) {
                 throw new IncorrectParameterException("Incorrect TsKvQuery. Number of intervals is to high - " + intervalCounts + ". " +

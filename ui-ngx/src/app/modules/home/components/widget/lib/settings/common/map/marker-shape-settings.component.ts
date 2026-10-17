@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -53,16 +39,17 @@ import { MapSettingsContext } from '@home/components/widget/lib/settings/common/
 import { DatasourceType } from '@shared/models/widget.models';
 
 @Component({
-  selector: 'tb-marker-shape-settings',
-  templateUrl: './marker-shape-settings.component.html',
-  styleUrls: [],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => MarkerShapeSettingsComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-marker-shape-settings',
+    templateUrl: './marker-shape-settings.component.html',
+    styleUrls: [],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => MarkerShapeSettingsComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class MarkerShapeSettingsComponent implements ControlValueAccessor, OnInit {
 
@@ -177,17 +164,20 @@ export class MarkerShapeSettingsComponent implements ControlValueAccessor, OnIni
           );
         });
       } else if (this.markerType === MarkerType.icon) {
-        const ctx: any = {
-          iconContainer: (this.modelValue as MarkerIconSettings).iconContainer,
-          icon: (this.modelValue as MarkerIconSettings).icon,
-          color: this.modelValue.color.color,
-          trip: this.trip
-        };
-        const markerIconShapesPopover = this.popoverService.displayPopover(trigger, this.renderer,
-          this.viewContainerRef, MarkerIconShapesComponent, 'left', true, null,
-          ctx,
-          {},
-          {}, {}, true);
+        const markerIconShapesPopover = this.popoverService.displayPopover({
+          trigger,
+          renderer: this.renderer,
+          componentType: MarkerIconShapesComponent,
+          hostView: this.viewContainerRef,
+          preferredPlacement: 'left',
+          context: {
+            iconContainer: (this.modelValue as MarkerIconSettings).iconContainer,
+            icon: (this.modelValue as MarkerIconSettings).icon,
+            color: this.modelValue.color.color,
+            trip: this.trip
+          },
+          isModal: true
+        });
         markerIconShapesPopover.tbComponentRef.instance.popover = markerIconShapesPopover;
         markerIconShapesPopover.tbComponentRef.instance.markerIconSelected.subscribe((iconInfo) => {
           markerIconShapesPopover.hide();

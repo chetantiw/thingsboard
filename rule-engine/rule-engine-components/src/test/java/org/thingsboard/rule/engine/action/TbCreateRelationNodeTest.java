@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.action;
 
 import com.google.common.util.concurrent.Futures;
@@ -29,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.common.util.ListeningExecutor;
 import org.thingsboard.rule.engine.AbstractRuleNodeUpgradeTest;
-import org.thingsboard.rule.engine.TestDbCallbackExecutor;
+import org.thingsboard.common.util.DirectListeningExecutor;
 import org.thingsboard.rule.engine.api.TbContext;
 import org.thingsboard.rule.engine.api.TbNode;
 import org.thingsboard.rule.engine.api.TbNodeConfiguration;
@@ -111,7 +98,7 @@ public class TbCreateRelationNodeTest extends AbstractRuleNodeUpgradeTest {
         return supportedEntityTypes.stream().filter(entityType -> !entityType.equals(EntityType.TENANT)).map(Arguments::of);
     }
 
-    private static final TenantId tenantId = new TenantId(UUID.fromString("6fc86fc9-b25c-4893-b340-51cf4e101ab2"));
+    private static final TenantId tenantId = TenantId.fromUUID(UUID.fromString("6fc86fc9-b25c-4893-b340-51cf4e101ab2"));
     private static final DeviceId deviceId = new DeviceId(UUID.fromString("191ab124-1d8d-4749-97c6-fc84c113c1f5"));
     private static final AssetId assetId = new AssetId(UUID.fromString("a47a5867-deab-4333-b845-88cb1695990c"));
     private static final CustomerId customerId = new CustomerId(UUID.fromString("4af69229-273d-40de-9fba-f49f87373d23"));
@@ -142,7 +129,7 @@ public class TbCreateRelationNodeTest extends AbstractRuleNodeUpgradeTest {
     private final DeviceId originatorId = new DeviceId(UUID.fromString("860634b1-8a1e-4693-9ae8-e779c7f5f4da"));
     private final RuleNodeId ruleNodeId = new RuleNodeId(UUID.fromString("d05a0491-ee7a-484a-8c1b-91111ef39287"));
 
-    private final ListeningExecutor dbExecutor = new TestDbCallbackExecutor();
+    private final ListeningExecutor dbExecutor = DirectListeningExecutor.INSTANCE;
 
     @Mock
     private TbContext ctxMock;

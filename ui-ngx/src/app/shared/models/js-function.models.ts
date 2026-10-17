@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { forkJoin, from, map, mergeMap, Observable, of, ReplaySubject, switchMap } from 'rxjs';
 import { removeTbResourcePrefix, ResourceInfo } from '@shared/models/resource.models';
 import { HttpClient } from '@angular/common/http';
@@ -141,7 +127,7 @@ export const loadModuleMarkdownSourceCode = (http: HttpClient, translate: Transl
   let sourceCode = `<div class="flex flex-col !pl-4"><h6>${resource.title}</h6><small>${translate.instant('js-func.source-code')}</small></div>\n\n`;
   return loadFunctionModuleSource(http, resource.link).pipe(
     map((source) => {
-      sourceCode += '```javascript\n{:code-style="margin-left: -16px; margin-right: -16px;"}\n' +  source + '\n```';
+      sourceCode += '```javascript\n{:code-style="margin-left: -16px; margin-right: -16px; max-height: 65vh;"}\n' +  source + '\n```';
       return sourceCode;
     }),
     catchError(err => {

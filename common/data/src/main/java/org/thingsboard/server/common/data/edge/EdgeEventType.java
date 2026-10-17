@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data.edge;
 
 import lombok.Getter;
@@ -38,15 +25,18 @@ public enum EdgeEventType {
     TENANT_PROFILE(true, EntityType.TENANT_PROFILE),
     WIDGETS_BUNDLE(true, EntityType.WIDGETS_BUNDLE),
     WIDGET_TYPE(true, EntityType.WIDGET_TYPE),
-    ADMIN_SETTINGS(true, null),
+    ADMIN_SETTINGS(true, EntityType.ADMIN_SETTINGS),
     OTA_PACKAGE(true, EntityType.OTA_PACKAGE),
     QUEUE(true, EntityType.QUEUE),
-    NOTIFICATION_RULE (true, EntityType.NOTIFICATION_RULE),
-    NOTIFICATION_TARGET (true, EntityType.NOTIFICATION_TARGET),
-    NOTIFICATION_TEMPLATE (true, EntityType.NOTIFICATION_TEMPLATE),
+    NOTIFICATION_RULE(true, EntityType.NOTIFICATION_RULE),
+    NOTIFICATION_TARGET(true, EntityType.NOTIFICATION_TARGET),
+    NOTIFICATION_TEMPLATE(true, EntityType.NOTIFICATION_TEMPLATE),
     TB_RESOURCE(true, EntityType.TB_RESOURCE),
     OAUTH2_CLIENT(true, EntityType.OAUTH2_CLIENT),
-    DOMAIN(true, EntityType.DOMAIN);
+    DOMAIN(true, EntityType.DOMAIN),
+    CALCULATED_FIELD(false, EntityType.CALCULATED_FIELD),
+    AI_MODEL(true, EntityType.AI_MODEL),
+    API_KEY(true, EntityType.API_KEY);
 
     private final boolean allEdgesRelated;
 

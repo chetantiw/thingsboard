@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { COMMA, ENTER, SEMICOLON } from '@angular/cdk/keycodes';
 import {
   Component,
@@ -64,7 +50,7 @@ import {
 import { deepClone, guid, isDefinedAndNotNull, isObject, isUndefined } from '@core/utils';
 import { Dashboard } from '@shared/models/dashboard.models';
 import { AggregationType } from '@shared/models/time/time.models';
-import { DndDropEvent } from 'ngx-drag-drop/lib/dnd-dropzone.directive';
+import { DndDropEvent } from 'ngx-drag-drop';
 import { moveItemInArray } from '@angular/cdk/drag-drop';
 import { coerceBoolean } from '@shared/decorators/coercion';
 import { ColorPickerPanelComponent } from '@shared/components/color-picker/color-picker-panel.component';
@@ -75,26 +61,27 @@ import { FormProperty } from '@shared/models/dynamic-form.models';
 import { MatFormFieldAppearance, SubscriptSizing } from '@angular/material/form-field';
 
 @Component({
-  selector: 'tb-data-keys',
-  templateUrl: './data-keys.component.html',
-  styleUrls: ['./data-keys.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => DataKeysComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => DataKeysComponent),
-      multi: true,
-    },
-    {
-      provide: ErrorStateMatcher,
-      useExisting: DataKeysComponent
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-data-keys',
+    templateUrl: './data-keys.component.html',
+    styleUrls: ['./data-keys.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => DataKeysComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => DataKeysComponent),
+            multi: true,
+        },
+        {
+            provide: ErrorStateMatcher,
+            useExisting: DataKeysComponent
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class DataKeysComponent implements ControlValueAccessor, OnInit, OnChanges, ErrorStateMatcher, Validator {
 
@@ -168,6 +155,10 @@ export class DataKeysComponent implements ControlValueAccessor, OnInit, OnChange
   @Input()
   @coerceBoolean()
   simpleDataKeysLabel = false;
+
+  @Input()
+  @coerceBoolean()
+  supportsUnitConversion = false;
 
   @Input()
   aliasController: IAliasController;
@@ -565,14 +556,20 @@ export class DataKeysComponent implements ControlValueAccessor, OnInit, OnChange
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const colorPickerPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, ColorPickerPanelComponent, ['leftTopOnly', 'leftOnly', 'leftBottomOnly'], true, null,
-        {
+      const colorPickerPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: ColorPickerPanelComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: ['leftTopOnly', 'leftOnly', 'leftBottomOnly'],
+        context: {
           color: key.color,
           colorCancelButton: true
         },
-        {},
-        {}, {}, false, () => {}, {padding: '12px 4px 12px 12px'});
+        showCloseButton: false,
+        popoverContentStyle: {padding: '12px 4px 12px 12px'},
+        isModal: true
+      });
       colorPickerPopover.tbComponentRef.instance.popover = colorPickerPopover;
       colorPickerPopover.tbComponentRef.instance.colorSelected.subscribe((color) => {
         colorPickerPopover.hide();
@@ -604,7 +601,8 @@ export class DataKeysComponent implements ControlValueAccessor, OnInit, OnChange
           hideDataKeyLabel: this.hideDataKeyLabel,
           hideDataKeyColor: this.hideDataKeyColor,
           hideDataKeyUnits: this.hideDataKeyUnits,
-          hideDataKeyDecimals: this.hideDataKeyDecimals
+          hideDataKeyDecimals: this.hideDataKeyDecimals,
+          supportsUnitConversion: this.supportsUnitConversion
         }
       }).afterClosed().subscribe((updatedDataKey) => {
         if (updatedDataKey) {

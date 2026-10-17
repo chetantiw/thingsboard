@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.model;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
@@ -26,8 +13,7 @@ import java.util.UUID;
 
 public class ModelConstants {
 
-    private ModelConstants() {
-    }
+    private ModelConstants() {}
 
     public static final UUID NULL_UUID = Uuids.startOf(0);
     public static final TenantId SYSTEM_TENANT = TenantId.fromUUID(ModelConstants.NULL_UUID);
@@ -258,6 +244,7 @@ public class ModelConstants {
     public static final String ALARM_ORIGINATOR_NAME_PROPERTY = "originator_name";
     public static final String ALARM_ORIGINATOR_LABEL_PROPERTY = "originator_label";
     public static final String ALARM_ORIGINATOR_TYPE_PROPERTY = "originator_type";
+    public static final String ALARM_ORIGINATOR_DISPLAY_NAME_PROPERTY = "originator_display_name";
     public static final String ALARM_SEVERITY_PROPERTY = "severity";
     public static final String ALARM_ASSIGNEE_ID_PROPERTY = "assignee_id";
     public static final String ALARM_ASSIGNEE_FIRST_NAME_PROPERTY = "assignee_first_name";
@@ -457,6 +444,7 @@ public class ModelConstants {
      */
     public static final String MOBILE_APP_TABLE_NAME = "mobile_app";
     public static final String MOBILE_APP_PKG_NAME_PROPERTY = "pkg_name";
+    public static final String MOBILE_APP_TITLE_PROPERTY = "title";
     public static final String MOBILE_APP_APP_SECRET_PROPERTY = "app_secret";
     public static final String MOBILE_APP_PLATFORM_TYPE_PROPERTY = "platform_type";
     public static final String MOBILE_APP_STATUS_PROPERTY = "status";
@@ -729,15 +717,50 @@ public class ModelConstants {
     public static final String CALCULATED_FIELD_CONFIGURATION_VERSION = "configuration_version";
     public static final String CALCULATED_FIELD_CONFIGURATION = "configuration";
     public static final String CALCULATED_FIELD_VERSION = "version";
+    public static final String CALCULATED_FIELD_ADDITIONAL_INFO = ADDITIONAL_INFO_PROPERTY;
 
     /**
-     * Calculated field links constants.
+     * Tasks constants.
      */
-    public static final String CALCULATED_FIELD_LINK_TABLE_NAME = "calculated_field_link";
-    public static final String CALCULATED_FIELD_LINK_TENANT_ID_COLUMN = TENANT_ID_COLUMN;
-    public static final String CALCULATED_FIELD_LINK_ENTITY_TYPE = ENTITY_TYPE_COLUMN;
-    public static final String CALCULATED_FIELD_LINK_ENTITY_ID = ENTITY_ID_COLUMN;
-    public static final String CALCULATED_FIELD_LINK_CALCULATED_FIELD_ID = "calculated_field_id";
+    public static final String JOB_TABLE_NAME = "job";
+    public static final String JOB_TYPE_PROPERTY = "type";
+    public static final String JOB_KEY_PROPERTY = "key";
+    public static final String JOB_ENTITY_ID_PROPERTY = "entity_id";
+    public static final String JOB_ENTITY_TYPE_PROPERTY = "entity_type";
+    public static final String JOB_STATUS_PROPERTY = "status";
+    public static final String JOB_CONFIGURATION_PROPERTY = "configuration";
+    public static final String JOB_RESULT_PROPERTY = "result";
+
+    /**
+     * AI model constants.
+     */
+    public static final String AI_MODEL_TABLE_NAME = "ai_model";
+    public static final String AI_MODEL_TENANT_ID_COLUMN_NAME = TENANT_ID_COLUMN;
+    public static final String AI_MODEL_NAME_COLUMN_NAME = NAME_PROPERTY;
+    public static final String AI_MODEL_CONFIGURATION_COLUMN_NAME = "configuration";
+
+    /**
+     * Api Key constants.
+     */
+    public static final String API_KEY_TABLE_NAME = "api_key";
+    public static final String API_KEY_TENANT_ID_COLUMN_NAME = TENANT_ID_COLUMN;
+    public static final String API_KEY_USER_ID_COLUMN_NAME = USER_ID_PROPERTY;
+    public static final String API_KEY_VALUE_COLUMN_NAME = "value";
+    public static final String API_KEY_EXPIRATION_TIME_COLUMN_NAME = "expiration_time";
+    public static final String API_KEY_ENABLED_COLUMN_NAME = "enabled";
+    public static final String API_KEY_DESCRIPTION_COLUMN_NAME = "description";
+
+    /**
+     * IoT Hub installed item constants.
+     */
+    public static final String IOT_HUB_INSTALLED_ITEM_TABLE_NAME = "iot_hub_installed_item";
+    public static final String IOT_HUB_INSTALLED_ITEM_TENANT_ID_COLUMN = TENANT_ID_COLUMN;
+    public static final String IOT_HUB_INSTALLED_ITEM_ITEM_ID_COLUMN = "item_id";
+    public static final String IOT_HUB_INSTALLED_ITEM_ITEM_VERSION_ID_COLUMN = "item_version_id";
+    public static final String IOT_HUB_INSTALLED_ITEM_ITEM_NAME_COLUMN = "item_name";
+    public static final String IOT_HUB_INSTALLED_ITEM_ITEM_TYPE_COLUMN = "item_type";
+    public static final String IOT_HUB_INSTALLED_ITEM_VERSION_COLUMN = "version";
+    public static final String IOT_HUB_INSTALLED_ITEM_DESCRIPTOR_COLUMN = "descriptor";
 
     protected static final String[] NONE_AGGREGATION_COLUMNS = new String[]{LONG_VALUE_COLUMN, DOUBLE_VALUE_COLUMN, BOOLEAN_VALUE_COLUMN, STRING_VALUE_COLUMN, JSON_VALUE_COLUMN, KEY_COLUMN, TS_COLUMN};
 

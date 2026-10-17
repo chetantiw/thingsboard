@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.stats;
 
 import io.micrometer.core.instrument.Counter;
@@ -27,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.thingsboard.server.common.data.StringUtils;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.ToDoubleFunction;
 
 @Service
 public class DefaultStatsFactory implements StatsFactory {
@@ -87,6 +75,16 @@ public class DefaultStatsFactory implements StatsFactory {
     }
 
     @Override
+    public <T extends Number> T createGauge(String type, String name, T number, String... tags) {
+        return createGauge(type, number, getTags(name, tags));
+    }
+
+    @Override
+    public <S> void createGauge(String type, String name, S stateObject, ToDoubleFunction<S> numberProvider, String... tags) {
+        meterRegistry.gauge(type, Tags.of(getTags(name, tags)), stateObject, numberProvider);
+    }
+
+    @Override
     public MessagesStats createMessagesStats(String key) {
         StatsCounter totalCounter = createStatsCounter(key, TOTAL_MSGS);
         StatsCounter successfulCounter = createStatsCounter(key, SUCCESSFUL_MSGS);
@@ -106,8 +104,8 @@ public class DefaultStatsFactory implements StatsFactory {
     }
 
     @Override
-    public StatsTimer createTimer(StatsType type, String name, String... tags) {
-        return new StatsTimer(name, Timer.builder(type.getName())
+    public StatsTimer createStatsTimer(String type, String name, String... tags) {
+        return new StatsTimer(name, Timer.builder(type)
                 .tags(getTags(name, tags))
                 .register(meterRegistry));
     }

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.metadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,7 +8,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.thingsboard.common.util.DonAsynchron;
 import org.thingsboard.common.util.JacksonUtil;
@@ -45,11 +31,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-/**
- * Created by mshvayka on 04.09.18.
- */
-@Slf4j
-@RuleNode(type = ComponentType.ENRICHMENT,
+@RuleNode(
+        type = ComponentType.ENRICHMENT,
         name = "originator telemetry",
         configClazz = TbGetTelemetryNodeConfiguration.class,
         version = 2,
@@ -58,7 +41,9 @@ import java.util.stream.Collectors;
                 "instead of fetching just the latest telemetry or if you need to get the closest telemetry to the fetch interval start or end. " +
                 "Also, this node can be used for telemetry aggregation within configured fetch interval.<br><br>" +
                 "Output connections: <code>Success</code>, <code>Failure</code>.",
-        configDirective = "tbEnrichmentNodeGetTelemetryFromDatabase")
+        configDirective = "tbEnrichmentNodeGetTelemetryFromDatabase",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/enrichment/originator-telemetry/"
+)
 public class TbGetTelemetryNode implements TbNode {
 
     private TbGetTelemetryNodeConfiguration config;

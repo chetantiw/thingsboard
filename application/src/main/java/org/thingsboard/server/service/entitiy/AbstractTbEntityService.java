@@ -1,26 +1,11 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.entitiy;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.core.env.Environment;
 import org.thingsboard.server.cluster.TbClusterService;
@@ -31,16 +16,10 @@ import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityIdFactory;
 import org.thingsboard.server.dao.alarm.AlarmService;
-import org.thingsboard.server.dao.asset.AssetProfileService;
-import org.thingsboard.server.dao.asset.AssetService;
 import org.thingsboard.server.dao.customer.CustomerService;
-import org.thingsboard.server.dao.device.DeviceProfileService;
-import org.thingsboard.server.dao.device.DeviceService;
 import org.thingsboard.server.dao.edge.EdgeService;
 import org.thingsboard.server.dao.entity.EntityService;
 import org.thingsboard.server.dao.model.ModelConstants;
-import org.thingsboard.server.dao.tenant.TenantService;
-import org.thingsboard.server.service.executors.DbCallbackExecutorService;
 import org.thingsboard.server.service.sync.vc.EntitiesVersionControlService;
 import org.thingsboard.server.service.telemetry.AlarmSubscriptionService;
 
@@ -55,12 +34,6 @@ public abstract class AbstractTbEntityService {
     @Autowired
     private Environment env;
 
-    @Value("${server.log_controller_error_stack_trace}")
-    @Getter
-    private boolean logControllerErrorStackTrace;
-
-    @Autowired
-    protected DbCallbackExecutorService dbExecutor;
     @Autowired(required = false)
     protected TbLogEntityActionService logEntityActionService;
     @Autowired(required = false)
@@ -111,7 +84,11 @@ public abstract class AbstractTbEntityService {
         return (I) EntityIdFactory.getByTypeAndUuid(entityType, ModelConstants.NULL_UUID);
     }
 
-    protected ListenableFuture<UUID> autoCommit(User user, EntityId entityId) throws Exception {
+    protected <I extends EntityId> I getOrEmptyId(I entityId, EntityType entityType) {
+        return entityId == null ? emptyId(entityType) : entityId;
+    }
+
+    protected ListenableFuture<UUID> autoCommit(User user, EntityId entityId) {
         if (vcService != null) {
             return vcService.autoCommit(user, entityId);
         } else {
@@ -120,7 +97,7 @@ public abstract class AbstractTbEntityService {
         }
     }
 
-    protected ListenableFuture<UUID> autoCommit(User user, EntityType entityType, List<UUID> entityIds) throws Exception {
+    protected ListenableFuture<UUID> autoCommit(User user, EntityType entityType, List<UUID> entityIds) {
         if (vcService != null) {
             return vcService.autoCommit(user, entityType, entityIds);
         } else {

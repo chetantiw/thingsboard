@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -40,17 +26,18 @@ import {
 } from '@home/components/widget/lib/settings/common/button/widget-button-toggle-custom-style-panel.component';
 
 @Component({
-  selector: 'tb-widget-button-toggle-custom-style',
-  templateUrl: './widget-button-toggle-custom-style.component.html',
-  styleUrls: ['./widget-button-toggle-custom-style.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => WidgetButtonToggleCustomStyleComponent),
-      multi: true
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-widget-button-toggle-custom-style',
+    templateUrl: './widget-button-toggle-custom-style.component.html',
+    styleUrls: ['./widget-button-toggle-custom-style.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => WidgetButtonToggleCustomStyleComponent),
+            multi: true
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class WidgetButtonToggleCustomStyleComponent implements OnInit, OnChanges, ControlValueAccessor {
 
@@ -127,20 +114,22 @@ export class WidgetButtonToggleCustomStyleComponent implements OnInit, OnChanges
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const ctx: any = {
-        appearance: this.appearance,
-        borderRadius: this.borderRadius,
-        autoScale: this.autoScale,
-        state: this.state,
-        value: this.value,
-        customStyle: this.modelValue
-      };
-      const widgetButtonCustomStylePanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, WidgetButtonToggleCustomStylePanelComponent,
-        ['leftTopOnly', 'leftOnly', 'leftBottomOnly'], true, null,
-        ctx,
-        {},
-        {}, {}, true);
+      const widgetButtonCustomStylePanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: WidgetButtonToggleCustomStylePanelComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: ['leftTopOnly', 'leftOnly', 'leftBottomOnly'],
+        context: {
+          appearance: this.appearance,
+          borderRadius: this.borderRadius,
+          autoScale: this.autoScale,
+          state: this.state,
+          value: this.value,
+          customStyle: this.modelValue
+        },
+        isModal: true
+      });
       widgetButtonCustomStylePanelPopover.tbComponentRef.instance.popover = widgetButtonCustomStylePanelPopover;
       widgetButtonCustomStylePanelPopover.tbComponentRef.instance.customStyleApplied.subscribe((customStyle) => {
         widgetButtonCustomStylePanelPopover.hide();

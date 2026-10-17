@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { ChangeDetectorRef, Component, Inject, Optional, Renderer2, ViewContainerRef } from '@angular/core';
 import { EntityComponent } from '@home/components/entity/entity.component';
 import { AppState } from '@core/core.state';
@@ -26,14 +12,15 @@ import { EntityType } from '@shared/models/entity-type.models';
 import { MobileApp, MobileAppStatus, mobileAppStatusTranslations } from '@shared/models/mobile-app.models';
 import { PlatformType, platformTypeTranslations } from '@shared/models/oauth2.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { TbPopoverService } from '@shared/components/popover.service';
 import { EditorPanelComponent } from '@home/pages/mobile/common/editor-panel.component';
 
 @Component({
-  selector: 'tb-mobile-app',
-  templateUrl: './mobile-app.component.html',
-  styleUrls: ['./mobile-app.component.scss']
+    selector: 'tb-mobile-app',
+    templateUrl: './mobile-app.component.html',
+    styleUrls: ['./mobile-app.component.scss'],
+    standalone: false
 })
 export class MobileAppComponent extends EntityComponent<MobileApp> {
 
@@ -63,9 +50,10 @@ export class MobileAppComponent extends EntityComponent<MobileApp> {
 
   buildForm(entity: MobileApp): FormGroup {
     const form = this.fb.group({
-      pkgName: [entity?.pkgName ? entity.pkgName : '', [Validators.required, Validators.maxLength(255),
+      pkgName: [entity?.pkgName ?? '', [Validators.required, Validators.maxLength(255),
         Validators.pattern(/^[a-zA-Z][a-zA-Z\d_]*(?:\.[a-zA-Z][a-zA-Z\d_]*)+$/)]],
-      platformType: [entity?.platformType ? entity.platformType : PlatformType.ANDROID],
+      title: [entity?.title ?? '', [Validators.maxLength(255)]],
+      platformType: [entity?.platformType ?? PlatformType.ANDROID],
       appSecret: [entity?.appSecret ? entity.appSecret : btoa(randomAlphanumeric(64)), [Validators.required, this.base64Format]],
       status: [entity?.status ? entity.status : MobileAppStatus.DRAFT],
       versionInfo: this.fb.group({
@@ -107,7 +95,7 @@ export class MobileAppComponent extends EntityComponent<MobileApp> {
           .addValidators(Validators.required);
         form.get('storeInfo.appId').addValidators(Validators.required);
       } else {
-        form.get('storeInfo.storeLink').clearValidators();
+        form.get('storeInfo.storeLink').removeValidators(Validators.required);
         form.get('storeInfo.sha256CertFingerprints').removeValidators(Validators.required);
         form.get('storeInfo.appId').removeValidators(Validators.required);
       }
@@ -151,7 +139,7 @@ export class MobileAppComponent extends EntityComponent<MobileApp> {
     this.entityForm.get('appSecret').markAsDirty();
   }
 
-  editReleaseNote($event: Event, matButton: MatButton, isLatest: boolean) {
+  editReleaseNote($event: Event, matButton: MatIconButton, isLatest: boolean) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -166,11 +154,17 @@ export class MobileAppComponent extends EntityComponent<MobileApp> {
           ? this.entityForm.get('versionInfo.latestVersionReleaseNotes').value
           : this.entityForm.get('versionInfo.minVersionReleaseNotes').value
       };
-      const releaseNotesPanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, EditorPanelComponent, ['leftOnly', 'leftBottomOnly', 'leftTopOnly'], true, null,
-        ctx,
-        {},
-        {}, {}, false, () => {}, {padding: '16px 24px'});
+      const releaseNotesPanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        hostView: this.viewContainerRef,
+        componentType: EditorPanelComponent,
+        preferredPlacement: ['leftOnly', 'leftBottomOnly', 'leftTopOnly'],
+        context: ctx,
+        showCloseButton: false,
+        popoverContentStyle: {padding: '16px 24px'},
+        isModal: true
+      });
       releaseNotesPanelPopover.tbComponentRef.instance.popover = releaseNotesPanelPopover;
       releaseNotesPanelPopover.tbComponentRef.instance.editorContentApplied.subscribe((releaseNotes) => {
         releaseNotesPanelPopover.hide();

@@ -1,22 +1,9 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { AuthPayload, AuthState } from './auth.models';
 import { AuthActions, AuthActionTypes } from './auth.actions';
 import { initialUserSettings, UserSettings } from '@shared/models/user-settings.models';
+import { initialTrendzSettings } from '@shared/models/trendz-settings.models';
 import { unset } from '@core/utils';
 
 const emptyUserAuthState: AuthPayload = {
@@ -32,9 +19,19 @@ const emptyUserAuthState: AuthPayload = {
   mobileQrEnabled: false,
   maxResourceSize: 0,
   maxArgumentsPerCF: 0,
+  minAllowedDeduplicationIntervalInSecForCF: 0,
+  minAllowedAggregationIntervalInSecForCF: 0,
+  minAllowedScheduledUpdateIntervalInSecForCF: 0,
+  maxRelationLevelPerCfArgument: 0,
+  maxRelatedEntitiesToReturnPerCfArgument: 0,
   maxDataPointsPerRollingArg: 0,
   maxDebugModeDurationMinutes: 0,
-  userSettings: initialUserSettings
+  intermediateAggregationIntervalInSecForCF: 0,
+  userSettings: initialUserSettings,
+  trendzSettings: initialTrendzSettings,
+  nullsOrderStrategy: 'default',
+  edqsEnabled: false,
+  iotHubBaseUrl: ''
 };
 
 export const initialState: AuthState = {
@@ -96,6 +93,9 @@ export const authReducer = (
       userSettings = {...state.userSettings};
       action.payload.forEach(path => unset(userSettings, path));
       return { ...state, ...{ userSettings }};
+
+    case AuthActionTypes.UPDATE_TRENDZ_SETTINGS:
+      return { ...state, trendzSettings: action.payload };
 
     default:
       return state;

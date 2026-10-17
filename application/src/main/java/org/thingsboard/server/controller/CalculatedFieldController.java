@@ -1,73 +1,55 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.thingsboard.common.util.JacksonUtil;
-import org.thingsboard.script.api.tbel.TbelCfArg;
-import org.thingsboard.script.api.tbel.TbelCfCtx;
-import org.thingsboard.script.api.tbel.TbelCfSingleValueArg;
-import org.thingsboard.script.api.tbel.TbelInvokeService;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.EventInfo;
-import org.thingsboard.server.common.data.HasTenantId;
 import org.thingsboard.server.common.data.cf.CalculatedField;
+import org.thingsboard.server.common.data.cf.CalculatedFieldFilter;
+import org.thingsboard.server.common.data.cf.CalculatedFieldInfo;
+import org.thingsboard.server.common.data.cf.CalculatedFieldType;
 import org.thingsboard.server.common.data.cf.configuration.CalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.event.EventType;
 import org.thingsboard.server.common.data.exception.ThingsboardException;
 import org.thingsboard.server.common.data.id.CalculatedFieldId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityIdFactory;
-import org.thingsboard.server.common.data.id.HasId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.config.annotations.ApiOperation;
 import org.thingsboard.server.dao.event.EventService;
 import org.thingsboard.server.queue.util.TbCoreComponent;
-import org.thingsboard.server.service.cf.ctx.state.CalculatedFieldScriptEngine;
-import org.thingsboard.server.service.cf.ctx.state.CalculatedFieldTbelScriptEngine;
 import org.thingsboard.server.service.entitiy.cf.TbCalculatedFieldService;
 import org.thingsboard.server.service.security.model.SecurityUser;
 import org.thingsboard.server.service.security.permission.Operation;
-import org.thingsboard.server.service.security.permission.Resource;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.thingsboard.server.controller.ControllerConstants.CF_TEXT_SEARCH_DESCRIPTION;
 import static org.thingsboard.server.controller.ControllerConstants.ENTITY_ID_PARAM_DESCRIPTION;
@@ -86,18 +68,15 @@ import static org.thingsboard.server.controller.ControllerConstants.UUID_WIKI_LI
 @TbCoreComponent
 @RequestMapping("/api")
 @RequiredArgsConstructor
-@Slf4j
 public class CalculatedFieldController extends BaseController {
 
     private final TbCalculatedFieldService tbCalculatedFieldService;
     private final EventService eventService;
-    private final TbelInvokeService tbelInvokeService;
 
     public static final String CALCULATED_FIELD_ID = "calculatedFieldId";
 
-    public static final int TIMEOUT = 20;
-
-    private static final String TEST_SCRIPT_EXPRESSION = "Execute the Script expression and return the result. The format of request: \n\n"
+    private static final String TEST_SCRIPT_EXPRESSION =
+            "Execute the Script expression and return the result. The format of request: \n\n"
             + MARKDOWN_CODE_BLOCK_START
             + "{\n" +
             "  \"expression\": \"var temp = 0; foreach(element: temperature.values) {temp += element.value;} var avgTemperature = temp / temperature.values.size(); var adjustedTemperature = avgTemperature + 0.1 * humidity.value; return {\\\"adjustedTemperature\\\": adjustedTemperature};\",\n" +
@@ -131,14 +110,12 @@ public class CalculatedFieldController extends BaseController {
                     "Remove 'id', 'tenantId' from the request body example (below) to create new Calculated Field entity. "
                     + TENANT_OR_CUSTOMER_AUTHORITY_PARAGRAPH)
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @RequestMapping(value = "/calculatedField", method = RequestMethod.POST)
-    @ResponseBody
+    @PostMapping("/calculatedField")
     public CalculatedField saveCalculatedField(@io.swagger.v3.oas.annotations.parameters.RequestBody(description = "A JSON value representing the calculated field.")
                                                @RequestBody CalculatedField calculatedField) throws Exception {
         calculatedField.setTenantId(getTenantId());
-        checkEntity(calculatedField.getId(), calculatedField, Resource.CALCULATED_FIELD);
         checkEntityId(calculatedField.getEntityId(), Operation.WRITE_CALCULATED_FIELD);
-        checkReferencedEntities(calculatedField.getConfiguration(), getCurrentUser());
+        checkReferencedEntities(calculatedField.getConfiguration());
         return tbCalculatedFieldService.save(calculatedField, getCurrentUser());
     }
 
@@ -146,8 +123,7 @@ public class CalculatedFieldController extends BaseController {
             notes = "Fetch the Calculated Field object based on the provided Calculated Field Id."
     )
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @RequestMapping(value = "/calculatedField/{calculatedFieldId}", method = RequestMethod.GET)
-    @ResponseBody
+    @GetMapping("/calculatedField/{calculatedFieldId}")
     public CalculatedField getCalculatedFieldById(@Parameter @PathVariable(CALCULATED_FIELD_ID) String strCalculatedFieldId) throws ThingsboardException {
         checkParameter(CALCULATED_FIELD_ID, strCalculatedFieldId);
         CalculatedFieldId calculatedFieldId = new CalculatedFieldId(toUUID(strCalculatedFieldId));
@@ -157,36 +133,118 @@ public class CalculatedFieldController extends BaseController {
         return calculatedField;
     }
 
+    @Hidden
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/{entityType}/{entityId}/calculatedFields", params = {"pageSize", "page"})
+    public PageData<CalculatedField> getCalculatedFieldsByEntityIdV1(@PathVariable("entityType") String entityType,
+                                                                     @PathVariable("entityId") String entityIdStr,
+                                                                     @RequestParam int pageSize,
+                                                                     @RequestParam int page,
+                                                                     @RequestParam(required = false) CalculatedFieldType type,
+                                                                     @RequestParam(required = false) String textSearch,
+                                                                     @RequestParam(required = false) String sortProperty,
+                                                                     @RequestParam(required = false) String sortOrder) throws ThingsboardException {
+        PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
+        checkParameter("entityId", entityIdStr);
+        EntityId entityId = EntityIdFactory.getByTypeAndUuid(entityType, entityIdStr);
+        checkEntityId(entityId, Operation.READ_CALCULATED_FIELD);
+        return checkNotNull(tbCalculatedFieldService.findByTenantIdAndEntityId(getTenantId(), entityId, type, pageLink));
+    }
+
     @ApiOperation(value = "Get Calculated Fields by Entity Id (getCalculatedFieldsByEntityId)",
             notes = "Fetch the Calculated Fields based on the provided Entity Id."
     )
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @RequestMapping(value = "/{entityType}/{entityId}/calculatedFields", params = {"pageSize", "page"}, method = RequestMethod.GET)
-    @ResponseBody
+    @GetMapping(value = "/calculatedField/{entityType}/{entityId}")
     public PageData<CalculatedField> getCalculatedFieldsByEntityId(
             @Parameter(description = ENTITY_TYPE_PARAM_DESCRIPTION, required = true, schema = @Schema(defaultValue = "DEVICE")) @PathVariable("entityType") String entityType,
             @Parameter(description = ENTITY_ID_PARAM_DESCRIPTION, required = true) @PathVariable("entityId") String entityIdStr,
             @Parameter(description = PAGE_SIZE_DESCRIPTION, required = true) @RequestParam int pageSize,
             @Parameter(description = PAGE_NUMBER_DESCRIPTION, required = true) @RequestParam int page,
+            @Parameter(description = "Calculated field type. If not specified, all types will be returned.")
+            @RequestParam(required = false) CalculatedFieldType type,
             @Parameter(description = CF_TEXT_SEARCH_DESCRIPTION) @RequestParam(required = false) String textSearch,
             @Parameter(description = SORT_PROPERTY_DESCRIPTION, schema = @Schema(allowableValues = {"createdTime", "name"})) @RequestParam(required = false) String sortProperty,
             @Parameter(description = SORT_ORDER_DESCRIPTION, schema = @Schema(allowableValues = {"ASC", "DESC"})) @RequestParam(required = false) String sortOrder) throws ThingsboardException {
+        return getCalculatedFieldsByEntityIdV1(entityType, entityIdStr, pageSize, page, type, textSearch, sortProperty, sortOrder);
+    }
+
+    @ApiOperation(value = "Get calculated fields (getCalculatedFields)",
+            notes = "Fetch tenant calculated fields based on the filter.")
+    @Parameters({
+            @Parameter(name = "name", description = "Repeatable name query parameter", in = ParameterIn.QUERY, required = false, array = @ArraySchema(schema = @Schema(type = "string")))
+    })
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/calculatedFields")
+    public PageData<CalculatedFieldInfo> getCalculatedFields(@Parameter(description = PAGE_SIZE_DESCRIPTION, required = true)
+                                                             @RequestParam int pageSize,
+                                                             @Parameter(description = PAGE_NUMBER_DESCRIPTION, required = true)
+                                                             @RequestParam int page,
+                                                             @Parameter(description = "Calculated field types filter.")
+                                                             @RequestParam(required = false) Set<CalculatedFieldType> types,
+                                                             @Parameter(description = "Entity type filter. If not specified, calculated fields for all supported entity types will be returned.")
+                                                             @RequestParam(required = false) EntityType entityType,
+                                                             @Parameter(description = "Entities filter. If not specified, calculated fields for entity type filter will be returned.")
+                                                             @RequestParam(required = false) Set<UUID> entities,
+                                                             @Parameter(description = CF_TEXT_SEARCH_DESCRIPTION)
+                                                             @RequestParam(required = false) String textSearch,
+                                                             @Parameter(description = SORT_PROPERTY_DESCRIPTION, schema = @Schema(allowableValues = {"createdTime", "name"}))
+                                                             @RequestParam(required = false) String sortProperty,
+                                                             @Parameter(description = SORT_ORDER_DESCRIPTION, schema = @Schema(allowableValues = {"ASC", "DESC"}))
+                                                             @RequestParam(required = false) String sortOrder,
+                                                             @Parameter(hidden = true)
+                                                             @RequestParam MultiValueMap<String, String> params) throws ThingsboardException {
         PageLink pageLink = createPageLink(pageSize, page, textSearch, sortProperty, sortOrder);
-        checkParameter("entityId", entityIdStr);
-        EntityId entityId = EntityIdFactory.getByTypeAndUuid(entityType, entityIdStr);
-        checkEntityId(entityId, Operation.READ_CALCULATED_FIELD);
-        return checkNotNull(tbCalculatedFieldService.findAllByTenantIdAndEntityId(entityId, getCurrentUser(), pageLink));
+        SecurityUser user = getCurrentUser();
+
+        if (CollectionUtils.isEmpty(types)) {
+            types = EnumSet.allOf(CalculatedFieldType.class);
+            types.remove(CalculatedFieldType.ALARM);
+        }
+
+        Set<EntityType> entityTypes;
+        if (entityType == null) {
+            entityTypes = CalculatedField.SUPPORTED_ENTITIES.keySet();
+        } else {
+            entityTypes = EnumSet.of(entityType);
+        }
+
+        CalculatedFieldFilter filter = CalculatedFieldFilter.builder()
+                .types(types)
+                .entityTypes(entityTypes)
+                .entityIds(entities)
+                .names(Optional.ofNullable(params.get("name")).map(HashSet::new).orElse(null))
+                .build();
+        return calculatedFieldService.findCalculatedFieldsByTenantIdAndFilter(user.getTenantId(), filter, pageLink);
+    }
+
+    @ApiOperation(value = "Get calculated field names (getCalculatedFieldNames)",
+            notes = "Fetch the list of calculated field names for specified type.")
+    @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
+    @GetMapping(value = "/calculatedFields/names")
+    public PageData<String> getCalculatedFieldNames(@Parameter(description = "Calculated field type filter.")
+                                                    @RequestParam CalculatedFieldType type,
+                                                    @Parameter(description = PAGE_SIZE_DESCRIPTION, required = true)
+                                                    @RequestParam int pageSize,
+                                                    @Parameter(description = PAGE_NUMBER_DESCRIPTION, required = true)
+                                                    @RequestParam int page,
+                                                    @Parameter(description = CF_TEXT_SEARCH_DESCRIPTION)
+                                                    @RequestParam(required = false) String textSearch,
+                                                    @Parameter(description = SORT_ORDER_DESCRIPTION, schema = @Schema(allowableValues = {"ASC", "DESC"}))
+                                                    @RequestParam(required = false) String sortOrder) throws ThingsboardException {
+        PageLink pageLink = createPageLink(pageSize, page, textSearch, "name", sortOrder);
+        return calculatedFieldService.findCalculatedFieldNamesByTenantIdAndType(getTenantId(), type, pageLink);
     }
 
     @ApiOperation(value = "Delete Calculated Field (deleteCalculatedField)",
             notes = "Deletes the calculated field. Referencing non-existing Calculated Field Id will cause an error." + TENANT_OR_CUSTOMER_AUTHORITY_PARAGRAPH)
     @PreAuthorize("hasAuthority('TENANT_ADMIN')")
-    @RequestMapping(value = "/calculatedField/{calculatedFieldId}", method = RequestMethod.DELETE)
-    @ResponseStatus(value = HttpStatus.OK)
+    @DeleteMapping("/calculatedField/{calculatedFieldId}")
+    @ResponseStatus(HttpStatus.OK)
     public void deleteCalculatedField(@PathVariable(CALCULATED_FIELD_ID) String strCalculatedFieldId) throws Exception {
         checkParameter(CALCULATED_FIELD_ID, strCalculatedFieldId);
         CalculatedFieldId calculatedFieldId = new CalculatedFieldId(toUUID(strCalculatedFieldId));
-        CalculatedField calculatedField = checkCalculatedFieldId(calculatedFieldId, Operation.DELETE);
+        CalculatedField calculatedField = tbCalculatedFieldService.findById(calculatedFieldId, getCurrentUser());
         checkEntityId(calculatedField.getEntityId(), Operation.WRITE_CALCULATED_FIELD);
         tbCalculatedFieldService.delete(calculatedField, getCurrentUser());
     }
@@ -195,12 +253,11 @@ public class CalculatedFieldController extends BaseController {
             notes = "Gets latest calculated field debug event for specified calculated field id. " +
                     "Referencing non-existing calculated field id will cause an error. " + TENANT_AUTHORITY_PARAGRAPH)
     @PreAuthorize("hasAnyAuthority('TENANT_ADMIN')")
-    @RequestMapping(value = "/calculatedField/{calculatedFieldId}/debug", method = RequestMethod.GET)
-    @ResponseBody
+    @GetMapping("/calculatedField/{calculatedFieldId}/debug")
     public JsonNode getLatestCalculatedFieldDebugEvent(@Parameter @PathVariable(CALCULATED_FIELD_ID) String strCalculatedFieldId) throws ThingsboardException {
         checkParameter(CALCULATED_FIELD_ID, strCalculatedFieldId);
         CalculatedFieldId calculatedFieldId = new CalculatedFieldId(toUUID(strCalculatedFieldId));
-        CalculatedField calculatedField = checkCalculatedFieldId(calculatedFieldId, Operation.READ);
+        CalculatedField calculatedField = tbCalculatedFieldService.findById(calculatedFieldId, getCurrentUser());
         checkEntityId(calculatedField.getEntityId(), Operation.READ_CALCULATED_FIELD);
         TenantId tenantId = getCurrentUser().getTenantId();
         return Optional.ofNullable(eventService.findLatestEvents(tenantId, calculatedFieldId, EventType.DEBUG_CALCULATED_FIELD, 1))
@@ -211,73 +268,12 @@ public class CalculatedFieldController extends BaseController {
     @ApiOperation(value = "Test Script expression",
             notes = TEST_SCRIPT_EXPRESSION + TENANT_AUTHORITY_PARAGRAPH)
     @PreAuthorize("hasAuthority('TENANT_ADMIN')")
-    @RequestMapping(value = "/calculatedField/testScript", method = RequestMethod.POST)
-    @ResponseBody
-    public JsonNode testScript(
+    @PostMapping("/calculatedField/testScript")
+    public JsonNode testCalculatedFieldScript(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Test calculated field TBEL expression.")
-            @RequestBody JsonNode inputParams) {
-        String expression = inputParams.get("expression").asText();
-        Map<String, TbelCfArg> arguments = Objects.requireNonNullElse(
-                JacksonUtil.convertValue(inputParams.get("arguments"), new TypeReference<>() {
-                }),
-                Collections.emptyMap()
-        );
-
-        ArrayList<String> ctxAndArgNames = new ArrayList<>(arguments.size() + 1);
-        ctxAndArgNames.add("ctx");
-        ctxAndArgNames.addAll(arguments.keySet());
-
-        String output = "";
-        String errorText = "";
-
-        try {
-            if (tbelInvokeService == null) {
-                throw new IllegalArgumentException("TBEL script engine is disabled!");
-            }
-
-            CalculatedFieldScriptEngine calculatedFieldScriptEngine = new CalculatedFieldTbelScriptEngine(
-                    getTenantId(),
-                    tbelInvokeService,
-                    expression,
-                    ctxAndArgNames.toArray(String[]::new)
-            );
-
-
-            Object[] args = new Object[ctxAndArgNames.size()];
-            args[0] = new TbelCfCtx(arguments);
-            for (int i = 1; i < ctxAndArgNames.size(); i++) {
-                var arg = arguments.get(ctxAndArgNames.get(i));
-                if (arg instanceof TbelCfSingleValueArg svArg) {
-                    args[i] = svArg.getValue();
-                } else {
-                    args[i] = arg;
-                }
-            }
-
-            JsonNode json = calculatedFieldScriptEngine.executeJsonAsync(args).get(TIMEOUT, TimeUnit.SECONDS);
-            output = JacksonUtil.toString(json);
-        } catch (Exception e) {
-            log.error("Error evaluating expression", e);
-            errorText = e.getMessage();
-        }
-
-        ObjectNode result = JacksonUtil.newObjectNode();
-        result.put("output", output);
-        result.put("error", errorText);
-        return result;
-    }
-
-    private <E extends HasId<I> & HasTenantId, I extends EntityId> void checkReferencedEntities(CalculatedFieldConfiguration calculatedFieldConfig, SecurityUser user) throws ThingsboardException {
-        List<EntityId> referencedEntityIds = calculatedFieldConfig.getReferencedEntities();
-        for (EntityId referencedEntityId : referencedEntityIds) {
-            EntityType entityType = referencedEntityId.getEntityType();
-            switch (entityType) {
-                case TENANT, CUSTOMER, ASSET, DEVICE -> checkEntityId(referencedEntityId, Operation.READ);
-                default ->
-                        throw new IllegalArgumentException("Calculated fields do not support '" + entityType + "' for referenced entities.");
-            }
-        }
-
+            @RequestBody JsonNode inputParams) throws ThingsboardException {
+        checkParameter("expression", inputParams.has("expression") ? inputParams.get("expression").asText() : null);
+        return tbCalculatedFieldService.executeTestScript(getTenantId(), inputParams);
     }
 
 }

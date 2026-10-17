@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -23,45 +9,47 @@ import {
   Inject,
   InjectionToken,
   Input,
-  OnDestroy,
   OnInit,
   Optional,
   TemplateRef,
   ViewChild,
   ViewContainerRef
 } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR, UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
+import { ControlValueAccessor, FormBuilder, FormGroup, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { coerceBoolean } from '@shared/decorators/coercion';
 import { ConnectedPosition, Overlay, OverlayConfig, OverlayRef } from '@angular/cdk/overlay';
 import { TemplatePortal } from '@angular/cdk/portal';
 import { TranslateService } from '@ngx-translate/core';
 import { DeviceInfoFilter } from '@shared/models/device.models';
-import { isDefinedAndNotNull } from '@core/utils';
+import { deepClone, isDefinedAndNotNull, isEmpty, isUndefinedOrNull } from '@core/utils';
 import { EntityInfoData } from '@shared/models/entity.models';
 import { DeviceProfileService } from '@core/http/device-profile.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { fromEvent, Subscription } from 'rxjs';
 
 export const DEVICE_FILTER_CONFIG_DATA = new InjectionToken<any>('DeviceFilterConfigData');
 
 export interface DeviceFilterConfigData {
   panelMode: boolean;
   deviceInfoFilter: DeviceInfoFilter;
+  initialFilterConfig?: DeviceInfoFilter;
 }
 
 // @dynamic
 @Component({
-  selector: 'tb-device-info-filter',
-  templateUrl: './device-info-filter.component.html',
-  styleUrls: ['./device-info-filter.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => DeviceInfoFilterComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-device-info-filter',
+    templateUrl: './device-info-filter.component.html',
+    styleUrls: ['./device-info-filter.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => DeviceInfoFilterComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
-export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValueAccessor {
+export class DeviceInfoFilterComponent implements OnInit, ControlValueAccessor {
 
   @ViewChild('deviceFilterPanel')
   deviceFilterPanel: TemplateRef<any>;
@@ -72,19 +60,25 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
   @Input()
   buttonMode = true;
 
+  @Input()
+  initialDeviceFilterConfig: DeviceInfoFilter = {
+    deviceProfileId: null,
+    active: null
+  };
+
   panelMode = false;
 
-  buttonDisplayValue = this.translate.instant('device.device-filter');
+  buttonDisplayValue = this.translate.instant('device.device-filter-title');
 
-  deviceInfoFilterForm: UntypedFormGroup;
+  deviceInfoFilterForm: FormGroup;
 
   deviceFilterOverlayRef: OverlayRef;
 
   panelResult: DeviceInfoFilter = null;
 
   private deviceProfileInfo: EntityInfoData;
-
   private deviceInfoFilter: DeviceInfoFilter;
+  private resizeWindows: Subscription;
 
   private propagateChange = (_: any) => {};
 
@@ -92,7 +86,7 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
               private data: DeviceFilterConfigData | undefined,
               @Optional()
               private overlayRef: OverlayRef,
-              private fb: UntypedFormBuilder,
+              private fb: FormBuilder,
               private translate: TranslateService,
               private overlay: Overlay,
               private nativeElement: ElementRef,
@@ -106,6 +100,10 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
     if (this.data) {
       this.panelMode = this.data.panelMode;
       this.deviceInfoFilter = this.data.deviceInfoFilter;
+      this.initialDeviceFilterConfig = this.data.initialFilterConfig;
+      if (this.panelMode && !this.initialDeviceFilterConfig) {
+        this.initialDeviceFilterConfig = deepClone(this.deviceInfoFilter);
+      }
     }
     this.deviceInfoFilterForm = this.fb.group({
       deviceProfileId: [null, []],
@@ -115,7 +113,6 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(
       () => {
-        this.updateValidators();
         if (!this.buttonMode) {
           this.deviceFilterUpdated(this.deviceInfoFilterForm.value);
         }
@@ -126,14 +123,11 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
     }
   }
 
-  ngOnDestroy(): void {
-  }
-
   registerOnChange(fn: any): void {
     this.propagateChange = fn;
   }
 
-  registerOnTouched(fn: any): void {
+  registerOnTouched(_fn: any): void {
   }
 
   setDisabledState(isDisabled: boolean): void {
@@ -142,17 +136,16 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
       this.deviceInfoFilterForm.disable({emitEvent: false});
     } else {
       this.deviceInfoFilterForm.enable({emitEvent: false});
-      this.updateValidators();
     }
   }
 
   writeValue(deviceInfoFilter?: DeviceInfoFilter): void {
     this.deviceInfoFilter = deviceInfoFilter;
+    if (!this.initialDeviceFilterConfig && deviceInfoFilter) {
+      this.initialDeviceFilterConfig = deepClone(deviceInfoFilter);
+    }
     this.updateButtonDisplayValue();
     this.updateDeviceInfoFilterForm(deviceInfoFilter);
-  }
-
-  private updateValidators() {
   }
 
   toggleDeviceFilterPanel($event: Event) {
@@ -183,26 +176,41 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
     });
     this.deviceFilterOverlayRef.attach(new TemplatePortal(this.deviceFilterPanel,
       this.viewContainerRef));
+    this.resizeWindows = fromEvent(window, 'resize').subscribe(() => {
+      this.deviceFilterOverlayRef.updatePosition();
+    });
   }
 
   cancel() {
     this.updateDeviceInfoFilterForm(this.deviceInfoFilter);
+    this.deviceInfoFilterForm.markAsPristine();
     if (this.overlayRef) {
       this.overlayRef.dispose();
     } else {
+      this.resizeWindows.unsubscribe();
       this.deviceFilterOverlayRef.dispose();
     }
   }
 
   update() {
     this.deviceFilterUpdated(this.deviceInfoFilterForm.value);
+    this.deviceInfoFilterForm.markAsPristine();
     if (this.panelMode) {
       this.panelResult = this.deviceInfoFilter;
     }
     if (this.overlayRef) {
       this.overlayRef.dispose();
     } else {
+      this.resizeWindows.unsubscribe();
       this.deviceFilterOverlayRef.dispose();
+    }
+  }
+
+  reset() {
+    const deviceInfoFilter = this.deviceFilterFromFormValue(this.deviceInfoFilterForm.value);
+    if (!this.deviceInfoFilterConfigEquals(deviceInfoFilter, this.initialDeviceFilterConfig)) {
+      this.updateDeviceInfoFilterForm(this.initialDeviceFilterConfig);
+      this.deviceInfoFilterForm.markAsDirty();
     }
   }
 
@@ -211,19 +219,30 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
     this.updateButtonDisplayValue();
   }
 
+  private deviceInfoFilterConfigEquals = (filter1?: DeviceInfoFilter, filter2?: DeviceInfoFilter): boolean => {
+    if (filter1 === filter2) {
+      return true;
+    }
+    if ((isUndefinedOrNull(filter1) || isEmpty(filter1)) && (isUndefinedOrNull(filter2) || isEmpty(filter2))) {
+      return true;
+    } else if (isDefinedAndNotNull(filter1) && isDefinedAndNotNull(filter2)) {
+      if (filter1.active !== filter2.active) {
+        return false;
+      }
+      return filter1.deviceProfileId === filter2.deviceProfileId;
+    }
+    return false;
+  };
+
   private updateDeviceInfoFilterForm(deviceInfoFilter?: DeviceInfoFilter) {
     this.deviceInfoFilterForm.patchValue({
-      deviceProfileId: deviceInfoFilter?.deviceProfileId,
-      active: isDefinedAndNotNull(deviceInfoFilter?.active) ? deviceInfoFilter?.active : ''
+      deviceProfileId: deviceInfoFilter?.deviceProfileId ?? null,
+      active: deviceInfoFilter?.active ?? null
     }, {emitEvent: false});
-    this.updateValidators();
   }
 
   private deviceFilterUpdated(deviceInfoFilter: DeviceInfoFilter) {
-    this.deviceInfoFilter = deviceInfoFilter;
-    if ((this.deviceInfoFilter.active as any) === '') {
-      this.deviceInfoFilter.active = null;
-    }
+    this.deviceInfoFilter = this.deviceFilterFromFormValue(deviceInfoFilter);
     this.updateButtonDisplayValue();
     this.propagateChange(this.deviceInfoFilter);
   }
@@ -256,4 +275,10 @@ export class DeviceInfoFilterComponent implements OnInit, OnDestroy, ControlValu
     }
   }
 
+  private deviceFilterFromFormValue(formValue: any): DeviceInfoFilter {
+    return {
+      deviceProfileId: formValue?.deviceProfileId ?? null,
+      active: formValue?.active ?? null
+    };
+  }
 }
