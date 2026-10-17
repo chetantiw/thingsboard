@@ -7,13 +7,111 @@
   display: flex;
   flex: 1 1 0;
   .tb-login-content {
-    margin-top: 36px;
-    margin-bottom: 76px;
-    background-color: #eee;
+    min-height: 100%;
+    flex-wrap: wrap;
+    background-color: #0F0D3A;
+    background-image:
+      linear-gradient(160deg, rgba(15, 13, 58, 0.92) 0%, rgba(27, 25, 97, 0.78) 55%, rgba(19, 181, 201, 0.35) 100%),
+      url('/assets/login_background.jpg');
+    background-size: cover;
+    background-position: center;
+    overflow-y: auto;
     --mat-card-elevated-container-elevation: none;
+
+    .mt-login-hero {
+      flex: 1 1 520px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 40px;
+      padding: 56px 64px;
+      color: #FFFFFF;
+      @media #{$mat-xs} {
+        padding: 32px 24px 8px;
+        gap: 24px;
+      }
+      .mt-login-logo {
+        align-self: flex-start;
+        height: 84px;
+        width: auto;
+      }
+      .mt-login-message {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        max-width: 540px;
+        h1 {
+          margin: 0;
+          font-size: 46px;
+          line-height: 1.1;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          @media #{$mat-lt-md} {
+            font-size: 32px;
+          }
+        }
+        p {
+          margin: 0;
+          font-size: 18px;
+          line-height: 1.6;
+          color: #D9D8F0;
+        }
+      }
+      .mt-login-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        span {
+          padding: 8px 14px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          font-size: 13px;
+          font-weight: 600;
+        }
+      }
+      .mt-login-copyright {
+        font-size: 13px;
+        color: #B9B8DD;
+      }
+    }
+
+    .mt-login-panel {
+      flex: 1 1 480px;
+      padding: 40px 24px;
+    }
+
+    .mt-login-card {
+      width: 100%;
+      max-width: 460px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 24px;
+      box-shadow: 0 24px 64px rgba(8, 6, 40, 0.45);
+      background: var(--mt-surface);
+    }
+
+    .mt-login-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 0 12px;
+      h2 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--mt-text);
+      }
+      p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--mt-muted);
+      }
+    }
+
     .tb-login-form {
-      @media #{$mat-gt-xs} {
-        width: 480px !important;
+      .mat-mdc-form-field {
+        margin-top: 8px;
       }
 
       .forgot-password {
@@ -23,6 +121,9 @@
 
       .tb-action-button{
         margin: 20px 0 16px;
+        height: 48px;
+        font-size: 15px;
+        font-weight: 800;
       }
     }
 

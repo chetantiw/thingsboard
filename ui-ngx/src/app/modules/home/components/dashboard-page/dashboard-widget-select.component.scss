@@ -223,7 +223,7 @@ tb-dashboard-widget-select {
       transition: background-color 0.2s;
 
       &:hover {
-        background: rgba($tb-primary-color, 0.06);
+        background: color-mix(in srgb, #{$tb-primary-color} 6%, transparent);
       }
 
       .tb-widget-select-browse-tip-icon,

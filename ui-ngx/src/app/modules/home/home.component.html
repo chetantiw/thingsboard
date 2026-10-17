@@ -5,25 +5,30 @@
 
 -->
 <mat-sidenav-container>
-  <mat-sidenav #sidenav class="tb-site-sidenav mat-elevation-z2"
+  <mat-sidenav #sidenav class="tb-site-sidenav"
+               [class.mt-rail]="compactNav$ | async"
                [disableClose]="sidenavOpened"
                (click)="sidenavClicked()"
                [mode]="sidenavMode"
                [opened]="sidenavOpened && !forceFullscreen">
     <header class="tb-nav-header">
-      <mat-toolbar color="primary" class="tb-nav-header-toolbar">
+      <mat-toolbar class="tb-nav-header-toolbar">
         <div class="flex flex-auto">
-          <tb-logo [src]="logo" class="tb-logo-title"></tb-logo>
+          @if (compactNav$ | async) {
+            <img class="mt-emblem" src="assets/mutech-emblem.png" alt="{{ appTitle }}">
+          } @else {
+            <tb-logo [src]="logo" class="tb-logo-title"></tb-logo>
+          }
         </div>
       </mat-toolbar>
     </header>
-    <mat-toolbar color="primary" class="tb-side-menu-toolbar flex flex-1 flex-col" role="navigation">
-      <tb-side-menu></tb-side-menu>
+    <mat-toolbar class="tb-side-menu-toolbar flex flex-1 flex-col" role="navigation">
+      <tb-side-menu [compact]="compactNav$ | async"></tb-side-menu>
     </mat-toolbar>
   </mat-sidenav>
   <mat-sidenav-content>
     <div class="flex flex-col" role="main" style="height: 100%;">
-      <mat-toolbar color="primary" class="tb-primary-toolbar flex flex-row">
+      <mat-toolbar class="tb-primary-toolbar mt-header flex flex-row">
         <button mat-icon-button id="main"
                 [class.!hidden]="forceFullscreen || displaySearchMode()"
                 class="gt-sm:!hidden" (click)="sidenav.toggle()">
@@ -50,7 +55,19 @@
                    placeholder="{{ 'common.enter-search' | translate }}"/>
           </mat-form-field>
         </div>
-        <tb-github-badge class="lt-md:!hidden"></tb-github-badge>
+        <button [class.!hidden]="displaySearchMode()"
+                class="mt-command-button lt-md:!hidden"
+                (click)="openCommandPalette()">
+          <mat-icon class="material-icons">travel_explore</mat-icon>
+          <span class="mt-command-label">{{ 'mutech.jump-to' | translate }}</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+        <button [class.!hidden]="displaySearchMode()"
+                mat-icon-button
+                matTooltip="{{ 'mutech.appearance' | translate }}"
+                (click)="openAppearance()">
+          <mat-icon class="material-icons">palette</mat-icon>
+        </button>
         <button [class.!hidden]="!searchEnabled"
                 mat-icon-button (click)="openSearch()">
           <mat-icon class="material-icons">search</mat-icon>

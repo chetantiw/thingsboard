@@ -3,114 +3,71 @@
 @use '@angular/material' as mat;
 @use 'theme-overwrites' as overwrites;
 @use '@angular/material/core/tokens/m2-utils';
+@use '../theme/mutech-palettes' as mt;
 @import '../theme/datepicker-theme';
 @import './scss/constants';
 
-@include mat.all-component-typographies();
+// Only the global stylesheet (styles.scss) emits the extra appearance presets;
+// component stylesheets that import this file just need its variables.
+$mt-emit-presets: false !default;
+
+$tb-typography: mat.m2-define-typography-config(
+  $font-family: unquote('var(--mt-font)'),
+  $button: mat.m2-define-typography-level(14px, 36px, 600, $letter-spacing: 0.01em)
+);
+
+@include mat.all-component-typographies($tb-typography);
 @include mat.elevation-classes();
 @include mat.app-background();
 
-$tb-mat-indigo: (
-  50: #e8eaf6,
-  100: #c5cae9,
-  200: #9fa8da,
-  300: $tb-primary-color-light,
-  400: #5c6bc0,
-  500: $tb-primary-color,
-  600: $tb-secondary-color,
-  700: #303f9f,
-  800: #283593,
-  900: #1a237e,
-  A100: $tb-hue3-color,
-  A200: #536dfe,
-  A400: #3d5afe,
-  A700: #304ffe,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: white,
-    400: white,
-    500: white,
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-    A100: rgba(black, 0.87),
-    A200: white,
-    A400: white,
-    A700: white,
-  )
-);
+// Builds a full Material M2 theme for one MuTech preset.
+// $surfaces overrides the Material system surface/background colors so
+// every Material component follows the preset's canvas and cards.
+@function mt-theme($primary-color, $accent-color, $dark, $surfaces) {
+  $primary: mat.m2-define-palette(mt.mt-palette($primary-color));
+  $accent: mat.m2-define-palette(mt.mt-palette($accent-color));
+  $config: (
+    color: (primary: $primary, accent: $accent),
+    typography: $tb-typography,
+    density: 0
+  );
+  $theme: if($dark, mat.m2-define-dark-theme($config), mat.m2-define-light-theme($config));
+  $system: map_merge(m2-utils.get-system($theme), $surfaces);
+  @return map_merge($theme, (_mat-system: $system));
+}
 
+@function mt-surfaces($background, $surface, $surface-variant) {
+  @return (
+    background: $background,
+    surface: $surface,
+    surface-variant: $surface-variant,
+    surface-bright: $surface,
+    surface-container: $surface,
+    surface-container-high: $surface,
+    surface-container-highest: $surface,
+    surface-container-low: $surface,
+    surface-container-lowest: $surface,
+    surface-dim: $surface,
+    surface-tint: $surface
+  );
+}
+
+// Indigo Day: the MuTech brand theme (default).
+$tb-mat-indigo: mt.mt-palette($mt-brand-primary);
 $tb-primary: mat.m2-define-palette($tb-mat-indigo);
-$tb-accent: mat.m2-define-palette(mat.$m2-deep-orange-palette);
-
-$tb-mat-theme: mat.m2-define-light-theme((
-  color: (
-    primary: $tb-primary,
-    accent: $tb-accent
-  ),
-  typography: mat.m2-define-typography-config(
-    $button: mat.m2-define-typography-level(14px, 36px, 500, $letter-spacing: 0.03125em)
-  ),
-  density: 0
-));
-
-$tb-theme-system: m2-utils.get-system($tb-mat-theme);
-$tb-theme-system: map_merge($tb-theme-system, ( background: map_get(mat.$m2-grey-palette, 200) ));
-$tb-theme: map_merge($tb-mat-theme, (_mat-system: $tb-theme-system));
+$tb-accent: mat.m2-define-palette(mt.mt-palette(#0E8A9A));
+$tb-theme: mt-theme($mt-brand-primary, #0E8A9A, false, (background: #F4F5FA));
 
 $primary: mat.m2-get-color-from-palette($tb-primary);
 $accent: mat.m2-get-color-from-palette($tb-accent);
 
-$tb-dark-mat-indigo: (
-  50: #e8eaf6,
-  100: #c5cae9,
-  200: #9fa8da,
-  300: #7986cb,
-  400: #5c6bc0,
-  500: $tb-dark-primary-color,
-  600: $tb-secondary-color,
-  700: #303f9f,
-  800: $tb-primary-color,
-  900: #1a237e,
-  A100: $tb-hue3-color,
-  A200: #536dfe,
-  A400: #3d5afe,
-  A700: #304ffe,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: rgba(black, 0.87),
-    500: map_get($tb-mat-indigo, 900),
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-    A100: rgba(black, 0.87),
-    A200: rgba(black, 0.87),
-    A400: rgba(black, 0.87),
-    A700: rgba(black, 0.87),
-  )
-);
+$mt-arctic-theme: mt-theme(#0E7490, #D97706, false, (background: #E8F1F4));
+$mt-midnight-theme: mt-theme(#8B87FF, #22D3EE, true, mt-surfaces(#0B0A1F, #15133A, #1E1B4B));
+$mt-carbon-theme: mt-theme(#F5A524, #38BDF8, true, mt-surfaces(#0E0E0E, #191919, #242424));
 
-$tb-dark-primary: mat.m2-define-palette($tb-dark-mat-indigo);
-
-$tb-dark-theme: mat.m2-define-dark-theme((
-  color: (
-    primary: $tb-dark-primary,
-    accent: $tb-accent
-  ),
-  typography: mat.m2-define-typography-config(),
-  density: 0
-));
-
-$tb-dark-theme-system: m2-utils.get-system($tb-dark-theme);
-$tb-dark-theme-system: map_merge($tb-dark-theme-system, ( surface: map_get($tb-dark-mat-indigo, 800) ));
-$tb-dark-theme: map_merge($tb-dark-theme, (_mat-system: $tb-dark-theme-system));
+// Kept for components that render on dark surfaces inside light themes
+// (e.g. the search field in the toolbar).
+$tb-dark-theme: mt-theme(#8B87FF, #22D3EE, true, mt-surfaces(#0B0A1F, #15133A, #1E1B4B));
 
 @mixin mat-fab-toolbar-theme($theme) {
   $primary: map-get($theme, primary);
@@ -187,6 +144,17 @@ $tb-dark-theme: map_merge($tb-dark-theme, (_mat-system: $tb-dark-theme-system));
 
 }
 
+@mixin mt-preset-colors($theme) {
+  @include mat.all-component-colors($theme);
+  @include mat-datetimepicker-theme($theme);
+  @include overwrites.theme-overwrites(map-get($theme, primary), $theme);
+  mat-toolbar {
+    &.mat-hue-3 {
+      background-color: mat.m2-get-color-from-palette(map-get($theme, primary), 'A100');
+    }
+  }
+}
+
 @mixin tb-components-theme($theme) {
   $primary: map-get($theme, primary);
   $warn: map-get($theme, warn);
@@ -226,6 +194,26 @@ $tb-dark-theme: map_merge($tb-dark-theme, (_mat-system: $tb-dark-theme-system));
   @include tb-components-theme($tb-theme);
   @include overwrites.theme-overwrites($tb-primary, $tb-theme);
   @include mat.typography-hierarchy($tb-theme);
+
+  @if $mt-emit-presets {
+    &.mt-theme-arctic {
+      @include mt-preset-colors($mt-arctic-theme);
+    }
+    &.mt-theme-midnight {
+      @include mt-preset-colors($mt-midnight-theme);
+      color-scheme: dark;
+    }
+    &.mt-theme-carbon {
+      @include mt-preset-colors($mt-carbon-theme);
+      color-scheme: dark;
+    }
+    &.mt-density-compact {
+      @include mat.all-component-densities(-1);
+    }
+    &.mt-dark .tb-widget {
+      @include mat.all-component-colors($tb-theme);
+    }
+  }
 }
 
 .tb-dark {

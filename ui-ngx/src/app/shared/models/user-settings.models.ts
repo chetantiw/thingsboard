@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { Appearance } from '@shared/models/appearance.models';
+
 export interface UserSettings {
+  appearance?: Partial<Appearance>;
   openedMenuSections?: string[];
   notDisplayConnectivityAfterAddDevice?: boolean;
   notDisplayInstructionsAfterAddEdge?: boolean;

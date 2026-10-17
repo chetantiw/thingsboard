@@ -10189,5 +10189,34 @@
   "language": {
     "auto": "Auto",
     "language": "Dil"
+  },
+  "mutech": {
+    "appearance": "Appearance",
+    "appearance-hint": "Choose how MuTech-IoT looks for you. Your choice is saved to your account.",
+    "layout": "Layout",
+    "layout-classic": "Classic workspace",
+    "layout-classic-hint": "Full sidebar with labels",
+    "layout-control": "Control room",
+    "layout-control-hint": "Icon rail, more room for data",
+    "theme": "Theme",
+    "follow-system": "Follow system light / dark mode",
+    "density": "Density",
+    "density-comfortable": "Comfortable",
+    "density-compact": "Compact",
+    "jump-to": "Jump to…",
+    "command-placeholder": "Search pages and actions",
+    "no-results": "Nothing matches your search",
+    "go-to": "Go to",
+    "switch-theme": "Switch theme: {{theme}}",
+    "switch-to-control-room": "Switch to Control room layout",
+    "switch-to-classic": "Switch to Classic workspace layout",
+    "sign-in-title": "Welcome back",
+    "sign-in-subtitle": "Sign in to your MuTech-IoT account",
+    "hero-title": "Every machine, every plant — one live view.",
+    "hero-subtitle": "Monitor devices, act on alarms and analyse telemetry from a single MuTech-IoT workspace.",
+    "hero-telemetry": "Real-time telemetry",
+    "hero-alarms": "Alarm management",
+    "hero-dashboards": "Custom dashboards",
+    "copyright": "© {{year}} MuTech Automation"
   }
 }

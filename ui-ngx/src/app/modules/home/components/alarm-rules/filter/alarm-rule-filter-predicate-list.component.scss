@@ -32,8 +32,8 @@
       color: $tb-primary-color;
       padding: 0 8px;
       border-radius: 4px;
-      border: 1px solid rgba($tb-primary-color, 0.32);
-      background-color: rgba($tb-primary-color, 0.04);
+      border: 1px solid color-mix(in srgb, #{$tb-primary-color} 32%, transparent);
+      background-color: color-mix(in srgb, #{$tb-primary-color} 4%, transparent);
     }
   }
 }

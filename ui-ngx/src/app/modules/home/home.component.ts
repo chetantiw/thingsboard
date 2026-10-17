@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
-import { AfterViewInit, Component, ElementRef, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { skip, startWith, Subject } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
@@ -20,6 +20,11 @@ import { RouterTabsComponent } from '@home/components/router-tabs.component';
 import { FormBuilder } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { isDefined, isDefinedAndNotNull } from '@core/utils';
+import { MatDialog } from '@angular/material/dialog';
+import { AppearanceService } from '@core/services/appearance.service';
+import { environment as env } from '@env/environment';
+import { CommandPaletteDialogComponent } from '@home/components/mutech/command-palette-dialog.component';
+import { AppearanceDialogComponent } from '@home/components/mutech/appearance-dialog.component';
 
 @Component({
     selector: 'tb-home',
@@ -40,6 +45,9 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
   sidenavOpened = true;
 
   logo = 'assets/logo_title_white.svg';
+  appTitle = env.appTitle;
+
+  compactNav$ = this.appearanceService.compactNavigation$;
 
   @ViewChild('sidenav')
   sidenav: MatSidenav;
@@ -62,6 +70,8 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
               @Inject(WINDOW) private window: Window,
               private activeComponentService: ActiveComponentService,
               private fb: FormBuilder,
+              private dialog: MatDialog,
+              private appearanceService: AppearanceService,
               public breakpointObserver: BreakpointObserver) {
     super(store);
   }
@@ -100,6 +110,35 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
       skip(1),
       takeUntil(this.destroy$)
     ).subscribe(value => this.searchTextUpdated(value.trim()));
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent) {
+    if ((event.ctrlKey || event.metaKey) && event.key?.toLowerCase() === 'k' && !this.forceFullscreen) {
+      event.preventDefault();
+      this.openCommandPalette();
+    }
+  }
+
+  openCommandPalette() {
+    if (!this.dialog.getDialogById(CommandPaletteDialogComponent.dialogId)) {
+      this.dialog.open(CommandPaletteDialogComponent, {
+        id: CommandPaletteDialogComponent.dialogId,
+        panelClass: ['tb-dialog', 'mt-command-palette-panel'],
+        position: {top: '12vh'},
+        width: '640px',
+        maxWidth: '92vw',
+        autoFocus: 'first-tabbable'
+      });
+    }
+  }
+
+  openAppearance() {
+    this.dialog.open(AppearanceDialogComponent, {
+      panelClass: ['tb-dialog', 'mt-appearance-panel'],
+      width: '560px',
+      maxWidth: '94vw'
+    });
   }
 
   sidenavClicked() {

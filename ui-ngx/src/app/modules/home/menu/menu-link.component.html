@@ -5,7 +5,10 @@
 
 -->
 <a mat-button routerLinkActive="tb-active" [routerLinkActiveOptions]="{paths: 'subset', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored'}" routerLink="{{section.path}}"
-   [class.is-new]="section.isNew">
+   [class.is-new]="section.isNew"
+   [matTooltip]="section.customTranslate ? (section.name | customTranslate) : (section.name | translate)"
+   matTooltipPosition="right"
+   [matTooltipDisabled]="!compact">
   <tb-icon matButtonIcon *ngIf="section.icon !== null">{{section.icon}}</tb-icon>
   <span>{{section.customTranslate ? (section.name | customTranslate) : (section.name | translate)}}</span>
 </a>

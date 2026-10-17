@@ -17,3 +17,4 @@ export * from './title.service';
 export * from './unit.service';
 export * from './utils.service';
 export * from './window.service';
+export * from './appearance.service';

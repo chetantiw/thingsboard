@@ -18,6 +18,8 @@ export class MenuToggleComponent implements OnInit {
 
   @Input() section: MenuSection;
 
+  @Input() compact = false;
+
   constructor(private router: Router,
               private store: Store<AppState>) {
   }
@@ -25,9 +27,13 @@ export class MenuToggleComponent implements OnInit {
   ngOnInit() {
   }
 
+  isActive(): boolean {
+    return this.section.pages?.some(page => this.router.url.startsWith(page.path)) ?? false;
+  }
+
   sectionHeight(): string {
     if (this.section.opened) {
-      return this.section.pages.length * 40 + 'px';
+      return this.section.pages.length * 42 + 'px';
     } else {
       return '0px';
     }

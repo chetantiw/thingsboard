@@ -12,6 +12,8 @@ import { SideMenuComponent } from '@modules/home/menu/side-menu.component';
 import { GithubBadgeComponent } from '@home/components/github-badge/github-badge.component';
 import { NotificationBellComponent } from '@home/components/notification/notification-bell.component';
 import { ShowNotificationPopoverComponent } from '@home/components/notification/show-notification-popover.component';
+import { CommandPaletteDialogComponent } from '@home/components/mutech/command-palette-dialog.component';
+import { AppearanceDialogComponent } from '@home/components/mutech/appearance-dialog.component';
 
 @NgModule({
   declarations:
@@ -22,7 +24,9 @@ import { ShowNotificationPopoverComponent } from '@home/components/notification/
       SideMenuComponent,
       GithubBadgeComponent,
       NotificationBellComponent,
-      ShowNotificationPopoverComponent
+      ShowNotificationPopoverComponent,
+      CommandPaletteDialogComponent,
+      AppearanceDialogComponent
     ],
   imports: [
     CommonModule,

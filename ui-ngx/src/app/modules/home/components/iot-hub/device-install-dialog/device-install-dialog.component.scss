@@ -103,7 +103,7 @@
     gap: 12px;
     padding: 16px;
     height: 116px;
-    background: rgba($tb-primary-color, 0.04);
+    background: color-mix(in srgb, #{$tb-primary-color} 4%, transparent);
     border: 1px solid transparent;
     border-radius: 6px;
     cursor: pointer;

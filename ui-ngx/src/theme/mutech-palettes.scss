@@ -1,0 +1,54 @@
+// SPDX-FileCopyrightText: Copyright MuTech Automation
+// SPDX-License-Identifier: Apache-2.0
+@use 'sass:color';
+@use 'sass:map';
+@use 'sass:math';
+
+@function _mt-linear($channel) {
+  $v: math.div($channel, 255);
+  @if $v <= 0.03928 {
+    @return math.div($v, 12.92);
+  }
+  @return math.pow(math.div($v + 0.055, 1.055), 2.4);
+}
+
+// WCAG relative luminance.
+@function mt-luminance($c) {
+  @return 0.2126 * _mt-linear(color.channel($c, 'red', $space: rgb))
+    + 0.7152 * _mt-linear(color.channel($c, 'green', $space: rgb))
+    + 0.0722 * _mt-linear(color.channel($c, 'blue', $space: rgb));
+}
+
+// Picks the text color (near-black or white) with the higher WCAG contrast.
+@function mt-contrast($c) {
+  $l: mt-luminance($c);
+  @if math.div($l + 0.05, 0.05) > math.div(1.05, $l + 0.05) {
+    @return rgba(black, 0.87);
+  }
+  @return white;
+}
+
+// Builds a Material M2 palette map from a single base (500) color.
+@function mt-palette($c) {
+  $shades: (
+    50: color.mix(white, $c, 88%),
+    100: color.mix(white, $c, 72%),
+    200: color.mix(white, $c, 55%),
+    300: color.mix(white, $c, 38%),
+    400: color.mix(white, $c, 18%),
+    500: $c,
+    600: color.mix(black, $c, 10%),
+    700: color.mix(black, $c, 22%),
+    800: color.mix(black, $c, 35%),
+    900: color.mix(black, $c, 50%),
+    A100: color.mix(white, $c, 60%),
+    A200: color.mix(white, $c, 30%),
+    A400: $c,
+    A700: color.mix(black, $c, 20%)
+  );
+  $contrast: ();
+  @each $key, $value in $shades {
+    $contrast: map.merge($contrast, ($key: mt-contrast($value)));
+  }
+  @return map.merge($shades, (contrast: $contrast));
+}

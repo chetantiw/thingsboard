@@ -4,11 +4,14 @@
 @import 'typeface-roboto/index.css';
 @import 'typeface-roboto-mono/index.css';
 @import 'font-awesome/css/font-awesome.min.css';
+$mt-emit-presets: true;
 @import 'theme.scss';
 @import './scss/constants';
 @import './scss/animations';
 @import './scss/mixins';
 @import './scss/fonts';
+@import './theme/mutech-tokens';
+@import './theme/mutech-components';
 
 body, html {
   height: 100%;
@@ -27,7 +30,8 @@ body, html {
 body {
   margin: 0;
   padding: 0;
-  background-color: #eee;
+  background-color: var(--mt-bg);
+  color: var(--mt-text);
   overflow: hidden;
 }
 
@@ -57,7 +61,7 @@ select,
 textarea,
 td,
 th {
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+  font-family: var(--mt-font);
   font-size: 16px;
 }
 

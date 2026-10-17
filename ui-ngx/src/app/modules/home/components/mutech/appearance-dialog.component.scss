@@ -1,0 +1,139 @@
+// SPDX-FileCopyrightText: Copyright MuTech Automation
+// SPDX-License-Identifier: Apache-2.0
+:host {
+  display: block;
+}
+
+.mt-appearance {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 8px;
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  h3 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mt-muted);
+  }
+}
+
+.mt-appearance-hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mt-muted);
+}
+
+.mt-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  &.mt-theme-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    @media (max-width: 520px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+.mt-option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid var(--mt-border);
+  border-radius: var(--mt-radius-lg);
+  background: var(--mt-surface);
+  color: var(--mt-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease;
+  &:hover {
+    border-color: var(--mt-muted);
+  }
+  &.mt-selected {
+    border-color: var(--mt-primary);
+    box-shadow: 0 0 0 3px var(--mt-primary-soft);
+  }
+}
+
+.mt-option-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mt-option-hint {
+  font-size: 12px;
+  color: var(--mt-muted);
+}
+
+.mt-layout-preview {
+  display: flex;
+  gap: 6px;
+  height: 64px;
+  padding: 6px;
+  border-radius: var(--mt-radius);
+  background: var(--mt-bg);
+  .mt-preview-nav {
+    width: 34%;
+    border-radius: 6px;
+    background: var(--mt-rail);
+  }
+  &.mt-preview-control .mt-preview-nav {
+    width: 12%;
+    border-radius: 10px;
+  }
+  .mt-preview-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mt-preview-bar {
+    height: 14px;
+    border-radius: 4px;
+    background: var(--mt-surface);
+    border: 1px solid var(--mt-border);
+  }
+  .mt-preview-cards {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    span {
+      border-radius: 4px;
+      background: var(--mt-surface);
+      border: 1px solid var(--mt-border);
+    }
+  }
+}
+
+.mt-theme-swatch {
+  display: flex;
+  gap: 4px;
+  height: 52px;
+  padding: 6px;
+  border-radius: var(--mt-radius);
+  border: 1px solid var(--mt-border);
+  span {
+    border-radius: 4px;
+    &:nth-child(1) {
+      width: 22%;
+    }
+    &:nth-child(2) {
+      flex: 1;
+    }
+    &:nth-child(3) {
+      width: 14%;
+    }
+  }
+}

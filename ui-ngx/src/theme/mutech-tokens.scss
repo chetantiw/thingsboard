@@ -1,0 +1,171 @@
+// SPDX-FileCopyrightText: Copyright MuTech Automation
+// SPDX-License-Identifier: Apache-2.0
+//
+// MuTech-IoT design tokens.
+// Body classes set by AppearanceService select the active values:
+//   mt-theme-indigo | mt-theme-arctic | mt-theme-midnight | mt-theme-carbon
+//   mt-layout-classic | mt-layout-control
+//   mt-density-compact
+
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('../assets/fonts/mutech/manrope-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('../assets/fonts/mutech/manrope-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url('../assets/fonts/mutech/space-grotesk-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url('../assets/fonts/mutech/space-grotesk-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('../assets/fonts/mutech/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('../assets/fonts/mutech/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+// Indigo Day (default) values, also used to keep dashboard widgets light.
+@mixin mt-indigo-tokens {
+  --mt-bg: #F4F5FA;
+  --mt-surface: #FFFFFF;
+  --mt-surface-2: #F3F4FA;
+  --mt-border: #E3E4EF;
+  --mt-text: #15142B;
+  --mt-muted: #5F5E7A;
+  --mt-primary: #1B1961;
+  --mt-on-primary: #FFFFFF;
+  --mt-primary-soft: #E8E7F7;
+  --mt-indicator: #13B5C9;
+  --mt-rail: #1B1961;
+  --mt-rail-header: #0F0D3A;
+  --mt-rail-border: #2C2A78;
+  --mt-nav-text: #D9D8F0;
+  --mt-nav-muted: #9C9AD0;
+  --mt-nav-hover: rgba(255, 255, 255, 0.08);
+  --mt-nav-active-bg: #FFFFFF;
+  --mt-nav-active-text: #1B1961;
+  --mt-header-bg: #FFFFFF;
+  --mt-shadow: 0 1px 2px rgba(21, 20, 43, 0.04), 0 4px 16px rgba(21, 20, 43, 0.05);
+  --mt-ok: #16794A;
+  --mt-warn: #B45309;
+  --mt-crit: #C4373C;
+}
+
+:root {
+  --mt-font: 'Manrope', Roboto, "Helvetica Neue", sans-serif;
+  --mt-font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
+  --mt-radius-sm: 8px;
+  --mt-radius: 10px;
+  --mt-radius-lg: 16px;
+  --mt-radius-xl: 20px;
+
+  @include mt-indigo-tokens;
+}
+
+body.mt-theme-arctic {
+  --mt-bg: #E8F1F4;
+  --mt-surface: #FFFFFF;
+  --mt-surface-2: #EEF6F8;
+  --mt-border: #D3E3E8;
+  --mt-text: #0D2A33;
+  --mt-muted: #4D6B74;
+  --mt-primary: #0E7490;
+  --mt-on-primary: #FFFFFF;
+  --mt-primary-soft: #DDF0F5;
+  --mt-indicator: #F59E0B;
+  --mt-rail: #0F3D4A;
+  --mt-rail-header: #0A2B35;
+  --mt-rail-border: #1C5464;
+  --mt-nav-text: #CFE6EC;
+  --mt-nav-muted: #8DBAC6;
+  --mt-nav-active-text: #0F3D4A;
+}
+
+body.mt-theme-midnight {
+  --mt-bg: #0B0A1F;
+  --mt-surface: #15133A;
+  --mt-surface-2: #1E1B4B;
+  --mt-border: #2A2766;
+  --mt-text: #EEEDFF;
+  --mt-muted: #A3A0D2;
+  --mt-primary: #8B87FF;
+  --mt-on-primary: #0B0A1F;
+  --mt-primary-soft: rgba(139, 135, 255, 0.16);
+  --mt-indicator: #22D3EE;
+  --mt-rail: #13113A;
+  --mt-rail-header: #0E0C2C;
+  --mt-rail-border: #24215E;
+  --mt-nav-text: #C9C7F0;
+  --mt-nav-muted: #8682C2;
+  --mt-nav-active-bg: #22D3EE;
+  --mt-nav-active-text: #0B0A1F;
+  --mt-header-bg: #0B0A1F;
+  --mt-shadow: none;
+  --mt-ok: #34D399;
+  --mt-warn: #FBBF24;
+  --mt-crit: #F87171;
+}
+
+body.mt-theme-carbon {
+  --mt-bg: #0E0E0E;
+  --mt-surface: #191919;
+  --mt-surface-2: #242424;
+  --mt-border: #2E2E2E;
+  --mt-text: #F4F4F4;
+  --mt-muted: #A3A3A3;
+  --mt-primary: #F5A524;
+  --mt-on-primary: #1A1203;
+  --mt-primary-soft: rgba(245, 165, 36, 0.14);
+  --mt-indicator: #F5A524;
+  --mt-rail: #181818;
+  --mt-rail-header: #121212;
+  --mt-rail-border: #2B2B2B;
+  --mt-nav-text: #D4D4D4;
+  --mt-nav-muted: #8A8A8A;
+  --mt-nav-active-bg: #F5A524;
+  --mt-nav-active-text: #1A1203;
+  --mt-header-bg: #0E0E0E;
+  --mt-shadow: none;
+  --mt-ok: #4ADE80;
+  --mt-warn: #F5A524;
+  --mt-crit: #F87171;
+}
+
+body.mt-layout-control {
+  --mt-font: 'Space Grotesk', 'Manrope', Roboto, "Helvetica Neue", sans-serif;
+  --mt-radius: 12px;
+  --mt-radius-lg: 18px;
+  --mt-radius-xl: 24px;
+}

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, OnInit } from '@angular/core';
 import { MenuService } from '@core/services/menu.service';
 import { MenuSection } from '@core/services/menu.models';
 
@@ -12,6 +12,8 @@ import { MenuSection } from '@core/services/menu.models';
     standalone: false
 })
 export class SideMenuComponent implements OnInit {
+
+  @Input() compact = false;
 
   menuSections$ = this.menuService.menuSections();
 

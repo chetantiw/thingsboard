@@ -299,7 +299,7 @@
   transition: background 0.15s;
 
   &:hover {
-    background: rgba($tb-primary-color, 0.04);
+    background: color-mix(in srgb, #{$tb-primary-color} 4%, transparent);
   }
 }
 

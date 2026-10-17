@@ -21,6 +21,7 @@ export class LoginComponent extends PageComponent implements OnInit {
 
   passwordViolation = false;
   isLoading = false;
+  year = new Date().getFullYear();
 
   loginFormGroup = this.fb.group({
     username: ['', [Validators.required, validateEmail]],

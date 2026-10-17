@@ -14,6 +14,8 @@ export class MenuLinkComponent implements OnInit {
 
   @Input() section: MenuSection;
 
+  @Input() compact = false;
+
   constructor() {
   }
 
