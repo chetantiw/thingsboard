@@ -27,17 +27,26 @@ script first migrates older databases with the official ThingsBoard packages
 
 ## Upgrade
 
-```bash
-# 1. Download the release files
-wget https://github.com/chetantiw/thingsboard/releases/download/mutech-4.3.1.6-1/mutech-iot-4.3.1.6-mutech1.deb
-wget https://github.com/chetantiw/thingsboard/releases/download/mutech-4.3.1.6-1/mutech-iot-4.3.1.6-mutech1.deb.sha256
-wget https://github.com/chetantiw/thingsboard/releases/download/mutech-4.3.1.6-1/upgrade-mutech-iot.sh
-sha256sum -c mutech-iot-4.3.1.6-mutech1.deb.sha256
-chmod +x upgrade-mutech-iot.sh
+Run these on the server (as a user with sudo):
 
-# 2. Run the upgrade (it shows the plan and asks before stopping anything)
+```bash
+# 1. Get the MuTech-IoT files (UI, build script, upgrade script)
+mkdir -p ~/mutech-iot && cd ~/mutech-iot
+BASE=https://raw.githubusercontent.com/chetantiw/thingsboard/mutech-v4.3.1.6-ui-redesign/packaging/mutech
+for f in ui-ngx-4.3.1.6-mutech1.jar build-mutech-deb.sh upgrade-mutech-iot.sh; do wget -q "$BASE/$f"; done
+chmod +x build-mutech-deb.sh upgrade-mutech-iot.sh
+
+# 2. Build the MuTech-IoT package from the official ThingsBoard 4.3.1.6 package
+#    (downloads ~400 MB from github.com/thingsboard and checks every file against pinned checksums)
+sudo apt install -y python3 zip
+./build-mutech-deb.sh
+
+# 3. Upgrade (shows the plan and asks before stopping anything)
 sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech1.deb
 ```
+
+`build-mutech-deb.sh` verifies the result against the build that was tested, so the
+package on your server is identical to the one used in the rehearsal.
 
 The script:
 
