@@ -189,11 +189,14 @@ import { ApiKeysTableDialogComponent } from '@home/components/api-key/api-keys-t
 import { AuditLogFilterComponent } from "@home/components/audit-log/audit-log-filter.component";
 import { EventsDialogComponent } from '@home/dialogs/events-dialog.component';
 
+import { EntityTilesComponent } from '@home/components/mutech/entity-tiles.component';
+
 @NgModule({
   declarations:
     [
       RouterTabsComponent,
       EntitiesTableComponent,
+      EntityTilesComponent,
       AddEntityDialogComponent,
       DetailsPanelComponent,
       EntityDetailsPanelComponent,

@@ -1,0 +1,80 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright MuTech Automation
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<div class="mt-tiles-grid">
+  @for (entity of entities; track trackById($index, entity)) {
+    @let device = asDevice(entity);
+    @let data = telemetryOf(entity);
+    <article class="mt-tile" tabindex="0" role="button"
+             [class.mt-tile-active]="device.active"
+             [class.mt-tile-current]="isCurrentEntity(entity)"
+             [attr.aria-label]="device.name"
+             (click)="onTileClick($event, entity)"
+             (keydown.enter)="onTileClick($event, entity)">
+      <header class="mt-tile-header">
+        <span class="mt-status-dot" [class.mt-on]="device.active"
+              [matTooltip]="(device.active ? 'device.active' : 'device.inactive') | translate"></span>
+        <span class="mt-tile-type">{{ device.deviceProfileName }}</span>
+        @if (device.additionalInfo?.gateway) {
+          <span class="mt-tile-chip">{{ 'device.is-gateway' | translate }}</span>
+        }
+        <span class="flex-1"></span>
+        @if (lastSeen(entity); as seen) {
+          <span class="mt-tile-seen mt-mono" [matTooltip]="data.lastActivityTime | date:'medium'">{{ seen }}</span>
+        }
+        @if (cellActionDescriptors.length) {
+          <button mat-icon-button class="mt-tile-menu" type="button"
+                  [disabled]="disabled"
+                  aria-label="{{ 'mutech.device-actions' | translate }}"
+                  (click)="$event.stopPropagation()"
+                  [matMenuTriggerFor]="tileActions">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #tileActions="matMenu" xPosition="before">
+            @for (action of cellActionDescriptors; track action.name) {
+              <button mat-menu-item [class.!hidden]="!action.isEnabled(entity)"
+                      (click)="action.onAction($event, entity)">
+                <tb-icon matMenuItemIcon [style]="action.style">{{ action.iconFunction ? action.iconFunction(entity) : action.icon }}</tb-icon>
+                <span>{{ action.nameFunction ? action.nameFunction(entity) : action.name }}</span>
+              </button>
+            }
+          </mat-menu>
+        }
+      </header>
+      <h3 class="mt-tile-name">{{ device.name }}</h3>
+      <div class="mt-tile-readings">
+        @if (data?.readings?.length) {
+          @for (reading of data.readings; track reading.key; let first = $first) {
+            <div class="mt-reading" [class.mt-reading-primary]="first">
+              <span class="mt-reading-value mt-mono">{{ reading.value }}</span>
+              <span class="mt-reading-key">{{ reading.key }}</span>
+            </div>
+          }
+        } @else if (data) {
+          <span class="mt-tile-empty">{{ 'mutech.no-telemetry' | translate }}</span>
+        } @else {
+          <span class="mt-tile-empty">…</span>
+        }
+      </div>
+      <svg class="mt-sparkline" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
+        @if (data?.sparkline) {
+          <path class="mt-spark-area" [attr.d]="data.sparkArea"></path>
+          <path class="mt-spark-line" [attr.d]="data.sparkline"></path>
+        } @else {
+          <path class="mt-spark-flat" d="M0 34 L200 34"></path>
+        }
+      </svg>
+      <footer class="mt-tile-footer">
+        <span class="mt-tile-label">{{ device.label || ('mutech.no-label' | translate) }}</span>
+        @if (device.customerTitle) {
+          <span class="mt-tile-customer">
+            <mat-icon>supervisor_account</mat-icon>{{ device.customerTitle }}
+          </span>
+        }
+      </footer>
+    </article>
+  }
+</div>

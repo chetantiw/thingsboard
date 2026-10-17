@@ -1648,6 +1648,12 @@
         "hero-telemetry": "Real-time telemetry",
         "hero-alarms": "Alarm management",
         "hero-dashboards": "Custom dashboards",
-        "copyright": "© {{year}} MuTech Automation"
+        "copyright": "© {{year}} MuTech Automation",
+        "view-mode": "View",
+        "view-table": "Table view",
+        "view-tiles": "Tiles view",
+        "device-actions": "Device actions",
+        "no-telemetry": "No telemetry yet",
+        "no-label": "No label"
     }
 }

@@ -42,7 +42,7 @@ import {
   GroupActionDescriptor,
   HeaderActionDescriptor
 } from '@home/models/entity/entities-table-config.models';
-import { EntityTypeTranslation } from '@shared/models/entity-type.models';
+import { EntityType, EntityTypeTranslation } from '@shared/models/entity-type.models';
 import { DialogService } from '@core/services/dialog.service';
 import { AddEntityDialogComponent } from './add-entity-dialog.component';
 import { AddEntityDialogData, EntityAction } from '@home/models/entity/entity-component.models';
@@ -55,6 +55,10 @@ import { hidePageSizePixelValue } from '@shared/models/constants';
 import { EntitiesTableAction, IEntitiesTableComponent } from '@home/models/entity/entity-table-component.models';
 import { EntityDetailsPanelComponent } from '@home/components/entity/entity-details-panel.component';
 import { FormBuilder } from '@angular/forms';
+import { AppearanceService } from '@core/services/appearance.service';
+
+type EntitiesViewMode = 'table' | 'tiles';
+const VIEW_MODE_STORAGE_PREFIX = 'mt_view_';
 
 @Component({
     selector: 'tb-entities-table',
@@ -103,6 +107,10 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
   isDetailsOpen = false;
   detailsPanelOpened = new EventEmitter<boolean>();
 
+  tilesSupported = false;
+  viewMode: EntitiesViewMode = 'table';
+  isCurrentEntityFn = (entity: BaseData<HasId>) => this.dataSource?.isCurrentEntity(entity) ?? false;
+
   @ViewChild('entityTableHeader', {static: true}) entityTableHeaderAnchor: TbAnchorComponent;
 
   @ViewChild('searchInput') searchInputField: ElementRef;
@@ -131,6 +139,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
               private elementRef: ElementRef,
               private fb: FormBuilder,
               private zone: NgZone,
+              private appearanceService: AppearanceService,
               public viewContainerRef: ViewContainerRef) {
     super(store);
   }
@@ -190,6 +199,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
 
     this.entitiesTableConfig.setTable(this);
     this.translations = this.entitiesTableConfig.entityTranslations;
+    this.initViewMode();
 
     this.headerActionDescriptors = [...this.entitiesTableConfig.headerActionDescriptors];
     this.groupActionDescriptors = [...this.entitiesTableConfig.groupActionDescriptors];
@@ -431,6 +441,35 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
       this.cellTooltipCache.length = 0;
       this.cellStyleCache.length = 0;
     }
+  }
+
+  get tilesMode(): boolean {
+    return this.tilesSupported && this.viewMode === 'tiles';
+  }
+
+  setViewMode(viewMode: EntitiesViewMode) {
+    this.viewMode = viewMode;
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_PREFIX + this.entitiesTableConfig.entityType, viewMode);
+    } catch {
+      // Storage may be unavailable; the choice then lasts for this page only.
+    }
+  }
+
+  private initViewMode() {
+    this.tilesSupported = this.entitiesTableConfig.entityType === EntityType.DEVICE;
+    if (!this.tilesSupported) {
+      this.viewMode = 'table';
+      return;
+    }
+    let stored: string = null;
+    try {
+      stored = localStorage.getItem(VIEW_MODE_STORAGE_PREFIX + this.entitiesTableConfig.entityType);
+    } catch {
+      stored = null;
+    }
+    this.viewMode = stored === 'table' || stored === 'tiles' ? stored
+      : (this.appearanceService.appearance.layout === 'control' ? 'tiles' : 'table');
   }
 
   onRowClick($event: Event, entity) {

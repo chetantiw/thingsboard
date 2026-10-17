@@ -72,6 +72,24 @@
                     (click)="actionDescriptor.onAction($event)">
               <tb-icon>{{actionDescriptor.icon}}</tb-icon>
             </button>
+            @if (tilesSupported) {
+              <button mat-icon-button class="gt-xs:!hidden"
+                      (click)="setViewMode(tilesMode ? 'table' : 'tiles')"
+                      matTooltip="{{ (tilesMode ? 'mutech.view-table' : 'mutech.view-tiles') | translate }}"
+                      matTooltipPosition="above">
+                <mat-icon>{{ tilesMode ? 'table_rows' : 'grid_view' }}</mat-icon>
+              </button>
+              <mat-button-toggle-group class="mt-view-toggle lt-sm:!hidden" hideSingleSelectionIndicator
+                                       [value]="viewMode" (change)="setViewMode($event.value)"
+                                       aria-label="{{ 'mutech.view-mode' | translate }}">
+                <mat-button-toggle value="table" matTooltip="{{ 'mutech.view-table' | translate }}" matTooltipPosition="above">
+                  <mat-icon>table_rows</mat-icon>
+                </mat-button-toggle>
+                <mat-button-toggle value="tiles" matTooltip="{{ 'mutech.view-tiles' | translate }}" matTooltipPosition="above">
+                  <mat-icon>grid_view</mat-icon>
+                </mat-button-toggle>
+              </mat-button-toggle-group>
+            }
             <button mat-icon-button [disabled]="isLoading$ | async" (click)="updateData()"
                     matTooltip="{{ 'action.refresh' | translate }}"
                     matTooltipPosition="above">
@@ -187,7 +205,16 @@
           </div>
         </mat-toolbar>
         <div class="table-container flex-1">
-          <table mat-table [dataSource]="dataSource" [trackBy]="trackByEntityId"
+          @if (tilesMode) {
+            <tb-entity-tiles [class.!hidden]="dataSource.dataLoading"
+                             [entities]="(dataSource.pageData$ | async)?.data"
+                             [cellActionDescriptors]="cellActionDescriptors"
+                             [isCurrentEntity]="isCurrentEntityFn"
+                             [disabled]="isLoading$ | async"
+                             (tileClick)="onRowClick($event.event, $event.entity)">
+            </tb-entity-tiles>
+          }
+          <table mat-table [dataSource]="dataSource" [trackBy]="trackByEntityId" [class.!hidden]="tilesMode"
                      matSort [matSortActive]="pageLink.sortOrder?.property" [matSortDirection]="pageLink.sortDirection()" matSortDisableClear>
             <ng-container matColumnDef="select" sticky>
               <mat-header-cell *matHeaderCellDef style="width: 40px;">
