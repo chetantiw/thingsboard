@@ -24,11 +24,11 @@
         letter-spacing: 0.2px;
       }
       .tb-unit-symbol {
-        color: rgba(0, 0, 0, 0.38);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
         min-width: 22px;
         text-align: end;
         b {
-          color: rgba(0, 0, 0, 0.87);
+          color: var(--mt-text);
         }
       }
     }

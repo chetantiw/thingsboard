@@ -13,7 +13,7 @@
   padding: 8px 12px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 8px;
-  background: white;
+  background: var(--mt-surface);
 }
 
 @mixin tb-iot-hub-search-icon($color: rgba(0, 0, 0, 0.38)) {
@@ -35,11 +35,11 @@
   font-weight: 400;
   line-height: 20px;
   letter-spacing: $letter-spacing;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
   background: transparent;
 
   &::placeholder {
-    color: rgba(0, 0, 0, 0.38);
+    color: color-mix(in srgb, var(--mt-text) 38%, transparent);
   }
 }
 
@@ -48,7 +48,7 @@
   height: 24px;
   padding: 0;
   flex-shrink: 0;
-  color: rgba(0, 0, 0, 0.38);
+  color: color-mix(in srgb, var(--mt-text) 38%, transparent);
   --mdc-icon-button-state-layer-size: 24px;
 
   mat-icon {
@@ -72,7 +72,7 @@
   gap: 8px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 8px;
-  background: white;
+  background: var(--mt-surface);
 }
 
 @mixin tb-iot-hub-page-search-input {
@@ -86,11 +86,11 @@
   font-weight: 400;
   line-height: 24px;
   letter-spacing: 0.15px;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
   background: transparent;
 
   &::placeholder {
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 }
 
@@ -102,7 +102,7 @@
   height: 40px;
   flex-shrink: 0;
   border-radius: 50%;
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--mt-muted);
 
   mat-icon {
     font-size: 24px;

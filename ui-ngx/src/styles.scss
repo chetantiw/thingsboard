@@ -174,7 +174,7 @@ label {
 
     &.tb-required::after {
       font-size: 13px;
-      color: rgba(0, 0, 0, .54);
+      color: var(--mt-muted);
       vertical-align: top;
       content: " *";
     }
@@ -189,7 +189,7 @@ label {
   }
   &.tb-small {
     font-size: 12px;
-    color: rgba(0, 0, 0, .54);
+    color: var(--mt-muted);
     pointer-events: none;
   }
 }
@@ -199,17 +199,17 @@ label {
 }
 
 .tb-readonly-label {
-  color: rgba(0, 0, 0, .54);
+  color: var(--mt-muted);
 }
 
 .tb-disabled-label {
-  color: rgba(0, 0, 0, .44);
+  color: color-mix(in srgb, var(--mt-text) 38%, transparent);
 }
 
 div {
   &.tb-small {
     font-size: 14px;
-    color: rgba(0, 0, 0, .54);
+    color: var(--mt-muted);
   }
 }
 
@@ -219,14 +219,14 @@ div {
   line-height: var(--mat-typography-caption-line-height, 20px);
   font-weight: var(--mat-typography-caption-font-weight, 400);
   letter-spacing: var(--mat-typography-caption-letter-spacing, 0.0333333333em);
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--mt-muted);
   white-space: normal;
 }
 
 .mat-caption {
   &.tb-required::after {
     font-size: 10px;
-    color: rgba(0, 0, 0, .54);
+    color: var(--mt-muted);
     vertical-align: top;
     content: " *";
   }
@@ -265,7 +265,7 @@ pre.tb-highlight {
 
 .tb-timewindow-panel, .tb-legend-config-panel, .tb-filter-panel, .tb-panel-container {
   overflow: hidden;
-  background: #fff;
+  background: var(--mt-surface);
   border-radius: 4px;
   box-shadow:
     0 7px 8px -4px rgba(0, 0, 0, .2),
@@ -293,7 +293,7 @@ pre.tb-highlight {
   font-size: 18px;
   font-weight: 400;
   line-height: 18px;
-  color: rgba(0, 0, 0, .38);
+  color: color-mix(in srgb, var(--mt-text) 38%, transparent);
   &.required {
     color: rgb(221, 44, 0);
   }
@@ -492,7 +492,7 @@ pre.tb-highlight {
 
       &.tb-required::after {
         font-size: 13px;
-        color: rgba(0, 0, 0, .54);
+        color: var(--mt-muted);
         vertical-align: top;
         content: " *";
       }
@@ -707,7 +707,7 @@ pre.tb-highlight {
   .mat-toolbar.mat-mdc-table-toolbar {
     padding: 0 24px;
     &:not(.mat-primary) {
-      background: #fff;
+      background: var(--mt-surface);
     }
     .mat-toolbar-tools {
       padding: 0;
@@ -724,7 +724,7 @@ pre.tb-highlight {
       }
       &[disabled][disabled] {
         .mat-icon {
-          color: rgba(0, 0, 0, .26);
+          color: color-mix(in srgb, var(--mt-text) 38%, transparent);
         }
       }
     }
@@ -885,7 +885,7 @@ pre.tb-highlight {
       text-align: end;
     }
     .mat-icon {
-      color: rgba(0, 0, 0, .54);
+      color: var(--mt-muted);
     }
     &.tb-pointer {
       cursor: pointer;
@@ -1361,7 +1361,7 @@ pre.tb-highlight {
     padding: 0 16px;
 
     &:not(.active, :disabled) {
-      color: rgba(0, 0, 0, 0.76);
+      color: var(--mt-muted);
       background-color: rgba(0, 0, 0, 0.06);
     }
 

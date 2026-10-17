@@ -58,7 +58,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: #FFFFFF;
+    background: var(--mt-surface);
     padding: 8px;
     border: 2px dashed rgba(0, 0, 0, 0.08);
     border-radius: 10px;
@@ -128,7 +128,7 @@
   flex-direction: row;
   align-items: center;
   padding: 6px 12px 6px 6px;
-  background: #fff;
+  background: var(--mt-surface);
   gap: 12px;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -157,16 +157,16 @@
         font-size: 14px;
         font-weight: 400;
         letter-spacing: 0.2px;
-        color: rgba(0, 0, 0, 0.76);
+        color: var(--mt-muted);
       }
       .tb-bundle-widget-deprecated {
         font-size: 13px;
         font-weight: 400;
-        color: rgba(0, 0, 0, 0.54);
+        color: var(--mt-muted);
       }
     }
   }
   .mat-icon {
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 }

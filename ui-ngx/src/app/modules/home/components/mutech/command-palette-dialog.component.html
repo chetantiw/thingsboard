@@ -4,10 +4,10 @@
     SPDX-License-Identifier: Apache-2.0
 
 -->
-<div class="mt-palette" (keydown)="onKeydown($event)">
+<div class="mt-palette">
   <label class="mt-palette-search">
     <mat-icon class="material-icons">search</mat-icon>
-    <input [formControl]="query" cdkFocusInitial
+    <input [formControl]="query" cdkFocusInitial (keydown)="onKeydown($event)"
            placeholder="{{ 'mutech.command-placeholder' | translate }}"
            aria-label="{{ 'mutech.command-placeholder' | translate }}">
     <kbd>Esc</kbd>

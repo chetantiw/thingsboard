@@ -163,7 +163,7 @@ gridster-item:hover {
   position: absolute !important;
   .tooltipster-box {
     user-select: none;
-    background: #fff;
+    background: var(--mt-surface);
     border: 1px solid rgba(0, 0, 0, 0.38);
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
     .tooltipster-content {
@@ -171,7 +171,7 @@ gridster-item:hover {
       font-size: 12px;
       line-height: 12px;
       font-weight: 500;
-      color: rgba(0, 0, 0, 0.76);
+      color: var(--mt-muted);
       .tb-widget-action-container {
         display: flex;
         flex-direction: column;

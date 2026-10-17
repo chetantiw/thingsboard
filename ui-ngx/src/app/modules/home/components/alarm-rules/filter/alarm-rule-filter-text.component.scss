@@ -11,7 +11,7 @@
       padding: 0;
     }
     &.disabled {
-      color: rgba(0,0,0,0.38);
+      color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     }
     &.nowrap {
       white-space: nowrap;

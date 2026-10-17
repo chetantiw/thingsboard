@@ -34,7 +34,7 @@
     gap: 16px;
     display: flex;
     flex-direction: column;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
     letter-spacing: 0.15px;
     position: relative;
     @media #{$mat-xs} {
@@ -182,7 +182,7 @@
     line-height: var(--mat-typography-caption-line-height, 20px);
     font-weight: var(--mat-typography-caption-font-weight, 400);
     letter-spacing: var(--mat-typography-caption-letter-spacing, 0.0333333333em);
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--mt-muted);
     white-space: normal;
     border-radius: 6px;
   }
@@ -373,7 +373,7 @@
       height: 40px;
       font-size: 14px;
       letter-spacing: 0.2px;
-      color: rgba(0, 0, 0, 0.38);
+      color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     }
   }
 
@@ -446,7 +446,7 @@
           font-size: 14px;
           line-height: 40px;
           letter-spacing: 0.2px;
-          color: rgba(0, 0, 0, 0.38);
+          color: color-mix(in srgb, var(--mt-text) 38%, transparent);
           > button.mat-mdc-icon-button {
             width: 40px;
             height: 40px;
@@ -653,12 +653,12 @@
     min-height: 48px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.12);
     &-cell {
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
     }
   }
 
   .tb-draggable-form-table-row {
-    background: #fff;
+    background: var(--mt-surface);
     display: flex;
     flex-direction: row;
     place-content: center flex-start;
@@ -671,14 +671,14 @@
   .tb-form-table-row {
 
     &-cell {
-      color: rgba(0, 0, 0, 0.87);
+      color: var(--mt-text);
     }
 
     &-cell-buttons {
       display: flex;
       flex-direction: row;
       button.mat-mdc-icon-button.mat-mdc-button-base {
-        color: rgba(0, 0, 0, 0.38);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
         &.tb-hidden {
           visibility: hidden;
         }
@@ -758,7 +758,7 @@
     font-size: 14px;
     line-height: 20px;
     letter-spacing: 0.25px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
     @media #{$mat-md-lg} {
       font-size: 12px;
       line-height: 16px;
@@ -805,10 +805,10 @@
 
   button.mat-mdc-button-base.tb-box-button {
     &:not(:disabled) {
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
     }
     &:disabled {
-      color: rgba(0, 0, 0, 0.12);
+      color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     }
   }
 

@@ -33,7 +33,7 @@ $tb-warn: mat.m2-get-color-from-palette(map-get($tb-theme, warn), text);
         cursor: pointer;
 
         .mat-icon {
-          color: rgba(0, 0, 0, 0.38);
+          color: color-mix(in srgb, var(--mt-text) 38%, transparent);
         }
 
         &:hover {
@@ -150,7 +150,7 @@ $tb-warn: mat.m2-get-color-from-palette(map-get($tb-theme, warn), text);
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: #FFFFFF;
+    background: var(--mt-surface);
     padding: 8px;
     border: 2px dashed rgba(0, 0, 0, 0.08);
     border-radius: 10px;

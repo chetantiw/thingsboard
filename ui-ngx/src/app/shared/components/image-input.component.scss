@@ -44,7 +44,7 @@ $previewSize: 78px !default;
     width: $previewSize;
     height: $previewSize;
     border: 1px solid rgba(0, 0, 0, 0.12);
-    background: #fff;
+    background: var(--mt-surface);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -73,14 +73,14 @@ $previewSize: 78px !default;
 
   .tb-image-file-name {
     width: 136px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .tb-image-file-hint {
-    color: rgba(0, 0, 0, 0.38);
+    color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     font-weight: 400;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -108,7 +108,7 @@ $previewSize: 78px !default;
       align-items: center;
       gap: 8px;
       .mat-icon {
-        color: rgba(0,0,0,0.12);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
       }
       .upload-text-area {
         display: flex;
@@ -116,7 +116,7 @@ $previewSize: 78px !default;
         align-items: center;
         font-size: 16px;
         line-height: 24px;
-        color: rgba(0, 0, 0, 0.54);
+        color: var(--mt-muted);
         text-align: center;
         .hide-xs {
           @media #{$mat-xs} {

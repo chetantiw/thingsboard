@@ -146,7 +146,7 @@
   padding: 12px 12px 12px 24px;
   font-size: 18px;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
 
   .mat-mdc-icon-button {
     --mat-icon-button-state-layer-size: 40px;
@@ -214,7 +214,7 @@
   ::ng-deep .mat-expansion-panel-header-title {
     font-size: 14px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
   }
 
   ::ng-deep .mat-expansion-panel-body {
@@ -283,7 +283,7 @@
   .tb-iot-hub-filter-group-label {
     font-size: 14px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
     letter-spacing: 0.5px;
     padding: 12px 0 4px 12px;
   }
@@ -310,7 +310,7 @@
   font-weight: 500;
   line-height: 20px;
   letter-spacing: 0.25px;
-  color: rgba(0, 0, 0, 0.76);
+  color: var(--mt-muted);
 }
 
 .tb-iot-hub-search-field {
@@ -375,7 +375,7 @@
 .tb-iot-hub-clear-btn {
   font-size: 14px;
   font-weight: 400;
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--mt-muted);
   cursor: pointer;
   background: none;
   border: none;
@@ -383,7 +383,7 @@
   font-family: inherit;
 
   &:hover {
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
   }
 }
 
@@ -421,13 +421,13 @@
   h3 {
     font-size: 18px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
     margin: 16px 0 8px;
   }
 
   p {
     font-size: 14px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
     margin: 0 0 24px;
   }
 }
@@ -459,7 +459,7 @@
   border-radius: 4px;
   border: none;
   background: transparent;
-  color: rgba(0, 0, 0, 0.76);
+  color: var(--mt-muted);
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
@@ -490,7 +490,7 @@
   font-weight: 400;
   line-height: 20px;
   letter-spacing: 0.2px;
-  color: rgba(0, 0, 0, 0.76);
+  color: var(--mt-muted);
   margin-left: auto;
 }
 

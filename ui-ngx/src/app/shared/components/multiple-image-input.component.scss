@@ -25,12 +25,12 @@ $previewSize: 64px !default;
   font-size: 11px;
   font-weight: 400;
   line-height: 14px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--mt-muted);
   padding-bottom: 4px;
 }
 
 .image-content-container {
-  background: #FFFFFF;
+  background: var(--mt-surface);
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   height: $previewSize;
@@ -99,7 +99,7 @@ $previewSize: 64px !default;
 
   .no-images-prompt {
     font-size: 18px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 
   .file-input {
@@ -127,7 +127,7 @@ $previewSize: 64px !default;
       justify-content: center;
       align-items: center;
       font-size: 16px;
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
       text-align: center;
       .mat-icon {
         margin-right: 17px;

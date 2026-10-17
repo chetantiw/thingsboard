@@ -24,7 +24,7 @@
     }
   }
   &.tb-fullscreen {
-    background: #fff;
+    background: var(--mt-surface);
     .markdown-content-editor {
       height: calc(100% - 40px);
     }

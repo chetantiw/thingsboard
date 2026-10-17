@@ -22,12 +22,12 @@ $previewSize: 64px !default;
     font-size: 11px;
     font-weight: 400;
     line-height: 14px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--mt-muted);
     padding-bottom: 4px;
   }
 
   .image-content-container {
-    background: #FFFFFF;
+    background: var(--mt-surface);
     border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: 4px;
     height: $previewSize;
@@ -95,7 +95,7 @@ $previewSize: 64px !default;
 
   .no-images-prompt {
     font-size: 18px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 
   .tb-image-select-container {
@@ -114,7 +114,7 @@ $previewSize: 64px !default;
       align-items: center;
       border-radius: 4px;
       border-right: 1px solid rgba(0, 0, 0, 0.12);
-      background: #fff;
+      background: var(--mt-surface);
       overflow: hidden;
 
       .tb-image-preview {
@@ -126,7 +126,7 @@ $previewSize: 64px !default;
 
       .tb-no-image {
         text-align: center;
-        color: rgba(0, 0, 0, 0.38);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
         font-size: 12px;
         font-style: normal;
         font-weight: 400;
@@ -153,7 +153,7 @@ $previewSize: 64px !default;
         align-items: flex-start;
         gap: 4px;
         .tb-external-link-label {
-          color: rgba(0, 0, 0, 0.54);
+          color: var(--mt-muted);
           font-size: 12px;
           font-style: normal;
           font-weight: 400;
@@ -170,7 +170,7 @@ $previewSize: 64px !default;
             width: 100%;
           }
           .tb-image-decline-btn {
-            color: rgba(0,0,0,0.38);
+            color: color-mix(in srgb, var(--mt-text) 38%, transparent);
           }
         }
       }

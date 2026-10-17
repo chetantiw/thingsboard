@@ -50,7 +50,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: rgba(0, 0, 0, 0.76);
+  color: var(--mt-muted);
   white-space: nowrap;
 }
 
@@ -68,7 +68,7 @@
   border-radius: 4px;
   font-size: 14px;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
   cursor: pointer;
   padding: 8px 16px;
   font-family: inherit;
@@ -91,7 +91,7 @@
   font-weight: 400;
   line-height: 20px;
   letter-spacing: 0.2px;
-  color: rgba(0, 0, 0, 0.76);
+  color: var(--mt-muted);
   margin-left: auto;
 }
 
@@ -117,13 +117,13 @@
   h3 {
     font-size: 18px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
     margin: 16px 0 8px;
   }
 
   p {
     font-size: 14px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
     margin: 0 0 24px;
   }
 }
@@ -155,7 +155,7 @@
   font-size: 18px;
   font-weight: 500;
   line-height: 24px;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
   padding: 0;
   margin-bottom: 12px;
 

@@ -82,6 +82,25 @@
       letter-spacing: -0.01em;
     }
   }
+  .mt-view-toggle {
+    --mat-standard-button-toggle-height: 34px;
+    --mat-standard-button-toggle-shape: var(--mt-radius);
+    --mat-standard-button-toggle-divider-color: var(--mt-border);
+    --mat-standard-button-toggle-selected-state-background-color: var(--mt-primary-soft);
+    --mat-standard-button-toggle-selected-state-text-color: var(--mt-primary);
+    margin-right: 4px;
+    border-color: var(--mt-border);
+    .mat-button-toggle-label-content {
+      padding: 0 8px;
+      line-height: 34px;
+    }
+    .mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      vertical-align: middle;
+    }
+  }
   .mat-mdc-paginator {
     background: transparent;
   }
@@ -172,6 +191,40 @@
     box-shadow: 0 24px 64px rgba(8, 6, 40, 0.35);
   }
 
+  // Dashboard toolbar follows the active theme instead of a fixed brand bar.
+  tb-dashboard-toolbar mat-fab-toolbar.mat-primary {
+    .mat-fab-toolbar-background {
+      background: var(--mt-surface-2);
+      color: var(--mt-text);
+    }
+    mat-toolbar.mat-primary {
+      background: transparent;
+      color: var(--mt-text);
+      --mat-icon-button-icon-color: var(--mt-text);
+      --mat-icon-color: var(--mt-text);
+      --mat-button-text-label-text-color: var(--mt-text);
+      --mat-button-outlined-label-text-color: var(--mt-text);
+      --mat-button-outlined-outline-color: var(--mt-border);
+      --mat-select-enabled-trigger-text-color: var(--mt-text);
+      --mat-select-enabled-arrow-color: var(--mt-muted);
+      .mat-mdc-button-base:not(:disabled) {
+        color: var(--mt-text);
+      }
+      .mat-mdc-outlined-button:not(:disabled) {
+        border-color: var(--mt-border);
+      }
+      button.mat-mdc-icon-button:not(:disabled) .mat-icon,
+      .mat-mdc-select-value, .mat-mdc-select-arrow, .mat-mdc-select-arrow:after {
+        color: var(--mt-text);
+      }
+      .mdc-notched-outline .mdc-notched-outline__leading,
+      .mdc-notched-outline .mdc-notched-outline__notch,
+      .mdc-notched-outline .mdc-notched-outline__trailing {
+        border-color: var(--mt-border) !important;
+      }
+    }
+  }
+
   // Status colors used by MuTech widgets/badges.
   .mt-ok { color: var(--mt-ok); }
   .mt-warn { color: var(--mt-warn); }
@@ -233,6 +286,12 @@
   .mat-mdc-cell button:disabled .mat-icon,
   .mat-mdc-table-toolbar button:disabled .mat-icon {
     opacity: 0.38;
+  }
+
+  // The default (black) dashboard title color becomes the theme text color;
+  // titles given a custom color keep it.
+  .tb-dashboard-title[style*="color: rgba(0, 0, 0, 0.87"] {
+    color: var(--mt-text) !important;
   }
 
   // Dashboard widgets are authored for light surfaces, so they keep the light

@@ -18,7 +18,7 @@
     flex-direction: column;
     height: 100%;
     padding: 0;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
   }
 
   .tb-dialog-actions {
@@ -111,7 +111,7 @@
       background-color: #F3F6FA;
 
       tb-icon, .tb-form-panel-title {
-        color: rgba(0, 0, 0, .38);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
       }
     }
 
@@ -148,14 +148,14 @@
         border-radius: 4px;
         max-width: 400px;
         width: 80%;
-        background-color: #fff;
+        background-color: var(--mt-surface);
       }
     }
 
     .notification-content {
       border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 4px;
-      background: #fff;
+      background: var(--mt-surface);
       padding: 12px 16px;
       display: inline-grid;
       width: 100%;

@@ -22,12 +22,12 @@
   font-weight: 500;
   line-height: 36px;
   letter-spacing: 0.25px;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
   margin: 0;
 }
 
 .tb-search-title-query {
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--mt-muted);
 }
 
 tb-iot-hub-search {

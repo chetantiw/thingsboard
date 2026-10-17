@@ -26,7 +26,7 @@
     font-weight: 500;
     line-height: 24px;
     letter-spacing: 0.25px;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
   }
 
   // Body cells — Design: 14px Regular, rgba(0,0,0,0.76), tracking 0.2
@@ -34,7 +34,7 @@
     font-size: 14px;
     font-weight: 400;
     letter-spacing: 0.2px;
-    color: rgba(0, 0, 0, 0.76);
+    color: var(--mt-muted);
   }
 }
 
@@ -127,7 +127,7 @@
   font-weight: 500;
   line-height: 20px;
   letter-spacing: 0.25px;
-  color: rgba(0, 0, 0, 0.76);
+  color: var(--mt-muted);
   background: none;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 4px;
@@ -188,7 +188,7 @@
     padding: 6px;
     --mdc-icon-button-state-layer-size: 36px;
     --mdc-icon-button-icon-color: rgba(0, 0, 0, 0.54);
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 }
 
@@ -202,13 +202,13 @@
   h3 {
     font-size: 18px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
     margin: 16px 0 8px;
   }
 
   p {
     font-size: 14px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
     margin: 0 0 24px;
   }
 }

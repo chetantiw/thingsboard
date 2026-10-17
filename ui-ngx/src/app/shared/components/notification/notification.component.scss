@@ -11,7 +11,7 @@
 
   .icon {
     margin-right: 14px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 
   .content {
@@ -24,7 +24,7 @@
     .message {
       font-size: 14px;
       line-height: 16px;
-      color: rgba(0, 0, 0, 0.76);
+      color: var(--mt-muted);
     }
 
     .button {
@@ -38,7 +38,7 @@
   .description {
     margin-left: 8px;
     min-width: 70px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
 
     .time {
       font-size: 12px;

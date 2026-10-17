@@ -13,12 +13,12 @@ tb-entity-select {
   font-weight: 600;
   line-height: 24px;
   letter-spacing: 0.1px;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
   margin: 0;
 }
 
 .tb-iot-hub-install-desc {
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--mt-muted);
   font-size: 14px;
   line-height: 20px;
   letter-spacing: 0.2px;
@@ -33,7 +33,7 @@ tb-entity-select {
   border-radius: 4px;
   font-family: monospace;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.7);
+  color: var(--mt-muted);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -88,12 +88,12 @@ tb-entity-select {
 
 .tb-iot-hub-plan-entry-name {
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--mt-text);
 }
 
 .tb-iot-hub-plan-entry-type {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--mt-muted);
   background: rgba(0, 0, 0, 0.05);
   padding: 2px 6px;
   border-radius: 10px;
@@ -101,7 +101,7 @@ tb-entity-select {
 
 .tb-iot-hub-plan-entry-version {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.54);
+  color: var(--mt-muted);
 }
 
 .tb-iot-hub-plan-entry-error {

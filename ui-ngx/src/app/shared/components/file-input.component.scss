@@ -96,11 +96,11 @@ $previewSize: 100px !default;
       justify-content: center;
       align-items: center;
       font-size: 16px;
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
       text-align: center;
       .mat-icon {
         margin-right: 17px;
-        color: rgba(0,0,0,0.12);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
       }
     }
   }
@@ -116,12 +116,12 @@ $previewSize: 100px !default;
   }
 
   .tb-file-name {
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
     font-weight: 500;
   }
 
   .tb-file-hint {
-    color: rgba(0, 0, 0, 0.38);
+    color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     font-weight: 400;
   }
 }

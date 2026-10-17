@@ -21,7 +21,7 @@
       height: 84px;
       min-height: 84px;
       border-radius: 4px 4px 0 0;
-      background: #fff;
+      background: var(--mt-surface);
       border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 
       .mat-toolbar-tools {
@@ -79,7 +79,7 @@
 :host ::ng-deep {
   .tb-help {
     .mat-mdc-icon-button.mat-primary {
-      color: rgba(0, 0, 0, 0.52);
+      color: var(--mt-muted);
     }
   }
 

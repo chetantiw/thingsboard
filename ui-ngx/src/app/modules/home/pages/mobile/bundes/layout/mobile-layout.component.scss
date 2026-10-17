@@ -111,7 +111,7 @@
         padding: 3px;
         vertical-align: sub;
         border-radius: 6px;
-        background: #fff;
+        background: var(--mt-surface);
         .mat-icon {
           margin: 0;
         }
@@ -149,7 +149,7 @@
   flex-direction: row;
   align-items: center;
   padding: 12px 12px 12px 0;
-  background: #fff;
+  background: var(--mt-surface);
   gap: 0;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -160,12 +160,12 @@
     top: -8px;
     padding-left: 8px;
     padding-right: 8px;
-    background: #fff;
+    background: var(--mt-surface);
     font-size: 12px;
     font-weight: 400;
     line-height: 16px;
     letter-spacing: 0.4px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 
 }
