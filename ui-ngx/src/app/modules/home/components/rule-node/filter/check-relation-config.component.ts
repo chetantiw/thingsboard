@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component } from '@angular/core';
 import { isDefinedAndNotNull } from '@core/public-api';
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from '@angular/forms';
@@ -21,9 +7,10 @@ import { EntitySearchDirection, entitySearchDirectionTranslations } from '@app/s
 import { RuleNodeConfiguration, RuleNodeConfigurationComponent } from '@app/shared/models/rule-node.models';
 
 @Component({
-  selector: 'tb-filter-node-check-relation-config',
-  templateUrl: './check-relation-config.component.html',
-  styleUrls: ['./check-relation-config.component.scss']
+    selector: 'tb-filter-node-check-relation-config',
+    templateUrl: './check-relation-config.component.html',
+    styleUrls: ['./check-relation-config.component.scss'],
+    standalone: false
 })
 export class CheckRelationConfigComponent extends RuleNodeConfigurationComponent {
 
@@ -54,24 +41,29 @@ export class CheckRelationConfigComponent extends RuleNodeConfigurationComponent
     this.checkRelationConfigForm = this.fb.group({
       checkForSingleEntity: [configuration.checkForSingleEntity, []],
       direction: [configuration.direction, []],
-      entityType: [configuration.entityType,
-        configuration && configuration.checkForSingleEntity ? [Validators.required] : []],
-      entityId: [configuration.entityId,
-        configuration && configuration.checkForSingleEntity ? [Validators.required] : []],
+      entityType: [configuration.entityType, [Validators.required]],
+      entityId: [configuration.entityId, [Validators.required]],
       relationType: [configuration.relationType, [Validators.required]]
     });
   }
 
   protected validatorTriggers(): string[] {
-    return ['checkForSingleEntity'];
+    return ['checkForSingleEntity', 'entityType'];
   }
 
-  protected updateValidators(emitEvent: boolean) {
-    const checkForSingleEntity: boolean = this.checkRelationConfigForm.get('checkForSingleEntity').value;
-    this.checkRelationConfigForm.get('entityType').setValidators(checkForSingleEntity ? [Validators.required] : []);
-    this.checkRelationConfigForm.get('entityType').updateValueAndValidity({emitEvent});
-    this.checkRelationConfigForm.get('entityId').setValidators(checkForSingleEntity ? [Validators.required] : []);
-    this.checkRelationConfigForm.get('entityId').updateValueAndValidity({emitEvent});
+  protected updateValidators(_emitEvent: boolean, trigger: string) {
+    if (trigger === 'entityType') {
+      this.checkRelationConfigForm.get('entityId').reset(null);
+    } else {
+      const checkForSingleEntity: boolean = this.checkRelationConfigForm.get('checkForSingleEntity').value;
+      if (checkForSingleEntity) {
+        this.checkRelationConfigForm.get('entityType').enable({emitEvent: false});
+        this.checkRelationConfigForm.get('entityId').enable({emitEvent: false});
+      } else {
+        this.checkRelationConfigForm.get('entityType').disable({emitEvent: false});
+        this.checkRelationConfigForm.get('entityId').disable({emitEvent: false});
+      }
+    }
   }
 
 }

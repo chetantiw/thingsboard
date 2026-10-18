@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data.limit;
 
 import lombok.Getter;
@@ -21,6 +8,7 @@ import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileCon
 import java.util.Optional;
 import java.util.function.Function;
 
+@Getter
 public enum LimitedApi {
 
     ENTITY_EXPORT(DefaultTenantProfileConfiguration::getTenantEntityExportRateLimit, "entity version creation", true),
@@ -30,7 +18,19 @@ public enum LimitedApi {
     REST_REQUESTS_PER_TENANT(DefaultTenantProfileConfiguration::getTenantServerRestLimitsConfiguration, "REST API requests", true),
     REST_REQUESTS_PER_CUSTOMER(DefaultTenantProfileConfiguration::getCustomerServerRestLimitsConfiguration, "REST API requests per customer", false),
     WS_UPDATES_PER_SESSION(DefaultTenantProfileConfiguration::getWsUpdatesPerSessionRateLimit, "WS updates per session", true),
-    CASSANDRA_QUERIES(DefaultTenantProfileConfiguration::getCassandraQueryTenantRateLimitsConfiguration, "Cassandra queries", true),
+    CASSANDRA_WRITE_QUERIES_CORE(DefaultTenantProfileConfiguration::getCassandraWriteQueryTenantCoreRateLimits, "Rest API Cassandra write queries", true),
+    CASSANDRA_READ_QUERIES_CORE(DefaultTenantProfileConfiguration::getCassandraReadQueryTenantCoreRateLimits, "Rest API and WS telemetry Cassandra read queries", true),
+    CASSANDRA_WRITE_QUERIES_RULE_ENGINE(DefaultTenantProfileConfiguration::getCassandraWriteQueryTenantRuleEngineRateLimits, "Rule Engine telemetry Cassandra write queries", true),
+    CASSANDRA_READ_QUERIES_RULE_ENGINE(DefaultTenantProfileConfiguration::getCassandraReadQueryTenantRuleEngineRateLimits, "Rule Engine telemetry Cassandra read queries", true),
+    CASSANDRA_READ_QUERIES_MONOLITH(
+            RateLimitUtil.merge(
+                    DefaultTenantProfileConfiguration::getCassandraReadQueryTenantCoreRateLimits,
+                    DefaultTenantProfileConfiguration::getCassandraReadQueryTenantRuleEngineRateLimits), "Monolith telemetry Cassandra read queries", true),
+    CASSANDRA_WRITE_QUERIES_MONOLITH(
+            RateLimitUtil.merge(
+                    DefaultTenantProfileConfiguration::getCassandraWriteQueryTenantCoreRateLimits,
+                    DefaultTenantProfileConfiguration::getCassandraWriteQueryTenantRuleEngineRateLimits), "Monolith telemetry Cassandra write queries", true),
+    CASSANDRA_QUERIES(null, true), // left for backward compatibility with RateLimitsNotificationInfo
     EDGE_EVENTS(DefaultTenantProfileConfiguration::getEdgeEventRateLimits, "Edge events", true),
     EDGE_EVENTS_PER_EDGE(DefaultTenantProfileConfiguration::getEdgeEventRateLimitsPerEdge, "Edge events per edge", false),
     EDGE_UPLINK_MESSAGES(DefaultTenantProfileConfiguration::getEdgeUplinkMessagesRateLimits, "Edge uplink messages", true),
@@ -46,28 +46,28 @@ public enum LimitedApi {
     WS_SUBSCRIPTIONS("WS subscriptions", false),
     CALCULATED_FIELD_DEBUG_EVENTS("calculated field debug events", true);
 
-    private Function<DefaultTenantProfileConfiguration, String> configExtractor;
-    @Getter
+    private final Function<DefaultTenantProfileConfiguration, String> configExtractor;
     private final boolean perTenant;
-    @Getter
-    private boolean refillRateLimitIntervally;
-    @Getter
-    private String label;
+    private final boolean refillRateLimitIntervally;
+    private final String label;
 
     LimitedApi(Function<DefaultTenantProfileConfiguration, String> configExtractor, String label, boolean perTenant) {
-        this.configExtractor = configExtractor;
-        this.label = label;
-        this.perTenant = perTenant;
+        this(configExtractor, label, perTenant, false);
     }
 
     LimitedApi(boolean perTenant, boolean refillRateLimitIntervally) {
-        this.perTenant = perTenant;
-        this.refillRateLimitIntervally = refillRateLimitIntervally;
+        this(null, null, perTenant, refillRateLimitIntervally);
     }
 
     LimitedApi(String label, boolean perTenant) {
+        this(null, label, perTenant, false);
+    }
+
+    LimitedApi(Function<DefaultTenantProfileConfiguration, String> configExtractor, String label, boolean perTenant, boolean refillRateLimitIntervally) {
+        this.configExtractor = configExtractor;
         this.label = label;
         this.perTenant = perTenant;
+        this.refillRateLimitIntervally = refillRateLimitIntervally;
     }
 
     public String getLimitConfig(DefaultTenantProfileConfiguration profileConfiguration) {

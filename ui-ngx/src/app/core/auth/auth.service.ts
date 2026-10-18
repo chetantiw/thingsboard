@@ -1,25 +1,13 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { Injectable, NgZone } from '@angular/core';
 import { JwtHelperService } from '@auth0/angular-jwt';
 import { HttpClient } from '@angular/common/http';
 
 import { Observable, of, ReplaySubject, throwError } from 'rxjs';
 import { catchError, map, mergeMap, tap } from 'rxjs/operators';
+import { setEdqsEnabled, setNullsOrderStrategy } from '@shared/models/page/page-link';
 
 import { LoginRequest, LoginResponse, PublicLoginRequest } from '@shared/models/login.models';
 import { Router, UrlTree } from '@angular/router';
@@ -68,6 +56,7 @@ export class AuthService {
   redirectUrl: string;
   oauth2Clients: Array<OAuth2ClientLoginInfo> = null;
   twoFactorAuthProviders: Array<TwoFaProviderInfo> = null;
+  forceTwoFactorAuthProviders: Array<TwoFactorAuthProviderType> = null;
 
   private refreshTokenSubject: ReplaySubject<LoginResponse> = null;
   private jwtHelper = new JwtHelperService();
@@ -117,6 +106,9 @@ export class AuthService {
           if (loginResponse.scope === Authority.PRE_VERIFICATION_TOKEN) {
             this.router.navigateByUrl(`login/mfa`);
           }
+          if (loginResponse.scope === Authority.MFA_CONFIGURATION_TOKEN) {
+            this.router.navigateByUrl(`login/force-mfa`);
+          }
         }
       ));
   }
@@ -152,12 +144,8 @@ export class AuthService {
       ));
   }
 
-  public resetPassword(resetToken: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>('/api/noauth/resetPassword', {resetToken, password}, defaultHttpOptions()).pipe(
-      tap((loginResponse: LoginResponse) => {
-          this.setUserFromJwtToken(loginResponse.token, loginResponse.refreshToken, true);
-        }
-      ));
+  public resetPassword(resetToken: string, password: string): Observable<void> {
+    return this.http.post<void>('/api/noauth/resetPassword', {resetToken, password}, defaultHttpOptions());
   }
 
   public changePassword(currentPassword: string, newPassword: string, config?: RequestConfig) {
@@ -168,8 +156,8 @@ export class AuthService {
       ));
   }
 
-  public getUserPasswordPolicy() {
-    return this.http.get<UserPasswordPolicy>(`/api/noauth/userPasswordPolicy`, defaultHttpOptions());
+  public getUserPasswordPolicy(config?: RequestConfig) {
+    return this.http.get<UserPasswordPolicy>(`/api/noauth/userPasswordPolicy`, defaultHttpOptionsFromConfig(config));
   }
 
   public activateByEmailCode(emailCode: string): Observable<LoginResponse> {
@@ -243,6 +231,15 @@ export class AuthService {
     );
   }
 
+  public getAvailableTwoFaProviders(): Observable<Array<TwoFaProviderInfo>> {
+    return this.http.get<Array<TwoFaProviderInfo>>(`/api/2fa/providers`, defaultHttpOptions()).pipe(
+      catchError(() => of([])),
+      tap((providers) => {
+        this.forceTwoFactorAuthProviders = providers;
+      })
+    );
+  }
+
   public forceDefaultPlace(authState?: AuthState, path?: string, params?: any): boolean {
     if (authState && authState.authUser) {
       if (authState.authUser.authority === Authority.TENANT_ADMIN || authState.authUser.authority === Authority.CUSTOMER_USER) {
@@ -265,18 +262,28 @@ export class AuthService {
     return false;
   }
 
+  // Landing page chosen in the MuTech appearance settings (tenant admins and customer users only).
+  public startPage(authState: AuthState = getCurrentAuthState(this.store)): string {
+    const authUser = authState?.authUser;
+    const canUseOverview = (authUser?.authority === Authority.TENANT_ADMIN || authUser?.authority === Authority.CUSTOMER_USER)
+      && !authUser.isPublic;
+    return canUseOverview && authState.userSettings?.appearance?.startPage === 'overview' ? 'overview' : 'home';
+  }
+
   public defaultUrl(isAuthenticated: boolean, authState?: AuthState, path?: string, params?: any): UrlTree {
     let result: UrlTree = null;
     if (isAuthenticated) {
       if (authState.authUser.authority === Authority.PRE_VERIFICATION_TOKEN) {
         result = this.router.parseUrl('login/mfa');
+      } else if (authState.authUser.authority === Authority.MFA_CONFIGURATION_TOKEN) {
+        result = this.router.parseUrl('login/force-mfa');
       } else if (!path || path === 'login' || this.forceDefaultPlace(authState, path, params)) {
         if (this.redirectUrl) {
           const redirectUrl = this.redirectUrl;
           this.redirectUrl = null;
           result = this.router.parseUrl(redirectUrl);
         } else {
-          result = this.router.parseUrl('home');
+          result = this.router.parseUrl(this.startPage(authState));
         }
         if (authState.authUser.authority === Authority.TENANT_ADMIN || authState.authUser.authority === Authority.CUSTOMER_USER) {
           if (this.userHasDefaultDashboard(authState)) {
@@ -403,7 +410,7 @@ export class AuthService {
               loadUserSubject.error(err);
             }
           );
-        } else if (authPayload.authUser?.authority === Authority.PRE_VERIFICATION_TOKEN) {
+        } else if (authPayload.authUser?.authority === Authority.PRE_VERIFICATION_TOKEN || authPayload.authUser?.authority === Authority.MFA_CONFIGURATION_TOKEN) {
           loadUserSubject.next(authPayload);
           loadUserSubject.complete();
         } else if (authPayload.authUser?.userId) {
@@ -445,6 +452,8 @@ export class AuthService {
     return this.http.get<SysParams>('/api/system/params', defaultHttpOptions()).pipe(
       map((sysParams) => {
         this.timeService.setMaxDatapointsLimit(sysParams.maxDatapointsLimit);
+        setNullsOrderStrategy(sysParams.nullsOrderStrategy);
+        setEdqsEnabled(sysParams.edqsEnabled);
         return sysParams;
       }),
       catchError(() => of({} as SysParamsState))

@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { WhiteLabelingComponent } from '@home/pages/admin/white-labeling.component';
 import { inject, NgModule } from '@angular/core';
 import { ActivatedRouteSnapshot, ResolveFn, Router, RouterModule, RouterStateSnapshot, Routes } from '@angular/router';
 
@@ -46,6 +34,8 @@ import { ScadaSymbolData } from '@home/pages/scada-symbol/scada-symbol-editor.mo
 import { MenuId } from '@core/services/menu.models';
 import { catchError } from 'rxjs/operators';
 import { JsLibraryTableConfigResolver } from '@home/pages/admin/resource/js-library-table-config.resolver';
+import { TrendzSettingsComponent } from '@home/pages/admin/trendz-settings.component';
+import { aiModelRoutes } from '@home/pages/ai-model/ai-model-routing.module';
 
 export const scadaSymbolResolver: ResolveFn<ScadaSymbolData> =
   (route: ActivatedRouteSnapshot,
@@ -314,6 +304,18 @@ const routes: Routes = [
         ]
       },
       {
+        path: 'white-labeling',
+        component: WhiteLabelingComponent,
+        canDeactivate: [ConfirmOnExitGuard],
+        data: {
+          auth: [Authority.SYS_ADMIN, Authority.TENANT_ADMIN],
+          title: 'mutech.white-labeling',
+          breadcrumb: {
+            menuId: MenuId.white_labeling
+          }
+        }
+      },
+      {
         path: 'home',
         component: HomeSettingsComponent,
         canDeactivate: [ConfirmOnExitGuard],
@@ -349,6 +351,19 @@ const routes: Routes = [
           }
         }
       },
+      {
+        path: 'trendz',
+        component: TrendzSettingsComponent,
+        canDeactivate: [ConfirmOnExitGuard],
+        data: {
+          auth: [Authority.TENANT_ADMIN],
+          title: 'admin.trendz-settings',
+          breadcrumb: {
+            menuId: MenuId.trendz_settings
+          }
+        }
+      },
+      ...aiModelRoutes,
       {
         path: 'security-settings',
         redirectTo: '/security-settings/general'

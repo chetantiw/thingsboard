@@ -1,26 +1,13 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { Title } from '@angular/platform-browser';
 import { Injectable } from '@angular/core';
 import { ActivatedRouteSnapshot } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { filter } from 'rxjs/operators';
 
-import { environment as env } from '@env/environment';
+import { BrandingService } from '@core/services/branding.service';
 
 @Injectable({
   providedIn: 'root'
@@ -28,7 +15,8 @@ import { environment as env } from '@env/environment';
 export class TitleService {
   constructor(
     private translate: TranslateService,
-    private title: Title
+    private title: Title,
+    private brandingService: BrandingService
   ) {}
 
   setTitle(
@@ -46,10 +34,10 @@ export class TitleService {
         .get(title)
         .pipe(filter(translatedTitle => translatedTitle !== title))
         .subscribe(translatedTitle =>
-          this.title.setTitle(`${env.appTitle} | ${translatedTitle}`)
+          this.title.setTitle(`${this.brandingService.appTitle} | ${translatedTitle}`)
         );
     } else {
-      this.title.setTitle(env.appTitle);
+      this.title.setTitle(this.brandingService.appTitle);
     }
   }
 }

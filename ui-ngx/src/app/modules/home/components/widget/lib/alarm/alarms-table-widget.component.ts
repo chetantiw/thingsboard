@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -37,18 +23,9 @@ import { DataKey, WidgetActionDescriptor, WidgetConfig } from '@shared/models/wi
 import { IWidgetSubscription } from '@core/api/widget-api.models';
 import { UtilsService } from '@core/services/utils.service';
 import { TranslateService } from '@ngx-translate/core';
-import {
-  deepClone,
-  hashCode,
-  isDefined,
-  isDefinedAndNotNull,
-  isNotEmptyStr,
-  isNumber,
-  isObject,
-  isUndefined
-} from '@core/utils';
+import { deepClone, hashCode, isDefined, isDefinedAndNotNull, isNotEmptyStr, isObject, isUndefined } from '@core/utils';
 import cssjs from '@core/css/css';
-import { sortItems } from '@shared/models/page/page-link';
+import { SortColumnType, sortItems } from '@shared/models/page/page-link';
 import { Direction } from '@shared/models/page/sort-order';
 import { CollectionViewer, DataSource, SelectionModel } from '@angular/cdk/collections';
 import { BehaviorSubject, forkJoin, fromEvent, merge, Observable, of, Subject, Subscription } from 'rxjs';
@@ -77,6 +54,8 @@ import {
   getHeaderTitle,
   getRowStyleInfo,
   getTableCellButtonActions,
+  isValidPageStepCount,
+  isValidPageStepIncrement,
   noDataMessage,
   prepareTableCellButtonActions,
   RowStyleInfo,
@@ -117,6 +96,7 @@ import {
   dataKeyToEntityKey,
   dataKeyTypeToEntityKeyType,
   entityDataPageLinkSortDirection,
+  EntityKeyType,
   KeyFilter
 } from '@app/shared/models/query/query.models';
 import { DataKeyType } from '@shared/models/telemetry/telemetry.models';
@@ -141,6 +121,7 @@ import {
 import { getCurrentAuthUser } from '@core/auth/auth.selectors';
 import { FormBuilder } from '@angular/forms';
 import { DEFAULT_OVERLAY_POSITIONS } from '@shared/models/overlay.models';
+import { ValueFormatProcessor } from '@shared/models/widget-settings.models';
 
 interface AlarmsTableWidgetSettings extends TableWidgetSettings {
   alarmsTitle: string;
@@ -164,9 +145,10 @@ interface AlarmWidgetActionDescriptor extends TableCellButtonActionDescriptor {
 }
 
 @Component({
-  selector: 'tb-alarms-table-widget',
-  templateUrl: './alarms-table-widget.component.html',
-  styleUrls: ['./alarms-table-widget.component.scss', './../table-widget.scss']
+    selector: 'tb-alarms-table-widget',
+    templateUrl: './alarms-table-widget.component.html',
+    styleUrls: ['./alarms-table-widget.component.scss', './../table-widget.scss'],
+    standalone: false
 })
 export class AlarmsTableWidgetComponent extends PageComponent implements OnInit, OnDestroy, AfterViewInit {
 
@@ -328,6 +310,15 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
 
     if (this.displayPagination) {
       this.sort.sortChange.pipe(takeUntil(this.destroy$)).subscribe(() => this.paginator.pageIndex = 0);
+
+      this.ctx.aliasController?.filtersChanged.pipe(
+        takeUntil(this.destroy$)
+      ).subscribe((filters) => {
+        let currentFilterId = this.ctx.defaultSubscription.options.alarmSource?.filterId;
+        if (currentFilterId && filters.includes(currentFilterId)) {
+          this.paginator.firstPage();
+        }
+      });
     }
     ((this.displayPagination ? merge(this.sort.sortChange, this.paginator.page) : this.sort.sortChange) as Observable<any>).pipe(
       takeUntil(this.destroy$)
@@ -392,10 +383,10 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     this.rowStylesInfo = getRowStyleInfo(this.ctx, this.settings, 'alarm, ctx');
 
     const pageSize = this.settings.defaultPageSize;
-    let pageStepIncrement = this.settings.pageStepIncrement;
-    let pageStepCount = this.settings.pageStepCount;
+    let pageStepIncrement = isValidPageStepIncrement(this.settings.pageStepIncrement) ? this.settings.pageStepIncrement : null;
+    let pageStepCount = isValidPageStepCount(this.settings.pageStepCount) ? this.settings.pageStepCount : null;
 
-    if (isDefined(pageSize) && isNumber(pageSize) && pageSize > 0) {
+    if (Number.isInteger(pageSize) && pageSize > 0) {
       this.defaultPageSize = pageSize;
     }
 
@@ -439,7 +430,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     if (this.subscription.alarmSource) {
       this.subscription.alarmSource.dataKeys.forEach((alarmDataKey) => {
         const dataKey: EntityColumn = deepClone(alarmDataKey) as EntityColumn;
-        const keySettings: TableWidgetDataKeySettings = dataKey.settings;
+        const keySettings: TableWidgetDataKeySettings = dataKey.settings ?? {};
         dataKey.entityKey = dataKeyToEntityKey(alarmDataKey);
         dataKey.label = this.utils.customTranslation(dataKey.label, dataKey.label);
         dataKey.title = getHeaderTitle(dataKey, keySettings, this.utils);
@@ -456,12 +447,13 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
         }
         this.stylesInfo[dataKey.def] = getCellStyleInfo(this.ctx, keySettings, 'value, alarm, ctx');
         const contentFunctionInfo = getCellContentFunctionInfo(this.ctx, keySettings, 'value, alarm, ctx');
-        const contentInfo: CellContentInfo = {
+        const decimals = (dataKey.decimals || dataKey.decimals === 0) ? dataKey.decimals : this.ctx.widgetConfig.decimals;
+        const units = dataKey.units || this.ctx.widgetConfig.units;
+        const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, showZeroDecimals: true});
+        this.contentsInfo[dataKey.def] = {
           contentFunction: contentFunctionInfo,
-          units: dataKey.units,
-          decimals: dataKey.decimals
+          valueFormat
         };
-        this.contentsInfo[dataKey.def] = contentInfo;
         this.columnWidth[dataKey.def] = getColumnWidth(keySettings);
         this.columnDefaultVisibility[dataKey.def] = getColumnDefaultVisibility(keySettings, this.ctx);
         this.columnSelectionAvailability[dataKey.def] = getColumnSelectionAvailability(keySettings);
@@ -550,7 +542,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     if ($event) {
       $event.stopPropagation();
     }
-    const target = $event.target || $event.srcElement || $event.currentTarget;
+    const target = $event.target || $event.currentTarget;
     const config = new OverlayConfig({
       panelClass: 'tb-panel-container',
       backdropClass: 'cdk-overlay-transparent-backdrop',
@@ -621,7 +613,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     if ($event) {
       $event.stopPropagation();
     }
-    const target = $event.target || $event.srcElement || $event.currentTarget;
+    const target = $event.target || $event.currentTarget;
     const config = new OverlayConfig({
       panelClass: 'tb-filter-panel',
       backdropClass: 'cdk-overlay-transparent-backdrop',
@@ -717,8 +709,12 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
       this.pageLink.sortOrder = null;
     }
     const sortOrderLabel = fromEntityColumnDef(this.sort.active, this.columns);
+    const sortColumnType: SortColumnType = key
+      ? (key.type === EntityKeyType.ENTITY_FIELD || key.type === EntityKeyType.ALARM_FIELD ? 'entityField'
+         : key.type === EntityKeyType.TIME_SERIES ? 'timeseries' : 'attribute')
+      : 'entityField';
     const keyFilters: KeyFilter[] = null; // TODO:
-    this.alarmsDatasource.loadAlarms(this.pageLink, sortOrderLabel, keyFilters);
+    this.alarmsDatasource.loadAlarms(this.pageLink, sortOrderLabel, sortColumnType, keyFilters);
     this.ctx.detectChanges();
   }
 
@@ -741,7 +737,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
 
   public rowStyle(alarm: AlarmDataInfo, row: number): Observable<any> {
     let style$: Observable<any>;
-    let res = this.rowStyleCache[row];
+    const res = this.rowStyleCache[row];
     if (!res) {
       style$ = this.rowStylesInfo.pipe(
         map(styleInfo => {
@@ -779,7 +775,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     let style$: Observable<any>;
     const col = this.columns.indexOf(key);
     const index = row * this.columns.length + col;
-    let res = this.cellStyleCache[index];
+    const res = this.cellStyleCache[index];
     if (!res) {
       if (alarm && key) {
         style$ = this.stylesInfo[key.def].pipe(
@@ -829,7 +825,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     let content$: Observable<SafeHtml>;
     const col = this.columns.indexOf(key);
     const index = row * this.columns.length + col;
-    let res = this.cellContentCache[index];
+    const res = this.cellContentCache[index];
     if (isUndefined(res)) {
       const contentInfo = this.contentsInfo[key.def];
       content$ = contentInfo.contentFunction.pipe(
@@ -848,6 +844,9 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
               content = this.defaultContent(key, contentInfo, value);
             }
             if (isDefined(content)) {
+              if (typeof content === 'object') {
+                content = JSON.stringify(content);
+              }
               content = this.utils.customTranslation(content, content);
               switch (typeof content) {
                 case 'string':
@@ -961,7 +960,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
       (AlarmDetailsDialogComponent,
         {
           disableClose: true,
-          panelClass: ['tb-dialog', 'tb-fullscreen-dialog'],
+          panelClass: ['tb-dialog', 'tb-fullscreen-dialog', this.ctx.stateController.dashboardCtrl.dashboardCtx.dashboardCssClass, this.ctx.widgetCssClass],
           data: {
             alarmId: alarm.id.id,
             allowAcknowledgment: this.allowAcknowledgment,
@@ -1134,9 +1133,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
           return this.datePipe.transform(value, 'yyyy-MM-dd HH:mm:ss');
         }
       }
-      const decimals = (contentInfo.decimals || contentInfo.decimals === 0) ? contentInfo.decimals : this.ctx.widgetConfig.decimals;
-      const units = contentInfo.units || this.ctx.widgetConfig.units;
-      return this.ctx.utils.formatValue(value, decimals, units, true);
+      return contentInfo.valueFormat.format(value);
     } else {
       return '';
     }
@@ -1186,10 +1183,11 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
   }
 
   openAlarmAssigneePanel($event: Event, entity: AlarmInfo) {
-    if ($event) {
-      $event.stopPropagation();
+    $event?.stopPropagation();
+    if (entity.id.id === NULL_UUID) {
+      return
     }
-    const target = $event.target || $event.srcElement || $event.currentTarget;
+    const target = $event.target || $event.currentTarget;
     const config = new OverlayConfig();
     config.backdropClass = 'cdk-overlay-transparent-backdrop';
     config.hasBackdrop = true;
@@ -1244,6 +1242,7 @@ class AlarmsDatasource implements DataSource<AlarmDataInfo> {
 
   private appliedPageLink: AlarmDataPageLink;
   private appliedSortOrderLabel: string;
+  private appliedSortColumnType: SortColumnType = 'entityField';
 
   private reserveSpaceForHiddenAction = true;
   private cellButtonActions: TableCellButtonActionDescriptor[];
@@ -1282,11 +1281,13 @@ class AlarmsDatasource implements DataSource<AlarmDataInfo> {
     this.pageDataSubject.complete();
   }
 
-  loadAlarms(pageLink: AlarmDataPageLink, sortOrderLabel: string, keyFilters: KeyFilter[]) {
+  loadAlarms(pageLink: AlarmDataPageLink, sortOrderLabel: string,
+             sortColumnType: SortColumnType, keyFilters: KeyFilter[]) {
     this.dataLoading = true;
     // this.clear();
     this.appliedPageLink = pageLink;
     this.appliedSortOrderLabel = sortOrderLabel;
+    this.appliedSortColumnType = sortColumnType;
     this.subscription.subscribeForAlarms(pageLink, keyFilters);
   }
 
@@ -1318,7 +1319,7 @@ class AlarmsDatasource implements DataSource<AlarmDataInfo> {
       }
       if (this.appliedSortOrderLabel && this.appliedSortOrderLabel.length) {
         const asc = this.appliedPageLink.sortOrder.direction === Direction.ASC;
-        alarms = alarms.sort((a, b) => sortItems(a, b, this.appliedSortOrderLabel, asc));
+        alarms = alarms.sort((a, b) => sortItems(a, b, this.appliedSortOrderLabel, asc, this.appliedSortColumnType));
       }
       if (this.selection.hasValue()) {
         const alarmIds = alarms.map((alarm) => alarm.id.id);
@@ -1350,7 +1351,7 @@ class AlarmsDatasource implements DataSource<AlarmDataInfo> {
     const alarm: AlarmDataInfo = deepClone(alarmData);
     delete alarm.latest;
     const latest = alarmData.latest;
-    this.dataKeys.forEach((dataKey, index) => {
+    this.dataKeys.forEach((dataKey) => {
       const type = dataKeyTypeToEntityKeyType(dataKey.type);
       let value = '';
       if (type) {

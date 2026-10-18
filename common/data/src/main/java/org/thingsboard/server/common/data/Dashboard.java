@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -33,12 +20,12 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @EqualsAndHashCode(callSuper = true)
-@JsonPropertyOrder({"title", "image", "mobileHide", "mobileOrder", "configuration", "name", "resources"})
+@JsonPropertyOrder({"id", "createdTime", "tenantId", "title", "name", "image", "mobileHide", "mobileOrder", "assignedCustomers", "configuration", "resources", "version"})
 public class Dashboard extends DashboardInfo implements ExportableEntity<DashboardId> {
 
     private static final long serialVersionUID = 872682138346187503L;
 
-    private transient JsonNode configuration;
+    private JsonNode configuration;
 
     @Getter
     @Setter
@@ -68,9 +55,9 @@ public class Dashboard extends DashboardInfo implements ExportableEntity<Dashboa
     }
 
     @Schema(description = "JSON object with main configuration of the dashboard: layouts, widgets, aliases, etc. " +
-            "The JSON structure of the dashboard configuration is quite complex. " +
-            "The easiest way to learn it is to export existing dashboard to JSON."
-            , implementation = com.fasterxml.jackson.databind.JsonNode.class)
+                          "The JSON structure of the dashboard configuration is quite complex. " +
+                          "The easiest way to learn it is to export existing dashboard to JSON."
+            , implementation = JsonNode.class)
     public JsonNode getConfiguration() {
         return configuration;
     }

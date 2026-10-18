@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -49,7 +37,6 @@ import {
   hashCode,
   isDefined,
   isDefinedAndNotNull,
-  isNumber,
   isObject,
   isUndefined
 } from '@core/utils';
@@ -85,6 +72,8 @@ import {
   getColumnSelectionAvailability,
   getRowStyleInfo,
   getTableCellButtonActions,
+  isValidPageStepCount,
+  isValidPageStepIncrement,
   noDataMessage,
   prepareTableCellButtonActions,
   RowStyleInfo,
@@ -104,13 +93,15 @@ import {
 import { ComponentPortal } from '@angular/cdk/portal';
 import { FormBuilder } from '@angular/forms';
 import { DEFAULT_OVERLAY_POSITIONS } from '@shared/models/overlay.models';
-import { DateFormatSettings } from '@shared/models/widget-settings.models';
+import { DateFormatSettings, ValueFormatProcessor } from '@shared/models/widget-settings.models';
+import { entityFields } from '@shared/models/entity.models';
 
 export interface TimeseriesTableWidgetSettings extends TableWidgetSettings {
   showTimestamp: boolean;
   showMilliseconds: boolean;
   hideEmptyLines: boolean;
   dateFormat: DateFormatSettings;
+  sortOrder: SortOrder;
 }
 
 interface TimeseriesWidgetLatestDataKeySettings extends TableWidgetDataKeySettings {
@@ -151,12 +142,14 @@ interface TimeseriesTableSource {
   timeseriesDatasource: TimeseriesDatasource;
   header: TimeseriesHeader[];
   rowDataTemplate: {[key: string]: any};
+  displayName: string;
 }
 
 @Component({
-  selector: 'tb-timeseries-table-widget',
-  templateUrl: './timeseries-table-widget.component.html',
-  styleUrls: ['./timeseries-table-widget.component.scss', './table-widget.scss']
+    selector: 'tb-timeseries-table-widget',
+    templateUrl: './timeseries-table-widget.component.html',
+    styleUrls: ['./timeseries-table-widget.component.scss', './table-widget.scss'],
+    standalone: false
 })
 export class TimeseriesTableWidgetComponent extends PageComponent implements OnInit, AfterViewInit, OnDestroy {
 
@@ -352,10 +345,10 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
     this.rowStylesInfo = getRowStyleInfo(this.ctx, this.settings, 'rowData, ctx');
 
     const pageSize = this.settings.defaultPageSize;
-    let pageStepIncrement = this.settings.pageStepIncrement;
-    let pageStepCount = this.settings.pageStepCount;
+    let pageStepIncrement = isValidPageStepIncrement(this.settings.pageStepIncrement) ? this.settings.pageStepIncrement : null;
+    let pageStepCount = isValidPageStepCount(this.settings.pageStepCount) ? this.settings.pageStepCount : null;
 
-    if (isDefined(pageSize) && isNumber(pageSize) && pageSize > 0) {
+    if (Number.isInteger(pageSize) && pageSize > 0) {
       this.defaultPageSize = pageSize;
     }
 
@@ -374,10 +367,9 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
 
     this.noDataDisplayMessageText =
       noDataMessage(this.widgetConfig.noDataDisplayMessage, 'widget.no-data-found', this.utils, this.translate);
+    let cssString = constructTableCssString(this.widgetConfig, true);
 
-    let cssString = constructTableCssString(this.widgetConfig);
-
-    const origBackgroundColor = this.widgetConfig.backgroundColor || 'rgb(255, 255, 255)';
+    const origBackgroundColor = mtColor(this.widgetConfig.backgroundColor || 'rgb(255, 255, 255)');
     cssString += '.tb-table-widget mat-toolbar.mat-mdc-table-toolbar:not([color=primary]) {\n' +
     'background-color: ' + origBackgroundColor + ' !important;\n' +
     '}\n';
@@ -391,11 +383,38 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
     this.updateDatasources();
   }
 
-  public getTabLabel(source: TimeseriesTableSource){
-    if (this.useEntityLabel) {
-      return source.datasource.entityLabel || source.datasource.entityName;
-    } else {
-      return source.datasource.entityName;
+  private getTabLabel(source: Datasource):string {
+    const value = this.useEntityLabel
+      ? (source.entityLabel || source.entityName)
+      : source.entityName;
+
+    return this.utils.customTranslation(value);
+  }
+
+  private sortDatasources(source: TimeseriesTableSource[]) {
+    const property = this.settings?.sortOrder?.property;
+    const direction = this.settings?.sortOrder?.direction;
+    const isAsc = direction === Direction.ASC;
+
+    if (property === entityFields.name.keyName) {
+      const collator = new Intl.Collator(undefined, {
+        sensitivity: "variant",
+        numeric: true,
+        ignorePunctuation: false
+      });
+
+      source.sort((a, b) => {
+        const valueA = a.displayName || '';
+        const valueB = b.displayName || '';
+
+        return isAsc
+          ? collator.compare(valueA, valueB)
+          : collator.compare(valueB, valueA);
+      });
+    } else if (property === entityFields.createdTime.keyName) {
+      if (isAsc) {
+        source.reverse();
+      }
     }
   }
 
@@ -423,6 +442,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
         source.pageLink = new PageLink(pageSize, 0, null, sortOrder);
         source.rowDataTemplate = {};
         source.rowDataTemplate.Timestamp = null;
+        source.displayName = this.getTabLabel(datasource);
         if (this.showTimestamp) {
           source.displayedColumns.push('0');
         }
@@ -442,6 +462,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
       }
     }
     if (this.sources.length) {
+      this.sortDatasources(this.sources);
       this.sources.forEach((source, index) => {
         this.prepareDisplayedColumn(index);
         source.displayedColumns = this.displayedColumns[index].filter(value => value.display).map(value => value.def);
@@ -455,7 +476,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
       $event.stopPropagation();
     }
     if (this.sources.length) {
-      const target = $event.target || $event.srcElement || $event.currentTarget;
+      const target = $event.target || $event.currentTarget;
       const config = new OverlayConfig({
         panelClass: 'tb-panel-container',
         backdropClass: 'cdk-overlay-transparent-backdrop',
@@ -512,7 +533,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
         let title = '';
         const header = this.sources[index].header.find(column => column.index.toString() === value);
         if (value === '0') {
-          title = 'Timestamp';
+          title = this.translate.instant('widgets.table.timestamp-column-name');
         } else if (value === 'actions') {
           title = 'Actions';
         } else {
@@ -539,10 +560,12 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
       const contentFunctionInfo = getCellContentFunctionInfo(this.ctx, keySettings, 'value, rowData, ctx');
       const columnDefaultVisibility = getColumnDefaultVisibility(keySettings, this.ctx);
       const columnSelectionAvailability = getColumnSelectionAvailability(keySettings);
+      const decimals = (dataKey.decimals || dataKey.decimals === 0) ? dataKey.decimals : this.ctx.widgetConfig.decimals;
+      const units = dataKey.units || this.ctx.widgetConfig.units;
+      const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, showZeroDecimals: true});
       const contentInfo: CellContentInfo = {
         contentFunction: contentFunctionInfo,
-        units: dataKey.units,
-        decimals: dataKey.decimals
+        valueFormat
       };
       header.push({
         index: index + 1,
@@ -565,10 +588,12 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
         const contentFunctionInfo = getCellContentFunctionInfo(this.ctx, keySettings, 'value, rowData, ctx');
         const columnDefaultVisibility = getColumnDefaultVisibility(keySettings, this.ctx);
         const columnSelectionAvailability = getColumnSelectionAvailability(keySettings);
+        const decimals = (dataKey.decimals || dataKey.decimals === 0) ? dataKey.decimals : this.ctx.widgetConfig.decimals;
+        const units = dataKey.units || this.ctx.widgetConfig.units;
+        const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, showZeroDecimals: true});
         const contentInfo: CellContentInfo = {
           contentFunction: contentFunctionInfo,
-          units: dataKey.units,
-          decimals: dataKey.decimals
+          valueFormat
         };
         header.push({
           index: index + 1,
@@ -682,7 +707,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
 
   public rowStyle(source: TimeseriesTableSource, row: TimeseriesRow, index: number): Observable<any> {
     let style$: Observable<any>;
-    let res = this.rowStyleCache[index];
+    const res = this.rowStyleCache[index];
     if (!res) {
       style$ = this.rowStylesInfo.pipe(
         map(styleInfo => {
@@ -725,7 +750,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
                    index: number, row: TimeseriesRow, value: any, rowIndex: number): Observable<any> {
     let style$: Observable<any>;
     const cacheIndex = rowIndex * (source.header.length + 1) + index;
-    let res = this.cellStyleCache[cacheIndex];
+    const res = this.cellStyleCache[cacheIndex];
     if (!res) {
       if (index > 0) {
         style$ = header.styleInfo.pipe(
@@ -772,7 +797,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
                      index: number, row: TimeseriesRow, value: any, rowIndex: number): Observable<SafeHtml> {
     let content$: Observable<SafeHtml>;
     const cacheIndex = rowIndex * (source.header.length + 1) + index ;
-    let res = this.cellContentCache[cacheIndex];
+    const res = this.cellContentCache[cacheIndex];
     if (isUndefined(res)) {
       if (index === 0) {
         content$ = of(row.formattedTs);
@@ -792,9 +817,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
                 content = '' + value;
               }
             } else {
-              const decimals = (header.contentInfo.decimals || header.contentInfo.decimals === 0) ? header.contentInfo.decimals : this.ctx.widgetConfig.decimals;
-              const units = header.contentInfo.units || this.ctx.widgetConfig.units;
-              content = this.ctx.utils.formatValue(value, decimals, units, true);
+              content = header.contentInfo.valueFormat.format(value);
             }
             if (isDefined(content)) {
               content = this.utils.customTranslation(content, content);

@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -40,12 +28,14 @@ import {
 } from '@home/components/widget/lib/chart/bar-chart-with-labels-widget.models';
 import { TbTimeSeriesChart } from '@home/components/widget/lib/chart/time-series-chart';
 import { DataKey } from '@shared/models/widget.models';
+import { WidgetComponent } from '@home/components/widget/widget.component';
 
 @Component({
-  selector: 'tb-bar-chart-with-labels-widget',
-  templateUrl: './bar-chart-with-labels-widget.component.html',
-  styleUrls: ['./bar-chart-with-labels-widget.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-bar-chart-with-labels-widget',
+    templateUrl: './bar-chart-with-labels-widget.component.html',
+    styleUrls: ['./bar-chart-with-labels-widget.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class BarChartWithLabelsWidgetComponent implements OnInit, OnDestroy, AfterViewInit {
 
@@ -73,7 +63,8 @@ export class BarChartWithLabelsWidgetComponent implements OnInit, OnDestroy, Aft
 
   private timeSeriesChart: TbTimeSeriesChart;
 
-  constructor(private imagePipe: ImagePipe,
+  constructor(public widgetComponent: WidgetComponent,
+              private imagePipe: ImagePipe,
               private sanitizer: DomSanitizer,
               private renderer: Renderer2,
               private cd: ChangeDetectorRef) {
@@ -81,7 +72,7 @@ export class BarChartWithLabelsWidgetComponent implements OnInit, OnDestroy, Aft
 
   ngOnInit(): void {
     this.ctx.$scope.barChartWidget = this;
-    this.settings = {...barChartWithLabelsDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...barChartWithLabelsDefaultSettings, ...this.ctx.settings});
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);
@@ -128,6 +119,12 @@ export class BarChartWithLabelsWidgetComponent implements OnInit, OnDestroy, Aft
   public onDataUpdated() {
     if (this.timeSeriesChart) {
       this.timeSeriesChart.update();
+    }
+  }
+
+  public onLatestDataUpdated() {
+    if (this.timeSeriesChart) {
+      this.timeSeriesChart.latestUpdated();
     }
   }
 

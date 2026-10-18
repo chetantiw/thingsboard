@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, forwardRef, OnDestroy } from '@angular/core';
 import { Color, ColorPickerControl } from '@iplab/ngx-color-picker';
 import { Subscription } from 'rxjs';
@@ -35,16 +21,17 @@ const colorPresetsHex =
    '#A1ADB1', '#F9A19B', '#FFD190', '#FFF59D', '#C5E1A4', '#A5D7A7', '#80CBC3', '#81C4E9', '#B39CDB', '#CD93D7', '#F48FB1', '#BC91A4'];
 
 @Component({
-  selector: `tb-color-picker`,
-  templateUrl: `./color-picker.component.html`,
-  styleUrls: [`./color-picker.component.scss`],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ColorPickerComponent),
-      multi: true
-    }
-  ]
+    selector: `tb-color-picker`,
+    templateUrl: `./color-picker.component.html`,
+    styleUrls: [`./color-picker.component.scss`],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => ColorPickerComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class ColorPickerComponent implements ControlValueAccessor, OnDestroy {
 

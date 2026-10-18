@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.security.auth;
 
 import io.jsonwebtoken.Claims;
@@ -60,7 +47,7 @@ public class JwtTokenFactoryTest {
     public void beforeEach() {
         jwtSettings = new JwtSettings();
         jwtSettings.setTokenIssuer("tb");
-        jwtSettings.setTokenSigningKey(Base64.getEncoder().encodeToString(RandomStringUtils.randomAlphanumeric(64).getBytes(StandardCharsets.UTF_8)));
+        jwtSettings.setTokenSigningKey(Base64.getEncoder().encodeToString(RandomStringUtils.secure().nextAlphanumeric(64).getBytes(StandardCharsets.UTF_8)));
         jwtSettings.setTokenExpirationTime((int) TimeUnit.HOURS.toSeconds(2));
         jwtSettings.setRefreshTokenExpTime((int) TimeUnit.DAYS.toSeconds(7));
 
@@ -89,7 +76,7 @@ public class JwtTokenFactoryTest {
         AccessJwtToken accessToken = tokenFactory.createAccessJwtToken(securityUser);
         checkExpirationTime(accessToken, jwtSettings.getTokenExpirationTime());
 
-        SecurityUser parsedSecurityUser = tokenFactory.parseAccessJwtToken(accessToken.getToken());
+        SecurityUser parsedSecurityUser = tokenFactory.parseAccessJwtToken(accessToken.token());
         assertThat(parsedSecurityUser.getId()).isEqualTo(securityUser.getId());
         assertThat(parsedSecurityUser.getEmail()).isEqualTo(securityUser.getEmail());
         assertThat(parsedSecurityUser.getUserPrincipal()).matches(userPrincipal -> {
@@ -112,7 +99,7 @@ public class JwtTokenFactoryTest {
         JwtToken refreshToken = tokenFactory.createRefreshToken(securityUser);
         checkExpirationTime(refreshToken, jwtSettings.getRefreshTokenExpTime());
 
-        SecurityUser parsedSecurityUser = tokenFactory.parseRefreshToken(refreshToken.getToken());
+        SecurityUser parsedSecurityUser = tokenFactory.parseRefreshToken(refreshToken.token());
         assertThat(parsedSecurityUser.getId()).isEqualTo(securityUser.getId());
         assertThat(parsedSecurityUser.getUserPrincipal()).matches(userPrincipal -> {
             return userPrincipal.getType().equals(securityUser.getUserPrincipal().getType())
@@ -125,10 +112,10 @@ public class JwtTokenFactoryTest {
     public void testCreateAndParsePreVerificationJwtToken() {
         SecurityUser securityUser = createSecurityUser();
         int tokenLifetime = (int) TimeUnit.MINUTES.toSeconds(30);
-        JwtToken preVerificationToken = tokenFactory.createPreVerificationToken(securityUser, tokenLifetime);
+        JwtToken preVerificationToken = tokenFactory.createMfaToken(securityUser, Authority.PRE_VERIFICATION_TOKEN, tokenLifetime);
         checkExpirationTime(preVerificationToken, tokenLifetime);
 
-        SecurityUser parsedSecurityUser = tokenFactory.parseAccessJwtToken(preVerificationToken.getToken());
+        SecurityUser parsedSecurityUser = tokenFactory.parseAccessJwtToken(preVerificationToken.token());
         assertThat(parsedSecurityUser.getId()).isEqualTo(securityUser.getId());
         assertThat(parsedSecurityUser.getAuthority()).isEqualTo(Authority.PRE_VERIFICATION_TOKEN);
         assertThat(parsedSecurityUser.getTenantId()).isEqualTo(securityUser.getTenantId());
@@ -144,7 +131,7 @@ public class JwtTokenFactoryTest {
         SecurityUser securityUser = createSecurityUser();
         String sessionId = securityUser.getSessionId();
 
-        String accessToken = tokenFactory.createAccessJwtToken(securityUser).getToken();
+        String accessToken = tokenFactory.createAccessJwtToken(securityUser).token();
         securityUser = tokenFactory.parseAccessJwtToken(accessToken);
         assertThat(securityUser.getSessionId()).isNotNull().isEqualTo(sessionId);
 
@@ -158,7 +145,7 @@ public class JwtTokenFactoryTest {
         securityUser.setId(new UserId(UUID.randomUUID()));
         securityUser.setEmail("tenant@thingsboard.org");
         securityUser.setAuthority(Authority.TENANT_ADMIN);
-        securityUser.setTenantId(new TenantId(UUID.randomUUID()));
+        securityUser.setTenantId(TenantId.fromUUID(UUID.randomUUID()));
         securityUser.setEnabled(true);
         securityUser.setFirstName("A");
         securityUser.setLastName("B");
@@ -179,7 +166,7 @@ public class JwtTokenFactoryTest {
     }
 
     private void checkExpirationTime(JwtToken jwtToken, int tokenLifetime) {
-        Claims claims = tokenFactory.parseTokenClaims(jwtToken.getToken()).getPayload();
+        Claims claims = tokenFactory.parseTokenClaims(jwtToken.token()).getPayload();
         assertThat(claims.getExpiration()).matches(actualExpirationTime -> {
             Calendar expirationTime = Calendar.getInstance();
             expirationTime.setTime(new Date());

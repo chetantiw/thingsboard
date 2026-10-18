@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   calculateNewPointCoordinate,
   defaultImageMapSettings,
@@ -23,7 +9,12 @@ import {
   ImageSourceType,
   loadImageWithAspect,
   MapZoomAction,
-  TbCircleData, TbPolygonCoordinate, TbPolygonCoordinates, TbPolygonRawCoordinate, TbPolygonRawCoordinates
+  TbCircleData,
+  TbPolygonCoordinate,
+  TbPolygonCoordinates,
+  TbPolygonRawCoordinate,
+  TbPolygonRawCoordinates, TbPolylineCoordinate, TbPolylineCoordinates, TbPolylineRawCoordinate,
+  TbPolylineRawCoordinates
 } from '@shared/models/widget/maps/map.models';
 import { WidgetContext } from '@home/models/widget-component.models';
 import { DeepPartial } from '@shared/models/common';
@@ -78,8 +69,6 @@ export class TbImageMap extends TbMap<ImageMapSettings> {
         this.onResize(true);
       } else {
         this.onResize();
-        this.initMapSubject.next(this.map);
-        this.initMapSubject.complete();
       }
     });
     return this.initMapSubject.asObservable();
@@ -222,6 +211,8 @@ export class TbImageMap extends TbMap<ImageMapSettings> {
         attributionControl: false
       });
       this.updateMaxBounds(updateImage);
+      this.initMapSubject.next(this.map);
+      this.initMapSubject.complete();
     }
   }
 
@@ -337,6 +328,38 @@ export class TbImageMap extends TbMap<ImageMapSettings> {
         );
       })
     );
+  }
+
+  public polylineDataToCoordinates(expression: TbPolylineRawCoordinates): TbPolylineRawCoordinates{
+    return expression.map((el: TbPolylineRawCoordinate) => {
+    if (!Array.isArray(el[0]) && !Array.isArray(el[1]) && el.length === 2) {
+      const latLng = this.pointToLatLng(
+        el[0] * this.width,
+        el[1] * this.height
+      );
+      return [latLng.lat, latLng.lng] as TbPolylineRawCoordinate;
+    } else if (Array.isArray(el) && el.length) {
+      return this.polylineDataToCoordinates(el as TbPolylineRawCoordinates) as TbPolylineRawCoordinate;
+    }
+    else {
+      return null;
+    }
+  }).filter(el => !!el);
+  }
+
+  public coordinatesToPolylineData(coordinates: TbPolylineCoordinates): TbPolylineRawCoordinates{
+    if (coordinates.length) {
+      return coordinates.map((point: TbPolylineCoordinate) => {
+        if (Array.isArray(point)) {
+          return this.coordinatesToPolylineData(point) as TbPolylineRawCoordinate;
+        } else {
+          const pos = this.latLngToPoint(point);
+          return [calculateNewPointCoordinate(pos.x, this.width), calculateNewPointCoordinate(pos.y, this.height)];
+        }
+      });
+    } else {
+      return [];
+    }
   }
 
 }

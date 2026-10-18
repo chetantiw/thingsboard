@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.oauth2;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +16,7 @@ import java.util.UUID;
 
 @Component
 public class HybridClientRegistrationRepository implements ClientRegistrationRepository {
+
     private static final String defaultRedirectUriTemplate = "{baseUrl}/login/oauth2/code/{registrationId}";
 
     @Autowired
@@ -37,11 +25,13 @@ public class HybridClientRegistrationRepository implements ClientRegistrationRep
     @Override
     public ClientRegistration findByRegistrationId(String registrationId) {
         OAuth2Client oAuth2Client = oAuth2ClientService.findOAuth2ClientById(TenantId.SYS_TENANT_ID, new OAuth2ClientId(UUID.fromString(registrationId)));
-        return oAuth2Client == null ?
-                null : toSpringClientRegistration(oAuth2Client);
+        if (oAuth2Client == null) {
+            return null;
+        }
+        return toSpringClientRegistration(oAuth2Client);
     }
 
-    private ClientRegistration toSpringClientRegistration(OAuth2Client oAuth2Client){
+    private ClientRegistration toSpringClientRegistration(OAuth2Client oAuth2Client) {
         String registrationId = oAuth2Client.getUuidId().toString();
 
         // NONE is used if we need pkce-based code challenge
@@ -67,4 +57,5 @@ public class HybridClientRegistrationRepository implements ClientRegistrationRep
                 .redirectUri(defaultRedirectUriTemplate)
                 .build();
     }
+
 }

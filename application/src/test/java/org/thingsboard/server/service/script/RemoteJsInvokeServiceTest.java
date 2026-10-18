@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.script;
 
 import com.google.common.util.concurrent.Futures;
@@ -23,9 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.thingsboard.script.api.ScriptType;
+import org.thingsboard.script.api.TbScriptException;
 import org.thingsboard.server.common.data.ApiUsageState;
 import org.thingsboard.server.common.data.id.TenantId;
-import org.thingsboard.server.common.stats.DefaultStatsFactory;
 import org.thingsboard.server.common.stats.StatsCounter;
 import org.thingsboard.server.common.stats.StatsFactory;
 import org.thingsboard.server.common.stats.TbApiUsageReportClient;
@@ -42,8 +29,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
@@ -60,7 +50,6 @@ class RemoteJsInvokeServiceTest {
     private RemoteJsInvokeService remoteJsInvokeService;
     private TbQueueRequestTemplate<TbProtoJsQueueMsg<RemoteJsRequest>, TbProtoQueueMsg<RemoteJsResponse>> jsRequestTemplate;
 
-
     @BeforeEach
     public void beforeEach() {
         TbApiUsageStateClient apiUsageStateClient = mock(TbApiUsageStateClient.class);
@@ -74,7 +63,7 @@ class RemoteJsInvokeServiceTest {
         remoteJsInvokeService.requestTemplate = jsRequestTemplate;
         StatsFactory statsFactory = mock(StatsFactory.class);
         when(statsFactory.createStatsCounter(any(), any())).thenReturn(mock(StatsCounter.class));
-        ReflectionTestUtils.setField(remoteJsInvokeService, "statsFactory",statsFactory);
+        ReflectionTestUtils.setField(remoteJsInvokeService, "statsFactory", statsFactory);
         remoteJsInvokeService.init();
     }
 
@@ -84,7 +73,36 @@ class RemoteJsInvokeServiceTest {
     }
 
     @Test
-    public void whenInvokingFunction_thenDoNotSendScriptBody() throws Exception {
+    void givenUncompilableScript_whenEvaluating_thenThrowsErrorWithCompilationErrorCode() {
+        // GIVEN
+        doAnswer(methodCall -> Futures.immediateFuture(new TbProtoJsQueueMsg<>(UUID.randomUUID(), RemoteJsResponse.newBuilder()
+                .setCompileResponse(JsInvokeProtos.JsCompileResponse.newBuilder()
+                        .setSuccess(false)
+                        .setErrorCode(JsInvokeProtos.JsInvokeErrorCode.COMPILATION_ERROR)
+                        .setErrorDetails("SyntaxError: Unexpected token 'const'")
+                        .setScriptHash(methodCall.<TbProtoQueueMsg<RemoteJsRequest>>getArgument(0).getValue().getCompileRequest().getScriptHash())
+                        .build())
+                .build())))
+                .when(jsRequestTemplate).send(argThat(jsQueueMsg -> jsQueueMsg.getValue().hasCompileRequest()));
+
+        var uncompilableScript = "let const = 'this is not allowed';";
+
+        // WHEN-THEN
+        assertThatThrownBy(() -> remoteJsInvokeService.eval(TenantId.SYS_TENANT_ID, ScriptType.RULE_NODE_SCRIPT, uncompilableScript).get())
+                .isInstanceOf(ExecutionException.class)
+                .cause()
+                .isInstanceOf(TbScriptException.class)
+                .asInstanceOf(type(TbScriptException.class))
+                .satisfies(ex -> {
+                    assertThat(ex.getScriptId()).isNotNull();
+                    assertThat(ex.getErrorCode()).isEqualTo(TbScriptException.ErrorCode.COMPILATION);
+                    assertThat(ex.getBody()).contains(uncompilableScript);
+                    assertThat(ex.getCause()).isInstanceOf(RuntimeException.class).hasMessage("SyntaxError: Unexpected token 'const'");
+                });
+    }
+
+    @Test
+    void whenInvokingFunction_thenDoNotSendScriptBody() throws Exception {
         mockJsEvalResponse();
         String scriptBody = "return { a: 'b'};";
         UUID scriptId = remoteJsInvokeService.eval(TenantId.SYS_TENANT_ID, ScriptType.RULE_NODE_SCRIPT, scriptBody).get();
@@ -110,7 +128,7 @@ class RemoteJsInvokeServiceTest {
     }
 
     @Test
-    public void whenInvokingFunctionAndRemoteJsExecutorRemovedScript_thenHandleNotFoundErrorAndMakeInvokeRequestWithScriptBody() throws Exception {
+    void whenInvokingFunctionAndRemoteJsExecutorRemovedScript_thenHandleNotFoundErrorAndMakeInvokeRequestWithScriptBody() throws Exception {
         mockJsEvalResponse();
         String scriptBody = "return { a: 'b'};";
         UUID scriptId = remoteJsInvokeService.eval(TenantId.SYS_TENANT_ID, ScriptType.RULE_NODE_SCRIPT, scriptBody).get();
@@ -156,7 +174,7 @@ class RemoteJsInvokeServiceTest {
     }
 
     @Test
-    public void whenDoingEval_thenSaveScriptByHashOfTenantIdAndScriptBody() throws Exception {
+    void whenDoingEval_thenSaveScriptByHashOfTenantIdAndScriptBody() throws Exception {
         mockJsEvalResponse();
 
         TenantId tenantId1 = TenantId.fromUUID(UUID.randomUUID());
@@ -187,7 +205,7 @@ class RemoteJsInvokeServiceTest {
     }
 
     @Test
-    public void whenReleasingScript_thenCheckForHashUsages() throws Exception {
+    void whenReleasingScript_thenCheckForHashUsages() throws Exception {
         mockJsEvalResponse();
         String scriptBody = "return { a: 'b'};";
         UUID scriptId1 = remoteJsInvokeService.eval(TenantId.SYS_TENANT_ID, ScriptType.RULE_NODE_SCRIPT, scriptBody).get();

@@ -1,18 +1,7 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+    SPDX-License-Identifier: Apache-2.0
 
 -->
 <form (ngSubmit)="save()" class="tb-map-data-layer-dialog" style="width: 750px;">
@@ -65,6 +54,18 @@
           [callbacks]="context.callbacks">
         </tb-filter-select>
       </div>
+      <mat-expansion-panel *ngIf="dataLayerFormGroup.get('dsType').value !== DatasourceType.function" class="tb-settings">
+        <mat-expansion-panel-header>
+          <mat-panel-description class="flex items-stretch justify-start" translate>
+            widgets.maps.data-layer.more-datasources
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+        <ng-template matExpansionPanelContent>
+          <tb-map-data-sources formControlName="additionalDataSources"
+                               [context]="context">
+          </tb-map-data-sources>
+        </ng-template>
+      </mat-expansion-panel>
     </div>
     <div class="tb-form-panel">
       <div class="tb-form-panel-title">{{ 'datakey.keys' | translate }}</div>
@@ -150,6 +151,26 @@
           [generateKey]="context.generateDataKey"
           (keyEdit)="editKey('circleKey')"
           formControlName="circleKey">
+        </tb-data-key-input>
+        <tb-data-key-input
+          *ngIf="dataLayerType === 'polylines'"
+          inlineField="false"
+          appearance="outline"
+          subscriptSizing="fixed"
+          label="{{ 'widgets.maps.data-layer.polyline.polyline-key' | translate }}"
+          required
+          requiredText="widgets.maps.data-layer.polyline.polyline-key-required"
+          [datasourceType]="dataLayerFormGroup.get('dsType').value"
+          [entityAliasId]="dataLayerFormGroup.get('dsEntityAliasId').value"
+          [deviceId]="dataLayerFormGroup.get('dsDeviceId').value"
+          [aliasController]="context.aliasController"
+          [widgetType]="widgetType.latest"
+          [dataKeyType]="context.functionsOnly ? DataKeyType.function : null"
+          [dataKeyTypes]="[DataKeyType.attribute, DataKeyType.timeseries]"
+          [callbacks]="context.callbacks"
+          [generateKey]="context.generateDataKey"
+          (keyEdit)="editKey('polylineKey')"
+          formControlName="polylineKey">
         </tb-data-key-input>
         <tb-data-keys
           formControlName="additionalDataKeys"
@@ -397,17 +418,44 @@
         </div>
       </ng-container>
       <ng-container *ngIf="['polygons', 'circles'].includes(dataLayerType)">
-        <div class="tb-form-row space-between">
-          <div translate>widgets.maps.data-layer.fill-color</div>
-          <tb-data-layer-color-settings
-            [context]="context"
-            [dsType]="dataLayerFormGroup.get('dsType').value"
-            [dsEntityAliasId]="dataLayerFormGroup.get('dsEntityAliasId').value"
-            [dsDeviceId]="dataLayerFormGroup.get('dsDeviceId').value"
-            helpId="{{ dataLayerType === 'polygons' ? 'widget/lib/map/polygon_fill_color_fn' : 'widget/lib/map/circle_fill_color_fn' }}" formControlName="fillColor"></tb-data-layer-color-settings>
+        <div class="tb-form-panel stroked">
+          <div class="flex flex-1 flex-row items-center justify-between xs:flex-col xs:items-start xs:gap-3">
+            <div class="tb-form-panel-title">{{ 'widgets.maps.data-layer.shape.fill' | translate }}</div>
+            <tb-toggle-select formControlName="fillType" (click)="$event.stopPropagation()">
+              <tb-toggle-option [value]="ShapeFillType.color">{{ 'widgets.maps.data-layer.shape.fill-type-color' | translate }}</tb-toggle-option>
+              <tb-toggle-option [value]="ShapeFillType.stripe">{{ 'widgets.maps.data-layer.shape.fill-type-stripe' | translate }}</tb-toggle-option>
+              <tb-toggle-option [value]="ShapeFillType.image">{{ 'widgets.maps.data-layer.shape.fill-type-image' | translate }}</tb-toggle-option>
+            </tb-toggle-select>
+          </div>
+          <div *ngIf="dataLayerFormGroup.get('fillType').value === ShapeFillType.color" class="tb-form-row space-between">
+            <div translate>widgets.maps.data-layer.shape.color</div>
+            <tb-data-layer-color-settings
+              [context]="context"
+              [dsType]="dataLayerFormGroup.get('dsType').value"
+              [dsEntityAliasId]="dataLayerFormGroup.get('dsEntityAliasId').value"
+              [dsDeviceId]="dataLayerFormGroup.get('dsDeviceId').value"
+              helpId="{{ dataLayerType === 'polygons' ? 'widget/lib/map/polygon_fill_color_fn' : 'widget/lib/map/circle_fill_color_fn' }}" formControlName="fillColor"></tb-data-layer-color-settings>
+          </div>
+          <div *ngIf="dataLayerFormGroup.get('fillType').value === ShapeFillType.stripe" class="tb-form-row space-between">
+            <div translate>widgets.maps.data-layer.shape.stripe-pattern</div>
+            <tb-shape-fill-stripe-settings
+              [context]="context"
+              [dsType]="dataLayerFormGroup.get('dsType').value"
+              [dsEntityAliasId]="dataLayerFormGroup.get('dsEntityAliasId').value"
+              [dsDeviceId]="dataLayerFormGroup.get('dsDeviceId').value"
+              [dataLayerType]="dataLayerType"
+              formControlName="fillStripe">
+            </tb-shape-fill-stripe-settings>
+          </div>
+          <div *ngIf="dataLayerFormGroup.get('fillType').value === ShapeFillType.image" class="tb-form-row space-between">
+            <div translate>widgets.maps.data-layer.shape.image</div>
+            <tb-shape-fill-image-settings formControlName="fillImage"></tb-shape-fill-image-settings>
+          </div>
         </div>
+        </ng-container>
+      <ng-container *ngIf="['polygons', 'circles', 'polylines'].includes(dataLayerType)">
         <div class="tb-form-row space-between">
-          <div translate>widgets.maps.data-layer.stroke</div>
+          <div translate>widgets.maps.data-layer.shape.stroke</div>
           <div class="flex flex-row items-center gap-2">
             <mat-form-field appearance="outline" class="number" subscriptSizing="dynamic">
               <input matInput type="number" min="0" formControlName="strokeWeight" placeholder="{{ 'widget-config.set' | translate }}">
@@ -418,7 +466,9 @@
               [dsType]="dataLayerFormGroup.get('dsType').value"
               [dsEntityAliasId]="dataLayerFormGroup.get('dsEntityAliasId').value"
               [dsDeviceId]="dataLayerFormGroup.get('dsDeviceId').value"
-              helpId="{{ dataLayerType === 'polygons' ? 'widget/lib/map/polygon_stroke_color_fn' : 'widget/lib/map/circle_stroke_color_fn' }}" formControlName="strokeColor"></tb-data-layer-color-settings>
+              helpId="{{ dataLayerType === 'polygons' ? 'widget/lib/map/polygon_stroke_color_fn' :
+                (dataLayerType === 'circles' ? 'widget/lib/map/polygon_stroke_color_fn' : 'widget/lib/map/polyline_stroke_color_fn') }}"
+              formControlName="strokeColor"></tb-data-layer-color-settings>
           </div>
         </div>
       </ng-container>
@@ -430,7 +480,7 @@
       <ng-container *ngTemplateOutlet="behavior"></ng-container>
     }
     <div class="tb-form-panel">
-      <div class="tb-form-panel-title">{{ 'widgets.maps.data-layer.groups' | translate }}</div>
+      <div class="tb-form-panel-title" tb-hint-tooltip-icon="{{ 'widgets.maps.data-layer.groups-hint' | translate }}">{{ 'widgets.maps.data-layer.groups' | translate }}</div>
       <tb-string-items-list class="tb-inline-chips"
                             editable
                             placeholder="{{'widgets.maps.data-layer.groups' | translate}}"
@@ -462,7 +512,9 @@
       </div>
       <div class="tb-form-row">
         <mat-slide-toggle class="mat-slide" formControlName="snappable">
-          {{ 'widgets.maps.data-layer.enable-snapping' | translate }}
+          <span tb-hint-tooltip-icon="{{ 'widgets.maps.data-layer.enable-snapping-hint' | translate }}">
+            {{ 'widgets.maps.data-layer.enable-snapping' | translate }}
+          </span>
         </mat-slide-toggle>
       </div>
     </div>

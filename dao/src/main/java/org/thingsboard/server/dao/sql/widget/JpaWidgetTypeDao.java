@@ -1,24 +1,13 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.widget;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.edqs.fields.WidgetTypeFields;
 import org.thingsboard.server.common.data.id.TenantId;
@@ -51,9 +40,6 @@ import java.util.stream.Collectors;
 
 import static org.thingsboard.server.dao.model.ModelConstants.NULL_UUID;
 
-/**
- * Created by Valerii Sosliuk on 4/29/2017.
- */
 @Component
 @SqlDao
 public class JpaWidgetTypeDao extends JpaAbstractDao<WidgetTypeDetailsEntity, WidgetTypeDetails> implements WidgetTypeDao, TenantEntityDao<WidgetTypeDetails> {
@@ -269,13 +255,13 @@ public class JpaWidgetTypeDao extends JpaAbstractDao<WidgetTypeDetailsEntity, Wi
     }
 
     @Override
-    public List<WidgetTypeInfo> findByTenantIdAndResourceLink(TenantId tenantId, String link, int limit) {
-        return DaoUtil.convertDataList(widgetTypeInfoRepository.findWidgetTypeInfosByTenantIdAndResourceLink(tenantId.getId(), link, limit));
+    public List<EntityInfo> findByTenantIdAndResource(TenantId tenantId, String reference, int limit) {
+        return widgetTypeInfoRepository.findWidgetTypeInfosByTenantIdAndResourceLink(tenantId.getId(), reference, PageRequest.of(0, limit));
     }
 
     @Override
-    public List<WidgetTypeInfo> findByResourceLink(String link, int limit) {
-        return DaoUtil.convertDataList(widgetTypeInfoRepository.findWidgetTypeInfosByResourceLink(link, limit));
+    public List<EntityInfo> findByResource(String reference, int limit) {
+        return widgetTypeInfoRepository.findWidgetTypeInfosByResourceLink(reference, PageRequest.of(0, limit));
     }
 
     @Override

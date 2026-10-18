@@ -1,20 +1,8 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.dashboard;
 
+import com.google.common.util.concurrent.FluentFuture;
 import com.google.common.util.concurrent.ListenableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +37,7 @@ import org.thingsboard.server.dao.entity.EntityCountService;
 import org.thingsboard.server.dao.eventsourcing.ActionEntityEvent;
 import org.thingsboard.server.dao.eventsourcing.DeleteEntityEvent;
 import org.thingsboard.server.dao.eventsourcing.SaveEntityEvent;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.dao.resource.ImageService;
 import org.thingsboard.server.dao.resource.ResourceService;
 import org.thingsboard.server.dao.service.DataValidator;
@@ -61,6 +49,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.thingsboard.server.dao.DaoUtil.toUUIDs;
 import static org.thingsboard.server.dao.service.Validator.validateId;
 
 @Service("DashboardDaoService")
@@ -70,6 +60,7 @@ public class DashboardServiceImpl extends AbstractEntityService implements Dashb
 
     public static final String INCORRECT_DASHBOARD_ID = "Incorrect dashboardId ";
     public static final String INCORRECT_TENANT_ID = "Incorrect tenantId ";
+
     @Autowired
     private DashboardDao dashboardDao;
 
@@ -157,6 +148,10 @@ public class DashboardServiceImpl extends AbstractEntityService implements Dashb
 
     @Override
     public Dashboard saveDashboard(Dashboard dashboard, boolean doValidate) {
+        return saveEntity(dashboard, () -> doSaveDashboard(dashboard, doValidate));
+    }
+
+    private Dashboard doSaveDashboard(Dashboard dashboard, boolean doValidate) {
         log.trace("Executing saveDashboard [{}]", dashboard);
         if (doValidate) {
             dashboardValidator.validate(dashboard, DashboardInfo::getTenantId);
@@ -406,6 +401,12 @@ public class DashboardServiceImpl extends AbstractEntityService implements Dashb
         return dashboardDao.findAllIds(pageLink);
     }
 
+    @Override
+    public List<DashboardInfo> findDashboardInfoByIds(TenantId tenantId, List<DashboardId> dashboardIds) {
+        log.trace("Executing findDashboardInfoByIds, dashboardIds [{}]", dashboardIds);
+        return dashboardInfoDao.findDashboardsByIds(tenantId.getId(), toUUIDs(dashboardIds));
+    }
+
     private final PaginatedRemover<TenantId, DashboardId> tenantDashboardsRemover = new PaginatedRemover<>() {
 
         @Override
@@ -422,6 +423,12 @@ public class DashboardServiceImpl extends AbstractEntityService implements Dashb
     @Override
     public Optional<HasId<?>> findEntity(TenantId tenantId, EntityId entityId) {
         return Optional.ofNullable(findDashboardById(tenantId, new DashboardId(entityId.getId())));
+    }
+
+    @Override
+    public FluentFuture<Optional<HasId<?>>> findEntityAsync(TenantId tenantId, EntityId entityId) {
+        return FluentFuture.from(findDashboardByIdAsync(tenantId, new DashboardId(entityId.getId())))
+                .transform(Optional::ofNullable, directExecutor());
     }
 
     @Override

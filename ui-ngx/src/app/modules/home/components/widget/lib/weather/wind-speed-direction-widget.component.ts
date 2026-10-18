@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -40,7 +28,8 @@ import {
   Font,
   getDataKey,
   getSingleTsValueByDataKey,
-  overlayStyle
+  overlayStyle,
+  ValueFormatProcessor
 } from '@shared/models/widget-settings.models';
 import { formatValue, isDefinedAndNotNull, isNumeric } from '@core/utils';
 import { Path, Svg, SVG, Text } from '@svgdotjs/svg.js';
@@ -48,6 +37,7 @@ import { DataKey } from '@shared/models/widget.models';
 import { Observable } from 'rxjs';
 import { ImagePipe } from '@shared/pipe/image.pipe';
 import { DomSanitizer } from '@angular/platform-browser';
+import { UnitService } from '@core/services/unit.service';
 
 const shapeSize = 180;
 const cx = shapeSize / 2;
@@ -66,10 +56,11 @@ const ticksTextMap: {[angle: number]: string} = {
 };
 
 @Component({
-  selector: 'tb-wind-speed-direction-widget',
-  templateUrl: './wind-speed-direction-widget.component.html',
-  styleUrls: ['./wind-speed-direction-widget.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-wind-speed-direction-widget',
+    templateUrl: './wind-speed-direction-widget.component.html',
+    styleUrls: ['./wind-speed-direction-widget.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class WindSpeedDirectionWidgetComponent implements OnInit, OnDestroy, AfterViewInit {
 
@@ -96,13 +87,13 @@ export class WindSpeedDirectionWidgetComponent implements OnInit, OnDestroy, Aft
 
   hasCardClickAction = false;
 
-  private decimals = 0;
-  private units = '';
-
   private drawSvgShapePending = false;
   private svgShape: Svg;
   private arrow: Path;
   private centerValueTextNode: Text;
+
+  private units = ''
+  private valueFormat: ValueFormatProcessor;
 
   private windDirectionDataKey: DataKey;
   private centerValueDataKey: DataKey;
@@ -111,6 +102,7 @@ export class WindSpeedDirectionWidgetComponent implements OnInit, OnDestroy, Aft
   private centerValueText = 'N/A';
 
   constructor(private imagePipe: ImagePipe,
+              private unitService: UnitService,
               private sanitizer: DomSanitizer,
               private renderer: Renderer2,
               private cd: ChangeDetectorRef) {
@@ -118,20 +110,22 @@ export class WindSpeedDirectionWidgetComponent implements OnInit, OnDestroy, Aft
 
   ngOnInit(): void {
     this.ctx.$scope.windSpeedDirectionWidget = this;
-    this.settings = {...windSpeedDirectionDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...windSpeedDirectionDefaultSettings, ...this.ctx.settings});
 
     this.windDirectionDataKey = getDataKey(this.ctx.datasources, 0);
     this.centerValueDataKey = getDataKey(this.ctx.datasources, 1);
 
     if (this.centerValueDataKey) {
-      this.decimals = this.ctx.decimals;
-      this.units = this.ctx.units;
+      let decimals = this.ctx.decimals;
+      let units = this.ctx.units;
       if (isDefinedAndNotNull(this.centerValueDataKey.decimals)) {
-        this.decimals = this.centerValueDataKey.decimals;
+        decimals = this.centerValueDataKey.decimals;
       }
       if (this.centerValueDataKey.units) {
-        this.units = this.centerValueDataKey.units;
+        units = this.centerValueDataKey.units;
       }
+      this.units = this.unitService.getTargetUnitSymbol(units);
+      this.valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, ignoreUnitSymbol: true})
     }
 
     this.layout = this.settings.layout;
@@ -186,7 +180,7 @@ export class WindSpeedDirectionWidgetComponent implements OnInit, OnDestroy, Aft
       const centerValueTsValue = getSingleTsValueByDataKey(this.ctx.data, this.centerValueDataKey);
       if (centerValueTsValue && isDefinedAndNotNull(centerValueTsValue[1]) && isNumeric(centerValueTsValue[1])) {
         value = centerValueTsValue[1];
-        this.centerValueText = formatValue(value, this.decimals, '', false);
+        this.centerValueText = this.valueFormat.format(value);
       }
     }
     this.centerValueColor.update(value);

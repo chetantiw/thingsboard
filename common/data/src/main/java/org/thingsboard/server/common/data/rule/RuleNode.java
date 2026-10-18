@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data.rule;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -62,9 +49,7 @@ public class RuleNode extends BaseDataWithAdditionalInfo<RuleNodeId> implements 
     @Schema(description = "Version of rule node configuration. ", example = "0")
     private int configurationVersion;
     @Schema(description = "JSON with the rule node configuration. Structure depends on the rule node implementation.", implementation = JsonNode.class)
-    private transient JsonNode configuration;
-    @JsonIgnore
-    private byte[] configurationBytes;
+    private JsonNode configuration;
 
     private RuleNodeId externalId;
 
@@ -92,14 +77,6 @@ public class RuleNode extends BaseDataWithAdditionalInfo<RuleNodeId> implements 
         return name;
     }
 
-    public JsonNode getConfiguration() {
-        return BaseDataWithAdditionalInfo.getJson(() -> configuration, () -> configurationBytes);
-    }
-
-    public void setConfiguration(JsonNode data) {
-        setJson(data, json -> this.configuration = json, bytes -> this.configurationBytes = bytes);
-    }
-
     @Schema(description = "JSON object with the Rule Node Id. " +
                           "Specify this field to update the Rule Node. " +
                           "Referencing non-existing Rule Node Id will cause error. " +
@@ -115,7 +92,12 @@ public class RuleNode extends BaseDataWithAdditionalInfo<RuleNodeId> implements 
         return super.getCreatedTime();
     }
 
-    @Schema(description = "Additional parameters of the rule node. Contains 'layoutX' and 'layoutY' properties for visualization.", implementation = JsonNode.class)
+    @Schema(description = "Additional parameters of the rule node. " +
+            "May include: 'layoutX' (number, X coordinate for visualization), " +
+            "'layoutY' (number, Y coordinate for visualization), " +
+            "'description' (string).",
+            implementation = JsonNode.class,
+            example = "{\"layoutX\":320,\"layoutY\":160,\"description\":\"Filter temperature data\"}")
     @Override
     public JsonNode getAdditionalInfo() {
         return super.getAdditionalInfo();

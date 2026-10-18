@@ -1,28 +1,9 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtColor, mtThemedSettings, mtToken, mtWidgetThemeEnabled } from '@shared/models/mutech-widget-theme';
 import { GridsterComponent, GridsterConfig, GridsterItem, GridsterItemComponentInterface } from 'angular-gridster2';
-import {
-  datasourcesHasAggregation,
-  datasourcesHasOnlyComparisonAggregation,
-  FormattedData,
-  Widget,
-  WidgetPosition,
-  widgetType
-} from '@app/shared/models/widget.models';
+import { FormattedData, Widget, WidgetPosition, widgetType } from '@app/shared/models/widget.models';
 import { WidgetLayout, WidgetLayouts } from '@app/shared/models/dashboard.models';
 import { IDashboardWidget, WidgetAction, WidgetContext, WidgetHeaderAction } from './widget-component.models';
 import { Timewindow } from '@shared/models/time/time.models';
@@ -41,8 +22,13 @@ import { IAliasController, IStateController } from '@app/core/api/widget-api.mod
 import { enumerable } from '@shared/decorators/enumerable';
 import { UtilsService } from '@core/services/utils.service';
 import { TbPopoverComponent } from '@shared/components/popover.component';
-import { ComponentStyle, iconStyle, textStyle } from '@shared/models/widget-settings.models';
+import { ComponentStyle, iconStyle, textStyle, TimewindowStyle } from '@shared/models/widget-settings.models';
 import { TbContextMenuEvent } from '@shared/models/jquery-event.models';
+import {
+  widgetDatasourcesHasAggregation,
+  widgetDatasourcesHasOnlyComparisonAggregation,
+  widgetHasTimewindow
+} from '@shared/models/widget/widget-model.definition';
 
 export interface WidgetsData {
   widgets: Array<Widget>;
@@ -468,49 +454,51 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
 
       const resizable = item.resize;
 
-      this.heightValue = resizable.height;
-      this.widthValue = resizable.width;
+      if (resizable) {
+        this.heightValue = resizable.height;
+        this.widthValue = resizable.width;
 
-      const setItemHeight = resizable.setItemHeight.bind(resizable);
-      const setItemWidth = resizable.setItemWidth.bind(resizable);
-      resizable.setItemHeight = (height) => {
-        setItemHeight(height);
-        this.heightValue = height;
-        if (this.preserveAspectRatio) {
-          setItemWidth(height * this.aspectRatio);
-        }
-      };
-      resizable.setItemWidth = (width) => {
-        setItemWidth(width);
-        this.widthValue = width;
-        if (this.preserveAspectRatio) {
-          setItemHeight(width / this.aspectRatio);
-        }
-      };
-
-      Object.defineProperty(resizable, 'height', {
-        get: () => this.heightValue,
-        set: v => {
-          if (this.heightValue !== v) {
-            if (this.preserveAspectRatio) {
-              this.widthValue = v * this.aspectRatio;
-            }
-            this.heightValue = v;
+        const setItemHeight = resizable.setItemHeight.bind(resizable);
+        const setItemWidth = resizable.setItemWidth.bind(resizable);
+        resizable.setItemHeight = (height) => {
+          setItemHeight(height);
+          this.heightValue = height;
+          if (this.preserveAspectRatio) {
+            setItemWidth(height * this.aspectRatio);
           }
-        }
-      });
-
-      Object.defineProperty(resizable, 'width', {
-        get: () => this.widthValue,
-        set: v => {
-          if (this.widthValue !== v) {
-            if (this.preserveAspectRatio) {
-              this.heightValue = v / this.aspectRatio;
-            }
-            this.widthValue = v;
+        };
+        resizable.setItemWidth = (width) => {
+          setItemWidth(width);
+          this.widthValue = width;
+          if (this.preserveAspectRatio) {
+            setItemHeight(width / this.aspectRatio);
           }
-        }
-      });
+        };
+
+        Object.defineProperty(resizable, 'height', {
+          get: () => this.heightValue,
+          set: v => {
+            if (this.heightValue !== v) {
+              if (this.preserveAspectRatio) {
+                this.widthValue = v * this.aspectRatio;
+              }
+              this.heightValue = v;
+            }
+          }
+        });
+
+        Object.defineProperty(resizable, 'width', {
+          get: () => this.widthValue,
+          set: v => {
+            if (this.widthValue !== v) {
+              if (this.preserveAspectRatio) {
+                this.heightValue = v / this.aspectRatio;
+              }
+              this.widthValue = v;
+            }
+          }
+        });
+      }
       this.preserveAspectRatioApplied = true;
     }
   }
@@ -587,12 +575,19 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
     }
   }
 
+  get timewindowStyle(): TimewindowStyle {
+    return mtThemedSettings(this.widget.config.timewindowStyle);
+  }
+
   updateWidgetParams(detectChanges = true) {
-    this.color = this.widget.config.color || 'rgba(0, 0, 0, 0.87)';
-    this.backgroundColor = this.widget.config.backgroundColor || '#fff';
+    this.color = mtColor(this.widget.config.color || 'rgba(0, 0, 0, 0.87)');
+    this.backgroundColor = mtColor(this.widget.config.backgroundColor || '#fff');
     this.padding = this.widget.config.padding || '8px';
     this.margin = this.widget.config.margin || '0px';
     this.borderRadius = this.widget.config.borderRadius;
+    if (mtWidgetThemeEnabled() && (!this.borderRadius || /^0(px)?$/.test(this.borderRadius.trim()))) {
+      this.borderRadius = mtToken('radius-lg');
+    }
 
     const title = isDefined(this.widgetContext.widgetTitle)
       && this.widgetContext.widgetTitle.length ? this.widgetContext.widgetTitle : this.widget.config.title;
@@ -601,29 +596,26 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
       && this.widgetContext.widgetTitleTooltip.length ? this.widgetContext.widgetTitleTooltip : this.widget.config.titleTooltip;
     this.titleTooltip = this.dashboard.utils.customTranslation(this.titleTooltip, this.titleTooltip);
     this.showTitle = isDefined(this.widget.config.showTitle) ? this.widget.config.showTitle : true;
-    this.titleStyle = {...(this.widget.config.titleStyle || {}), ...textStyle(this.widget.config.titleFont)};
+    this.titleStyle = {...(mtThemedSettings(this.widget.config.titleStyle) || {}), ...textStyle(this.widget.config.titleFont)};
     if (this.widget.config.titleColor) {
-      this.titleStyle.color = this.widget.config.titleColor;
+      this.titleStyle.color = mtColor(this.widget.config.titleColor);
     }
     this.titleIcon = isDefined(this.widget.config.titleIcon) ? this.widget.config.titleIcon : '';
     this.showTitleIcon = isDefined(this.widget.config.showTitleIcon) ? this.widget.config.showTitleIcon : false;
     this.titleIconStyle = this.widget.config.iconSize ? iconStyle(this.widget.config.iconSize) : {};
     if (this.widget.config.iconColor) {
-      this.titleIconStyle.color = this.widget.config.iconColor;
+      this.titleIconStyle.color = mtColor(this.widget.config.iconColor);
     }
     this.dropShadow = isDefined(this.widget.config.dropShadow) ? this.widget.config.dropShadow : true;
     this.enableFullscreen = isDefined(this.widget.config.enableFullscreen) ? this.widget.config.enableFullscreen : true;
 
-    let canHaveTimewindow = false;
+    const canHaveTimewindow = widgetHasTimewindow(this.widget);
     let onlyQuickInterval = false;
     let onlyHistoryTimewindow = false;
-    if (this.widget.type === widgetType.timeseries || this.widget.type === widgetType.alarm) {
-      canHaveTimewindow = true;
-    } else if (this.widget.type === widgetType.latest) {
-      canHaveTimewindow = datasourcesHasAggregation(this.widget.config.datasources);
-      onlyQuickInterval = canHaveTimewindow;
+    if (this.widget.type === widgetType.latest) {
+      onlyQuickInterval = widgetDatasourcesHasAggregation(this.widget);
       if (canHaveTimewindow) {
-        onlyHistoryTimewindow = datasourcesHasOnlyComparisonAggregation(this.widget.config.datasources);
+        onlyHistoryTimewindow = widgetDatasourcesHasOnlyComparisonAggregation(this.widget);
       }
     }
 

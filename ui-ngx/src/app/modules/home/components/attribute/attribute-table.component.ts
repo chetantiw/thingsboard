@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -56,6 +42,8 @@ import {
 import { AttributeDatasource } from '@home/models/datasource/attribute-datasource';
 import { AttributeService } from '@app/core/http/attribute.service';
 import { EntityType } from '@shared/models/entity-type.models';
+import { Authority } from '@shared/models/authority.enum';
+import { getCurrentAuthUser } from '@core/auth/auth.selectors';
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import {
   AddAttributeDialogComponent,
@@ -76,7 +64,6 @@ import { AliasController } from '@core/api/alias-controller';
 import { EntityAlias, EntityAliases } from '@shared/models/alias.models';
 import { UtilsService } from '@core/services/utils.service';
 import { DashboardUtilsService } from '@core/services/dashboard-utils.service';
-import { NULL_UUID } from '@shared/models/id/has-uuid';
 import { WidgetService } from '@core/http/widget.service';
 import { toWidgetInfo } from '../../models/widget-component.models';
 import { EntityService } from '@core/http/entity.service';
@@ -89,13 +76,16 @@ import { Filters } from '@shared/models/query/query.models';
 import { hidePageSizePixelValue } from '@shared/models/constants';
 import { DeleteTimeseriesPanelComponent } from '@home/components/attribute/delete-timeseries-panel.component';
 import { FormBuilder } from '@angular/forms';
-
+import { coerceBoolean } from '@shared/decorators/coercion';
+import { AggregationType, defaultTimewindow } from '@shared/models/time/time.models';
+import { TimeService } from '@core/services/time.service';
 
 @Component({
-  selector: 'tb-attribute-table',
-  templateUrl: './attribute-table.component.html',
-  styleUrls: ['./attribute-table.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'tb-attribute-table',
+    templateUrl: './attribute-table.component.html',
+    styleUrls: ['./attribute-table.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class AttributeTableComponent extends PageComponent implements AfterViewInit, OnInit, OnDestroy {
 
@@ -143,6 +133,10 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
   }
 
   @Input()
+  @coerceBoolean()
+  disableAddTelemetry: boolean;
+
+  @Input()
   set disableAttributeScopeSelection(value: boolean) {
     this.disableAttributeScopeSelectionValue = coerceBooleanProperty(value);
   }
@@ -184,6 +178,8 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
 
   textSearch = this.fb.control('', {nonNullable: true});
 
+  isSysAdmin = false;
+
   private destroy$ = new Subject<void>();
 
   constructor(protected store: Store<AppState>,
@@ -201,8 +197,10 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
               private zone: NgZone,
               private cd: ChangeDetectorRef,
               private elementRef: ElementRef,
-              private fb: FormBuilder) {
+              private fb: FormBuilder,
+              private timeService: TimeService) {
     super(store);
+    this.isSysAdmin = getCurrentAuthUser(this.store).authority === Authority.SYS_ADMIN;
     this.dirtyValue = !this.activeValue;
     const sortOrder: SortOrder = { property: 'key', direction: Direction.ASC };
     this.pageLink = new PageLink(10, 0, null, sortOrder);
@@ -315,13 +313,19 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
     if ($event) {
       $event.stopPropagation();
     }
+    const data: AddAttributeDialogData = {
+      entityId: this.entityIdValue,
+      attributeScope: this.attributeScope,
+    };
+
+    if(this.attributeScope === LatestTelemetry.LATEST_TELEMETRY) {
+      data.datasource = this.dataSource;
+    }
+
     this.dialog.open<AddAttributeDialogComponent, AddAttributeDialogData, boolean>(AddAttributeDialogComponent, {
       disableClose: true,
       panelClass: ['tb-dialog', 'tb-fullscreen-dialog'],
-      data: {
-        entityId: this.entityIdValue,
-        attributeScope: this.attributeScope
-      }
+      data
     }).afterClosed().subscribe(
       (res) => {
         if (res) {
@@ -338,7 +342,7 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
     if (this.isClientSideTelemetryTypeMap.get(this.attributeScope)) {
       return;
     }
-    const target = $event.target || $event.srcElement || $event.currentTarget;
+    const target = $event.target || $event.currentTarget;
     const config = new OverlayConfig();
     config.backdropClass = 'cdk-overlay-transparent-backdrop';
     config.hasBackdrop = true;
@@ -389,7 +393,7 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
     if ($event) {
       $event.stopPropagation();
     }
-    const target = $event.target || $event.srcElement || $event.currentTarget;
+    const target = $event.target || $event.currentTarget;
     const config = new OverlayConfig({
       panelClass: 'tb-filter-panel',
       backdropClass: 'cdk-overlay-transparent-backdrop',
@@ -541,7 +545,6 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
         type: dataKeyType,
         color: this.utils.getMaterialColor(i),
         settings: {},
-        _hash: Math.random()
       };
       this.widgetDatasource.dataKeys.push(dataKey);
     }
@@ -568,7 +571,7 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
         this.widgetsLoaded = false;
         this.widgetService.getBundleWidgetTypes(widgetsBundle.id.id).subscribe(
           (widgetTypes) => {
-            widgetTypes = widgetTypes.sort((a, b) => {
+            widgetTypes = widgetTypes.filter(widget => !widget.deprecated).sort((a, b) => {
               let result = widgetType[b.descriptor.type].localeCompare(widgetType[a.descriptor.type]);
               if (result === 0) {
                 result = b.createdTime - a.createdTime;
@@ -592,6 +595,11 @@ export class AttributeTableComponent extends PageComponent implements AfterViewI
                 };
                 widget.config.title = widgetInfo.widgetName;
                 widget.config.datasources = [this.widgetDatasource];
+                if (widget.type === widgetType.timeseries && widget.config.useDashboardTimewindow) {
+                  widget.config.useDashboardTimewindow = false;
+                  widget.config.timewindow = defaultTimewindow(this.timeService);
+                  widget.config.timewindow.aggregation.type = AggregationType.NONE;
+                }
                 if ((this.attributeScope === LatestTelemetry.LATEST_TELEMETRY && widgetInfo.type !== widgetType.rpc) ||
                       widgetInfo.type === widgetType.latest) {
                   const length = this.widgetsListCache.push([widget]);

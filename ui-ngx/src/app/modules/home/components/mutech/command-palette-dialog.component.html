@@ -1,0 +1,29 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright MuTech Automation
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<div class="mt-palette">
+  <label class="mt-palette-search">
+    <mat-icon class="material-icons">search</mat-icon>
+    <input [formControl]="query" cdkFocusInitial (keydown)="onKeydown($event)"
+           placeholder="{{ 'mutech.command-placeholder' | translate }}"
+           aria-label="{{ 'mutech.command-placeholder' | translate }}">
+    <kbd>Esc</kbd>
+  </label>
+  <div class="mt-palette-list" role="listbox">
+    @for (item of items$ | async; track item.group + item.label; let i = $index) {
+      <button type="button" role="option" id="mt-command-{{ i }}"
+              class="mt-palette-item" [class.mt-active]="i === activeIndex"
+              [attr.aria-selected]="i === activeIndex"
+              (mouseenter)="activeIndex = i" (click)="execute(item)">
+        <tb-icon class="mt-palette-icon">{{ item.icon }}</tb-icon>
+        <span class="mt-palette-label">{{ item.label }}</span>
+        <span class="mt-palette-group">{{ item.group }}</span>
+      </button>
+    } @empty {
+      <div class="mt-palette-empty">{{ 'mutech.no-results' | translate }}</div>
+    }
+  </div>
+</div>

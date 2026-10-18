@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.widget;
 
 import org.springframework.data.domain.Page;
@@ -20,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.dao.model.sql.WidgetTypeInfoEntity;
 
 import java.util.List;
@@ -214,10 +202,14 @@ public interface WidgetTypeInfoRepository extends JpaRepository<WidgetTypeInfoEn
     )
     List<WidgetTypeInfoEntity> findByImageUrl(@Param("imageLink") String imageLink, @Param("limit") int limit);
 
-    @Query(value = "SELECT * FROM widget_type_info_view w WHERE w.tenant_id = :tenantId AND w.descriptor ILIKE CONCAT('%', :link, '%') LIMIT :limit ", nativeQuery = true)
-    List<WidgetTypeInfoEntity> findWidgetTypeInfosByTenantIdAndResourceLink(@Param("tenantId") UUID tenantId, @Param("link") String link, @Param("limit") int limit);
+    @Query("SELECT new org.thingsboard.server.common.data.EntityInfo(w.id, 'WIDGET_TYPE', w.name) " +
+            "FROM WidgetTypeEntity w WHERE w.tenantId = :tenantId AND ilike(cast(w.descriptor as string), CONCAT('%', :link, '%')) = true")
+    List<EntityInfo> findWidgetTypeInfosByTenantIdAndResourceLink(@Param("tenantId") UUID tenantId,
+                                                                  @Param("link") String link,
+                                                                  Pageable pageable);
 
-    @Query(value = "SELECT * FROM widget_type_info_view w WHERE w.descriptor ILIKE CONCAT('%', :link, '%') LIMIT :limit ", nativeQuery = true)
-    List<WidgetTypeInfoEntity> findWidgetTypeInfosByResourceLink(@Param("link") String link, @Param("limit") int limit);
-
+    @Query("SELECT new org.thingsboard.server.common.data.EntityInfo(w.id, 'WIDGET_TYPE', w.name) " +
+            "FROM WidgetTypeEntity w WHERE ilike(cast(w.descriptor as string), CONCAT('%', :link, '%')) = true")
+    List<EntityInfo> findWidgetTypeInfosByResourceLink(@Param("link") String link,
+                                                       Pageable pageable);
 }

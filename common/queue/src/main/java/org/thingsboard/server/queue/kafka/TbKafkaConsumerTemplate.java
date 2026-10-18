@@ -1,21 +1,10 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.kafka;
 
 import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -39,7 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created by ashvayka on 24.09.18.
@@ -47,13 +38,16 @@ import java.util.stream.Collectors;
 @Slf4j
 public class TbKafkaConsumerTemplate<T extends TbQueueMsg> extends AbstractTbQueueConsumerTemplate<ConsumerRecord<String, byte[]>, T> {
 
-    private final TbQueueAdmin admin;
+    private final TbKafkaAdmin admin;
     private final KafkaConsumer<String, byte[]> consumer;
     private final TbKafkaDecoder<T> decoder;
 
     private final TbKafkaConsumerStatsService statsService;
+    @Getter
     private final String groupId;
 
+    @Setter
+    private Function<String, Long> startOffsetProvider;
     private final boolean readFromBeginning; // reset offset to beginning
     private final boolean stopWhenRead; // stop consuming when reached end offset remembered on start
     private int readCount;
@@ -78,7 +72,7 @@ public class TbKafkaConsumerTemplate<T extends TbQueueMsg> extends AbstractTbQue
             statsService.registerClientGroup(groupId);
         }
 
-        this.admin = admin;
+        this.admin = (TbKafkaAdmin) admin;
         this.consumer = new KafkaConsumer<>(props);
         this.decoder = decoder;
         this.readFromBeginning = readFromBeginning;
@@ -105,14 +99,19 @@ public class TbKafkaConsumerTemplate<T extends TbQueueMsg> extends AbstractTbQue
             List<String> toSubscribe = new ArrayList<>();
             topics.forEach((topic, kafkaPartitions) -> {
                 if (kafkaPartitions == null) {
-                    toSubscribe.add(topic);
-                } else {
-                    List<TopicPartition> topicPartitions = kafkaPartitions.stream()
-                            .map(partition -> new TopicPartition(topic, partition))
-                            .toList();
-                    consumer.assign(topicPartitions);
-                    onPartitionsAssigned(topicPartitions);
+                    if (groupId != null) {
+                        toSubscribe.add(topic);
+                        return;
+                    } else { // if no consumer group management - manually assigning all topic partitions
+                        kafkaPartitions = IntStream.range(0, admin.getNumPartitions()).boxed().toList();
+                    }
                 }
+
+                List<TopicPartition> topicPartitions = kafkaPartitions.stream()
+                        .map(partition -> new TopicPartition(topic, partition))
+                        .toList();
+                consumer.assign(topicPartitions);
+                onPartitionsAssigned(topicPartitions);
             });
             if (!toSubscribe.isEmpty()) {
                 if (readFromBeginning || stopWhenRead) {
@@ -179,9 +178,21 @@ public class TbKafkaConsumerTemplate<T extends TbQueueMsg> extends AbstractTbQue
 
     private void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         if (readFromBeginning) {
+            log.debug("Seeking to beginning for {}", partitions);
             consumer.seekToBeginning(partitions);
+        } else if (startOffsetProvider != null) {
+            partitions.forEach(topicPartition -> {
+                Long offset = startOffsetProvider.apply(topicPartition.topic());
+                if (offset != null) {
+                    log.debug("Seeking to offset {} for {}", offset, topicPartition);
+                    consumer.seek(topicPartition, offset);
+                } else {
+                    log.info("No start offset provided for {}", topicPartition);
+                }
+            });
         }
         if (stopWhenRead) {
+            log.debug("Getting end offsets for {}", partitions);
             endOffsets = consumer.endOffsets(partitions).entrySet().stream()
                     .filter(entry -> entry.getValue() > 0)
                     .collect(Collectors.toMap(entry -> entry.getKey().partition(), Map.Entry::getValue));
@@ -195,7 +206,9 @@ public class TbKafkaConsumerTemplate<T extends TbQueueMsg> extends AbstractTbQue
 
     @Override
     protected void doCommit() {
-        consumer.commitSync();
+        if (groupId != null) {
+            consumer.commitSync();
+        }
     }
 
     @Override

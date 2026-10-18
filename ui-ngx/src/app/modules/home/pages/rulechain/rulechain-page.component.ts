@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewChecked,
   AfterViewInit,
@@ -26,6 +12,7 @@ import {
   OnInit,
   QueryList,
   Renderer2,
+  SecurityContext,
   SkipSelf,
   ViewChild,
   ViewChildren,
@@ -97,12 +84,16 @@ import { HttpStatusCode } from '@angular/common/http';
 import { TbContextMenuEvent } from '@shared/models/jquery-event.models';
 import { EntityDebugSettings } from '@shared/models/entity.models';
 import Timeout = NodeJS.Timeout;
+import { DomSanitizer } from '@angular/platform-browser';
+import { AdditionalDebugActionConfig } from '@home/components/entity/debug/entity-debug-settings.model';
+import { EventsDialogComponent } from '@home/dialogs/events-dialog.component';
 
 @Component({
-  selector: 'tb-rulechain-page',
-  templateUrl: './rulechain-page.component.html',
-  styleUrls: ['./rulechain-page.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-rulechain-page',
+    templateUrl: './rulechain-page.component.html',
+    styleUrls: ['./rulechain-page.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class RuleChainPageComponent extends PageComponent
   implements AfterViewInit, OnInit, OnDestroy, HasDirtyFlag, ISearchableComponent, AfterViewChecked {
@@ -273,6 +264,7 @@ export class RuleChainPageComponent extends PageComponent
               private renderer: Renderer2,
               private viewContainerRef: ViewContainerRef,
               private changeDetector: ChangeDetectorRef,
+              private sanitizer:DomSanitizer,
               public dialog: MatDialog,
               public dialogService: DialogService,
               public fb: FormBuilder) {
@@ -1360,9 +1352,13 @@ export class RuleChainPageComponent extends PageComponent
         name = node.name;
         desc = this.translate.instant(ruleNodeTypeDescriptors.get(node.component.type).name) + ' - ' + node.component.name;
         if (node.additionalInfo) {
-          details = node.additionalInfo.description;
+          details = this.sanitizer.sanitize(SecurityContext.HTML, node.additionalInfo.description);
         }
       }
+
+      name = this.sanitizer.sanitize(SecurityContext.HTML, name);
+      desc = this.sanitizer.sanitize(SecurityContext.HTML, desc);
+
       let tooltipContent = '<div class="tb-rule-node-tooltip">' +
         '<div id="tb-node-content">' +
         '<div class="tb-node-title">' + name + '</div>' +
@@ -1649,6 +1645,39 @@ export class RuleChainPageComponent extends PageComponent
     }
   }
 
+  get additionalActionConfig (): AdditionalDebugActionConfig {
+    return {
+      title: this.translate.instant('action.see-debug-events'),
+      action: this.switchToEventsTab.bind(this)
+    }
+  }
+
+  private switchToEventsTab() {
+    if(!this.ruleNodeComponent.ruleNodeFormGroup.dirty) {
+      this.selectedRuleNodeTabIndex = 1;
+    } else {
+      this.openDebugEventsDialog();
+    }
+  }
+
+  private openDebugEventsDialog(): void {
+    this.dialog.open<EventsDialogComponent>(EventsDialogComponent, {
+      disableClose: true,
+      panelClass: ['tb-dialog', 'tb-fullscreen-dialog'],
+      data: {
+        title: 'rulenode.events',
+        debugEventTypes: [DebugEventType.DEBUG_RULE_NODE],
+        defaultEventType: DebugEventType.DEBUG_RULE_NODE,
+        tenantId: this.ruleChain.tenantId.id,
+        entityId: this.editingRuleNode.ruleNodeId,
+        functionTestButtonLabel: this.ruleNodeTestButtonLabel,
+        onDebugEventSelected: this.onDebugEventSelected.bind(this)
+      }
+    })
+      .afterClosed()
+      .subscribe();
+  }
+
   private updateNodeErrorTooltip(node: FcRuleNode) {
     if (node.error) {
       const element = $('#' + node.id);
@@ -1746,10 +1775,11 @@ export interface AddRuleNodeLinkDialogData {
 }
 
 @Component({
-  selector: 'tb-add-rule-node-link-dialog',
-  templateUrl: './add-rule-node-link-dialog.component.html',
-  providers: [{provide: ErrorStateMatcher, useExisting: AddRuleNodeLinkDialogComponent}],
-  styleUrls: ['./add-rule-node-link-dialog.component.scss']
+    selector: 'tb-add-rule-node-link-dialog',
+    templateUrl: './add-rule-node-link-dialog.component.html',
+    providers: [{ provide: ErrorStateMatcher, useExisting: AddRuleNodeLinkDialogComponent }],
+    styleUrls: ['./add-rule-node-link-dialog.component.scss'],
+    standalone: false
 })
 export class AddRuleNodeLinkDialogComponent extends DialogComponent<AddRuleNodeLinkDialogComponent, FcRuleEdge>
   implements OnInit, ErrorStateMatcher {
@@ -1810,10 +1840,11 @@ export interface AddRuleNodeDialogData {
 }
 
 @Component({
-  selector: 'tb-add-rule-node-dialog',
-  templateUrl: './add-rule-node-dialog.component.html',
-  providers: [{provide: ErrorStateMatcher, useExisting: AddRuleNodeDialogComponent}],
-  styleUrls: ['./add-rule-node-dialog.component.scss']
+    selector: 'tb-add-rule-node-dialog',
+    templateUrl: './add-rule-node-dialog.component.html',
+    providers: [{ provide: ErrorStateMatcher, useExisting: AddRuleNodeDialogComponent }],
+    styleUrls: ['./add-rule-node-dialog.component.scss'],
+    standalone: false
 })
 export class AddRuleNodeDialogComponent extends DialogComponent<AddRuleNodeDialogComponent, FcRuleNode>
   implements OnInit, ErrorStateMatcher {
@@ -1870,10 +1901,11 @@ export interface CreateNestedRuleChainDialogData {
 }
 
 @Component({
-  selector: 'tb-create-nested-rulechain-dialog',
-  templateUrl: './create-nested-rulechain-dialog.component.html',
-  providers: [{provide: ErrorStateMatcher, useExisting: CreateNestedRuleChainDialogComponent}],
-  styleUrls: []
+    selector: 'tb-create-nested-rulechain-dialog',
+    templateUrl: './create-nested-rulechain-dialog.component.html',
+    providers: [{ provide: ErrorStateMatcher, useExisting: CreateNestedRuleChainDialogComponent }],
+    styleUrls: [],
+    standalone: false
 })
 export class CreateNestedRuleChainDialogComponent extends DialogComponent<CreateNestedRuleChainDialogComponent, RuleChain>
   implements OnInit, ErrorStateMatcher {

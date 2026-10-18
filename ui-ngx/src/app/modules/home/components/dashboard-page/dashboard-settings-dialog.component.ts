@@ -1,20 +1,6 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
-import { Component, Inject, OnDestroy, OnInit, SkipSelf } from '@angular/core';
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+import { Component, Inject, OnDestroy, SkipSelf } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
@@ -33,7 +19,7 @@ import {
   viewFormatTypes,
   viewFormatTypeTranslationMap
 } from '@app/shared/models/dashboard.models';
-import { isDefined, isUndefined } from '@core/utils';
+import { deepClean, deepTrim, isDefined, isUndefined } from '@core/utils';
 import { StatesControllerService } from './states/states-controller.service';
 import { DashboardUtilsService } from '@core/services/dashboard-utils.service';
 import { merge, Subject } from 'rxjs';
@@ -47,10 +33,11 @@ export interface DashboardSettingsDialogData {
 }
 
 @Component({
-  selector: 'tb-dashboard-settings-dialog',
-  templateUrl: './dashboard-settings-dialog.component.html',
-  providers: [{provide: ErrorStateMatcher, useExisting: DashboardSettingsDialogComponent}],
-  styleUrls: ['./dashboard-settings-dialog.component.scss']
+    selector: 'tb-dashboard-settings-dialog',
+    templateUrl: './dashboard-settings-dialog.component.html',
+    providers: [{ provide: ErrorStateMatcher, useExisting: DashboardSettingsDialogComponent }],
+    styleUrls: ['./dashboard-settings-dialog.component.scss'],
+    standalone: false
 })
 export class DashboardSettingsDialogComponent extends DialogComponent<DashboardSettingsDialogComponent, DashboardSettingsDialogData>
   implements OnDestroy, ErrorStateMatcher {
@@ -295,10 +282,10 @@ export class DashboardSettingsDialogComponent extends DialogComponent<DashboardS
     let settings: DashboardSettings = null;
     let gridSettings: GridSettings = null;
     if (this.settings) {
-      settings = {...this.settings, ...this.settingsFormGroup.getRawValue()};
+      settings = deepClean(deepTrim({...this.settings, ...this.settingsFormGroup.getRawValue()}));
     }
     if (this.gridSettings) {
-      gridSettings = {...this.gridSettings, ...this.gridSettingsFormGroup.getRawValue()};
+      gridSettings = deepClean(deepTrim({...this.gridSettings, ...this.gridSettingsFormGroup.getRawValue()}));
     }
     this.dialogRef.close({settings, gridSettings});
   }

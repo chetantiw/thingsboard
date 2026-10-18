@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.common.consumer;
 
 import lombok.Builder;
@@ -25,7 +12,8 @@ import org.thingsboard.server.queue.TbQueueConsumer;
 import org.thingsboard.server.queue.TbQueueMsg;
 import org.thingsboard.server.queue.common.consumer.TbQueueConsumerManagerTask.UpdateConfigTask;
 import org.thingsboard.server.queue.common.consumer.TbQueueConsumerManagerTask.UpdatePartitionsTask;
-import org.thingsboard.server.queue.discovery.QueueKey;
+import org.thingsboard.server.queue.common.consumer.TbQueueConsumerTask.ConsumerKey;
+import org.thingsboard.server.queue.kafka.TbKafkaConsumerTemplate;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -43,16 +31,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Slf4j
 public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfig> {
 
     @Getter
-    protected final QueueKey queueKey;
+    protected final Object queueKey;
     @Getter
     protected C config;
     protected final MsgPackProcessor<M, C> msgPackProcessor;
-    protected final BiFunction<C, Integer, TbQueueConsumer<M>> consumerCreator;
+    protected final BiFunction<C, TopicPartitionInfo, TbQueueConsumer<M>> consumerCreator;
     @Getter
     protected final ExecutorService consumerExecutor;
     @Getter
@@ -70,9 +59,9 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
     protected volatile boolean stopped;
 
     @Builder
-    public MainQueueConsumerManager(QueueKey queueKey, C config,
+    public MainQueueConsumerManager(Object queueKey, C config,
                                     MsgPackProcessor<M, C> msgPackProcessor,
-                                    BiFunction<C, Integer, TbQueueConsumer<M>> consumerCreator,
+                                    BiFunction<C, TopicPartitionInfo, TbQueueConsumer<M>> consumerCreator,
                                     ExecutorService consumerExecutor,
                                     ScheduledExecutorService scheduler,
                                     ExecutorService taskExecutor,
@@ -202,7 +191,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
         log.info("[{}] Launching consumer", consumerTask.getKey());
         Future<?> consumerLoop = consumerExecutor.submit(() -> {
             ThingsBoardThreadFactory.updateCurrentThreadName(consumerTask.getKey().toString());
-            consumerLoop(consumerTask.getConsumer());
+            consumerLoop(consumerTask.getKey(), consumerTask.getConsumer());
             log.info("[{}] Consumer stopped", consumerTask.getKey());
 
             try {
@@ -217,7 +206,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
         consumerTask.setTask(consumerLoop);
     }
 
-    private void consumerLoop(TbQueueConsumer<M> consumer) {
+    private void consumerLoop(ConsumerKey consumerKey, TbQueueConsumer<M> consumer) {
         try {
             while (!stopped && !consumer.isStopped()) {
                 try {
@@ -225,7 +214,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
                     if (msgs.isEmpty()) {
                         continue;
                     }
-                    processMsgs(msgs, consumer, config);
+                    processMsgs(msgs, consumer, consumerKey, config);
                 } catch (Exception e) {
                     if (!consumer.isStopped()) {
                         log.warn("Failed to process messages from queue", e);
@@ -249,9 +238,9 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
         }
     }
 
-    protected void processMsgs(List<M> msgs, TbQueueConsumer<M> consumer, C config) throws Exception {
+    protected void processMsgs(List<M> msgs, TbQueueConsumer<M> consumer, ConsumerKey consumerKey, C config) throws Exception {
         log.trace("Processing {} messages", msgs.size());
-        msgPackProcessor.process(msgs, consumer, config);
+        msgPackProcessor.process(msgs, consumer, consumerKey, config);
         log.trace("Processed {} messages", msgs.size());
     }
 
@@ -272,7 +261,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
     }
 
     public interface MsgPackProcessor<M extends TbQueueMsg, C extends QueueConfig> {
-        void process(List<M> msgs, TbQueueConsumer<M> consumer, C config) throws Exception;
+        void process(List<M> msgs, TbQueueConsumer<M> consumer, ConsumerKey consumerKey, C config) throws Exception;
     }
 
     public interface ConsumerWrapper<M extends TbQueueMsg> {
@@ -284,6 +273,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
     }
 
     class ConsumerPerPartitionWrapper implements ConsumerWrapper<M> {
+
         private final Map<TopicPartitionInfo, TbQueueConsumerTask<M>> consumers = new HashMap<>();
 
         @Override
@@ -296,7 +286,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
 
             log.info("[{}] Added partitions: {}, removed partitions: {}", queueKey, addedPartitions, removedPartitions);
             removePartitions(removedPartitions);
-            addPartitions(addedPartitions, null);
+            addPartitions(addedPartitions, null, null);
         }
 
         protected void removePartitions(Set<TopicPartitionInfo> removedPartitions) {
@@ -304,13 +294,18 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
             removedPartitions.forEach((tpi) -> Optional.ofNullable(consumers.remove(tpi)).ifPresent(TbQueueConsumerTask::awaitCompletion));
         }
 
-        protected void addPartitions(Set<TopicPartitionInfo> partitions, Consumer<TopicPartitionInfo> onStop) {
+        protected void addPartitions(Set<TopicPartitionInfo> partitions, Consumer<TopicPartitionInfo> onStop, Function<String, Long> startOffsetProvider) {
             partitions.forEach(tpi -> {
-                Integer partitionId = tpi.getPartition().orElse(-1);
-                String key = queueKey + "-" + partitionId;
+                ConsumerKey key = new ConsumerKey(queueKey, tpi);
                 Runnable callback = onStop != null ? () -> onStop.accept(tpi) : null;
 
-                TbQueueConsumerTask<M> consumer = new TbQueueConsumerTask<>(key, () -> consumerCreator.apply(config, partitionId), callback);
+                TbQueueConsumerTask<M> consumer = new TbQueueConsumerTask<>(key, () -> {
+                    TbQueueConsumer<M> queueConsumer = consumerCreator.apply(config, tpi);
+                    if (startOffsetProvider != null && queueConsumer instanceof TbKafkaConsumerTemplate<M> kafkaConsumer) {
+                        kafkaConsumer.setStartOffsetProvider(startOffsetProvider);
+                    }
+                    return queueConsumer;
+                }, callback);
                 consumers.put(tpi, consumer);
                 consumer.subscribe(Set.of(tpi));
                 launchConsumer(consumer);
@@ -321,9 +316,11 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
         public Collection<TbQueueConsumerTask<M>> getConsumers() {
             return consumers.values();
         }
+
     }
 
     class SingleConsumerWrapper implements ConsumerWrapper<M> {
+
         private TbQueueConsumerTask<M> consumer;
 
         @Override
@@ -339,7 +336,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
             }
 
             if (consumer == null) {
-                consumer = new TbQueueConsumerTask<>(queueKey, () -> consumerCreator.apply(config, null), null); // no partitionId passed
+                consumer = new TbQueueConsumerTask<>(new ConsumerKey(queueKey, null), () -> consumerCreator.apply(config, null), null); // no partitionId passed
             }
             consumer.subscribe(partitions);
             if (!consumer.isRunning()) {
@@ -354,5 +351,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
             }
             return List.of(consumer);
         }
+
     }
+
 }

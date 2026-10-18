@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -32,7 +18,7 @@ import {
   UntypedFormGroup,
   Validators
 } from '@angular/forms';
-import { MatButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   CirclesDataLayerSettings,
@@ -40,8 +26,9 @@ import {
   MapDataLayerType,
   MapType,
   MarkersDataLayerSettings,
-  PolygonsDataLayerSettings,
-  TripsDataLayerSettings
+  PolygonsDataLayerSettings, PolylinesDataLayerSettings,
+  TripsDataLayerSettings,
+  updateDataKeyToNewDsType
 } from '@shared/models/widget/maps/map.models';
 import { DataKey, DatasourceType, datasourceTypeTranslationMap, widgetType } from '@shared/models/widget.models';
 import { EntityType } from '@shared/models/entity-type.models';
@@ -56,17 +43,18 @@ import {
 import { MapSettingsContext } from '@home/components/widget/lib/settings/common/map/map-settings.component.models';
 
 @Component({
-  selector: 'tb-map-data-layer-row',
-  templateUrl: './map-data-layer-row.component.html',
-  styleUrls: ['./map-data-layer-row.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => MapDataLayerRowComponent),
-      multi: true
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-map-data-layer-row',
+    templateUrl: './map-data-layer-row.component.html',
+    styleUrls: ['./map-data-layer-row.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => MapDataLayerRowComponent),
+            multi: true
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class MapDataLayerRowComponent implements ControlValueAccessor, OnInit {
 
@@ -149,6 +137,11 @@ export class MapDataLayerRowComponent implements ControlValueAccessor, OnInit {
         this.removeDataLayerText = 'widgets.maps.data-layer.circle.remove-circle';
         this.dataLayerFormGroup.addControl('circleKey', this.fb.control(null, Validators.required));
         break;
+      case 'polylines':
+        this.editDataLayerText = 'widgets.maps.data-layer.polyline.polyline-configuration';
+        this.removeDataLayerText = 'widgets.maps.data-layer.polyline.remove-polyline';
+        this.dataLayerFormGroup.addControl('polylineKey', this.fb.control(null, Validators.required));
+        break;
     }
     this.dataLayerFormGroup.valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -224,16 +217,24 @@ export class MapDataLayerRowComponent implements ControlValueAccessor, OnInit {
           }, {emitEvent: false}
         );
         break;
+      case 'polylines':
+        const polylinesDataLayer = value as PolylinesDataLayerSettings;
+        this.dataLayerFormGroup.patchValue(
+          {
+            polylineKey: polylinesDataLayer?.polylineKey
+          }, {emitEvent: false}
+        );
+        break;
     }
     this.updateValidators();
     this.cd.markForCheck();
   }
 
-  editKey(keyType: 'xKey' | 'yKey' | 'polygonKey' | 'circleKey') {
+  editKey(keyType: 'xKey' | 'yKey' | 'polygonKey' | 'circleKey' | 'polylineKey') {
     const targetDataKey: DataKey = this.dataLayerFormGroup.get(keyType).value;
     this.context.editKey(targetDataKey,
       this.dataLayerFormGroup.get('dsDeviceId').value, this.dataLayerFormGroup.get('dsEntityAliasId').value,
-      this.dataLayerType === 'trips' ? widgetType.timeseries : widgetType.latest).subscribe(
+      this.dataLayerType === 'trips' ? widgetType.timeseries : widgetType.latest, false).subscribe(
       (updatedDataKey) => {
         if (updatedDataKey) {
           this.dataLayerFormGroup.get(keyType).patchValue(updatedDataKey);
@@ -242,7 +243,7 @@ export class MapDataLayerRowComponent implements ControlValueAccessor, OnInit {
     );
   }
 
-  editDataLayer($event: Event, matButton: MatButton) {
+  editDataLayer($event: Event, matButton: MatIconButton) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -271,27 +272,34 @@ export class MapDataLayerRowComponent implements ControlValueAccessor, OnInit {
       case 'trips':
       case 'markers':
         const xKey: DataKey = this.dataLayerFormGroup.get('xKey').value;
-        if (this.updateDataKeyToNewDsType(xKey, newDsType, this.dataLayerType === 'trips')) {
+        if (updateDataKeyToNewDsType(xKey, newDsType, this.dataLayerType === 'trips')) {
           this.dataLayerFormGroup.get('xKey').patchValue(xKey, {emitEvent: false});
           updateModel = true;
         }
         const yKey: DataKey = this.dataLayerFormGroup.get('yKey').value;
-        if (this.updateDataKeyToNewDsType(yKey, newDsType, this.dataLayerType === 'trips')) {
+        if (updateDataKeyToNewDsType(yKey, newDsType, this.dataLayerType === 'trips')) {
           this.dataLayerFormGroup.get('yKey').patchValue(yKey, {emitEvent: false});
           updateModel = true;
         }
         break;
       case 'polygons':
         const polygonKey: DataKey = this.dataLayerFormGroup.get('polygonKey').value;
-        if (this.updateDataKeyToNewDsType(polygonKey, newDsType)) {
+        if (updateDataKeyToNewDsType(polygonKey, newDsType)) {
           this.dataLayerFormGroup.get('polygonKey').patchValue(polygonKey, {emitEvent: false});
           updateModel = true;
         }
         break;
       case 'circles':
         const circleKey: DataKey = this.dataLayerFormGroup.get('circleKey').value;
-        if (this.updateDataKeyToNewDsType(circleKey, newDsType)) {
+        if (updateDataKeyToNewDsType(circleKey, newDsType)) {
           this.dataLayerFormGroup.get('circleKey').patchValue(circleKey, {emitEvent: false});
+          updateModel = true;
+        }
+        break;
+      case 'polylines':
+        const polylineKey: DataKey = this.dataLayerFormGroup.get('polylineKey').value;
+        if (updateDataKeyToNewDsType(polylineKey, newDsType)) {
+          this.dataLayerFormGroup.get('polylineKey').patchValue(polylineKey, {emitEvent: false});
           updateModel = true;
         }
         break;
@@ -300,21 +308,6 @@ export class MapDataLayerRowComponent implements ControlValueAccessor, OnInit {
     if (updateModel) {
       this.updateModel();
     }
-  }
-
-  private updateDataKeyToNewDsType(dataKey: DataKey, newDsType: DatasourceType, timeSeries = false): boolean {
-    if (newDsType === DatasourceType.function) {
-      if (dataKey.type !== DataKeyType.function) {
-        dataKey.type = DataKeyType.function;
-        return true;
-      }
-    } else {
-      if (dataKey.type === DataKeyType.function) {
-        dataKey.type = timeSeries ? DataKeyType.timeseries : DataKeyType.attribute;
-        return true;
-      }
-    }
-    return false;
   }
 
   private updateValidators() {
@@ -336,6 +329,9 @@ export class MapDataLayerRowComponent implements ControlValueAccessor, OnInit {
 
   private updateModel() {
     this.modelValue = {...this.modelValue, ...this.dataLayerFormGroup.value};
+    if (this.modelValue.dsType === DatasourceType.function) {
+      delete this.modelValue.additionalDataSources;
+    }
     this.propagateChange(this.modelValue);
   }
 }

@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -44,16 +30,17 @@ import { ColorPickerPanelComponent } from '@shared/components/color-picker/color
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
-  selector: 'tb-color-input',
-  templateUrl: './color-input.component.html',
-  styleUrls: ['./color-input.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ColorInputComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-color-input',
+    templateUrl: './color-input.component.html',
+    styleUrls: ['./color-input.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => ColorInputComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class ColorInputComponent extends PageComponent implements OnInit, ControlValueAccessor {
 
@@ -196,14 +183,21 @@ export class ColorInputComponent extends PageComponent implements OnInit, Contro
       if (this.popoverService.hasPopover(trigger)) {
         this.popoverService.hidePopover(trigger);
       } else {
-        const colorPickerPopover = this.popoverService.displayPopover(trigger, this.renderer,
-            this.viewContainerRef, ColorPickerPanelComponent, ['left'], true, null,
-            {
-              color: this.colorFormGroup.get('color').value,
-              colorClearButton: this.colorClearButton,
-              colorCancelButton: true
-            },
-            {}, {}, {}, false, () => {}, {padding: '12px 4px 12px 12px'});
+        const colorPickerPopover = this.popoverService.displayPopover({
+          trigger,
+          renderer: this.renderer,
+          hostView: this.viewContainerRef,
+          componentType: ColorPickerPanelComponent,
+          preferredPlacement: ['leftTopOnly', 'leftOnly', 'leftBottomOnly'],
+          context: {
+            color: this.colorFormGroup.get('color').value,
+            colorClearButton: this.colorClearButton,
+            colorCancelButton: true
+          },
+          showCloseButton: false,
+          popoverContentStyle: {padding: '12px 4px 12px 12px'},
+          isModal: true
+        })
         colorPickerPopover.tbComponentRef.instance.popover = colorPickerPopover;
         colorPickerPopover.tbComponentRef.instance.colorSelected.subscribe((color) => {
           colorPickerPopover.hide();

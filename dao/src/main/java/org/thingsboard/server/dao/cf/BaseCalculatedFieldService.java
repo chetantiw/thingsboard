@@ -1,43 +1,42 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.cf;
 
+import com.google.common.util.concurrent.FluentFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.cf.CalculatedField;
-import org.thingsboard.server.common.data.cf.CalculatedFieldLink;
+import org.thingsboard.server.common.data.cf.CalculatedFieldFilter;
+import org.thingsboard.server.common.data.cf.CalculatedFieldInfo;
+import org.thingsboard.server.common.data.cf.CalculatedFieldType;
 import org.thingsboard.server.common.data.cf.configuration.CalculatedFieldConfiguration;
+import org.thingsboard.server.common.data.cf.configuration.aggregation.RelatedEntitiesAggregationCalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.id.CalculatedFieldId;
-import org.thingsboard.server.common.data.id.CalculatedFieldLinkId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.HasId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
+import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileConfiguration;
 import org.thingsboard.server.dao.entity.AbstractEntityService;
+import org.thingsboard.server.dao.entity.EntityService;
 import org.thingsboard.server.dao.eventsourcing.DeleteEntityEvent;
 import org.thingsboard.server.dao.eventsourcing.SaveEntityEvent;
 import org.thingsboard.server.dao.exception.IncorrectParameterException;
-import org.thingsboard.server.dao.service.DataValidator;
+import org.thingsboard.server.dao.service.validator.CalculatedFieldDataValidator;
+import org.thingsboard.server.dao.usagerecord.ApiLimitService;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.thingsboard.server.dao.service.Validator.validateId;
 import static org.thingsboard.server.dao.service.Validator.validatePageLink;
 
@@ -50,27 +49,57 @@ public class BaseCalculatedFieldService extends AbstractEntityService implements
     public static final String INCORRECT_CALCULATED_FIELD_ID = "Incorrect calculatedFieldId ";
     public static final String INCORRECT_ENTITY_ID = "Incorrect entityId ";
 
+    private final EntityService entityService;
     private final CalculatedFieldDao calculatedFieldDao;
-    private final CalculatedFieldLinkDao calculatedFieldLinkDao;
-    private final DataValidator<CalculatedField> calculatedFieldDataValidator;
-    private final DataValidator<CalculatedFieldLink> calculatedFieldLinkDataValidator;
+    private final CalculatedFieldDataValidator calculatedFieldDataValidator;
+    private final ApiLimitService apiLimitService;
 
     @Override
     public CalculatedField save(CalculatedField calculatedField) {
-        CalculatedField oldCalculatedField = calculatedFieldDataValidator.validate(calculatedField, CalculatedField::getTenantId);
+        return save(calculatedField, true);
+    }
+
+    @Override
+    public CalculatedField save(CalculatedField calculatedField, boolean doValidate) {
+        setConfigurationDefaults(calculatedField);
+        CalculatedField oldCalculatedField = null;
+        if (doValidate) {
+            oldCalculatedField = calculatedFieldDataValidator.validate(calculatedField, CalculatedField::getTenantId);
+        } else if (calculatedField.getId() != null) {
+            oldCalculatedField = findById(calculatedField.getTenantId(), calculatedField.getId());
+        }
+        return doSave(calculatedField, oldCalculatedField);
+    }
+
+    private void setConfigurationDefaults(CalculatedField calculatedField) {
+        if (calculatedField.getConfiguration() instanceof RelatedEntitiesAggregationCalculatedFieldConfiguration config
+                && config.getScheduledUpdateInterval() == null) {
+            int minScheduledUpdateInterval = (int) apiLimitService.getLimit(
+                    calculatedField.getTenantId(), DefaultTenantProfileConfiguration::getMinAllowedScheduledUpdateIntervalInSecForCF
+            );
+            config.setScheduledUpdateInterval(minScheduledUpdateInterval);
+        }
+    }
+
+    private CalculatedField doSave(CalculatedField calculatedField, CalculatedField oldCalculatedField) {
         try {
             TenantId tenantId = calculatedField.getTenantId();
             log.trace("Executing save calculated field, [{}]", calculatedField);
             updateDebugSettings(tenantId, calculatedField, System.currentTimeMillis());
             CalculatedField savedCalculatedField = calculatedFieldDao.save(tenantId, calculatedField);
-            createOrUpdateCalculatedFieldLink(tenantId, savedCalculatedField);
-            eventPublisher.publishEvent(SaveEntityEvent.builder().tenantId(savedCalculatedField.getTenantId()).entityId(savedCalculatedField.getId())
-                    .entity(savedCalculatedField).oldEntity(oldCalculatedField).created(calculatedField.getId() == null).build());
+            eventPublisher.publishEvent(SaveEntityEvent.builder()
+                    .tenantId(savedCalculatedField.getTenantId())
+                    .entityId(savedCalculatedField.getId())
+                    .entity(savedCalculatedField)
+                    .oldEntity(oldCalculatedField)
+                    .created(calculatedField.getId() == null)
+                    .build());
             return savedCalculatedField;
         } catch (Exception e) {
             checkConstraintViolation(e,
-                    "calculated_field_unq_key", "Calculated Field with such name is already in exists!",
-                    "calculated_field_external_id_unq_key", "Calculated Field with such external id already exists!");
+                    "calculated_field_unq_key", calculatedField.getType() == CalculatedFieldType.ALARM ?
+                            "Alarm rule with such type already exists" : "Calculated field with such name and type already exists",
+                    "calculated_field_external_id_unq_key", "Calculated field with such external id already exists");
             throw e;
         }
     }
@@ -81,6 +110,13 @@ public class BaseCalculatedFieldService extends AbstractEntityService implements
         validateId(tenantId, id -> INCORRECT_TENANT_ID + id);
         validateId(calculatedFieldId, id -> INCORRECT_CALCULATED_FIELD_ID + id);
         return calculatedFieldDao.findById(tenantId, calculatedFieldId.getId());
+    }
+
+    @Override
+    public CalculatedField findByEntityIdAndTypeAndName(EntityId entityId, CalculatedFieldType type, String name) {
+        log.trace("Executing findByEntityIdAndTypeAndName entityId [{}], type [{}], name [{}]", entityId, type, name);
+        validateId(entityId.getId(), id -> INCORRECT_ENTITY_ID + id);
+        return calculatedFieldDao.findByEntityIdAndTypeAndName(entityId, type, name);
     }
 
     @Override
@@ -105,11 +141,44 @@ public class BaseCalculatedFieldService extends AbstractEntityService implements
     }
 
     @Override
-    public PageData<CalculatedField> findAllCalculatedFieldsByEntityId(TenantId tenantId, EntityId entityId, PageLink pageLink) {
+    public PageData<CalculatedField> findCalculatedFieldsByTenantId(TenantId tenantId, PageLink pageLink) {
+        log.trace("Executing findAllByTenantId, tenantId [{}], pageLink [{}]", tenantId, pageLink);
+        validateId(tenantId, id -> INCORRECT_TENANT_ID + id);
+        validatePageLink(pageLink);
+        return calculatedFieldDao.findAllByTenantId(tenantId, pageLink);
+    }
+
+    @Override
+    public PageData<CalculatedFieldInfo> findCalculatedFieldsByTenantIdAndFilter(TenantId tenantId, CalculatedFieldFilter filter, PageLink pageLink) {
+        PageData<CalculatedField> calculatedFields = calculatedFieldDao.findByTenantIdAndFilter(tenantId, filter, pageLink);
+        Set<EntityId> entityIds = calculatedFields.getData().stream()
+                .map(CalculatedField::getEntityId)
+                .collect(Collectors.toSet());
+        Map<EntityId, EntityInfo> entityInfos = entityService.fetchEntityInfos(tenantId, null, entityIds);
+        return calculatedFields.mapData(calculatedField -> {
+            EntityInfo entityInfo = entityInfos.get(calculatedField.getEntityId());
+            return new CalculatedFieldInfo(calculatedField, entityInfo.getName());
+        });
+    }
+
+    @Override
+    public PageData<String> findCalculatedFieldNamesByTenantIdAndType(TenantId tenantId, CalculatedFieldType type, PageLink pageLink) {
+        return calculatedFieldDao.findNamesByTenantIdAndType(tenantId, type, pageLink);
+    }
+
+    @Override
+    public PageData<CalculatedField> findCalculatedFieldsByEntityId(TenantId tenantId, EntityId entityId, CalculatedFieldType type, PageLink pageLink) {
         log.trace("Executing findAllByEntityId, entityId [{}], pageLink [{}]", entityId, pageLink);
         validateId(entityId.getId(), id -> INCORRECT_ENTITY_ID + id);
         validatePageLink(pageLink);
-        return calculatedFieldDao.findAllByEntityId(tenantId, entityId, pageLink);
+        Set<CalculatedFieldType> types;
+        if (type == null) {
+            types = EnumSet.allOf(CalculatedFieldType.class);
+            types.remove(CalculatedFieldType.ALARM);
+        } else {
+            types = Set.of(type);
+        }
+        return calculatedFieldDao.findByEntityIdAndTypes(tenantId, entityId, types, pageLink);
     }
 
     @Override
@@ -148,40 +217,6 @@ public class BaseCalculatedFieldService extends AbstractEntityService implements
     }
 
     @Override
-    public CalculatedFieldLink saveCalculatedFieldLink(TenantId tenantId, CalculatedFieldLink calculatedFieldLink) {
-        calculatedFieldLinkDataValidator.validate(calculatedFieldLink, CalculatedFieldLink::getTenantId);
-        log.trace("Executing save calculated field link, [{}]", calculatedFieldLink);
-        return calculatedFieldLinkDao.save(tenantId, calculatedFieldLink);
-    }
-
-    @Override
-    public CalculatedFieldLink findCalculatedFieldLinkById(TenantId tenantId, CalculatedFieldLinkId calculatedFieldLinkId) {
-        log.trace("Executing findCalculatedFieldLinkById, tenantId [{}], calculatedFieldLinkId [{}]", tenantId, calculatedFieldLinkId);
-        validateId(tenantId, id -> INCORRECT_TENANT_ID + id);
-        validateId(calculatedFieldLinkId, id -> "Incorrect calculatedFieldLinkId " + id);
-        return calculatedFieldLinkDao.findById(tenantId, calculatedFieldLinkId.getId());
-    }
-
-    @Override
-    public List<CalculatedFieldLink> findAllCalculatedFieldLinksById(TenantId tenantId, CalculatedFieldId calculatedFieldId) {
-        log.trace("Executing findAllCalculatedFieldLinksById, calculatedFieldId [{}]", calculatedFieldId);
-        return calculatedFieldLinkDao.findCalculatedFieldLinksByCalculatedFieldId(tenantId, calculatedFieldId);
-    }
-
-    @Override
-    public List<CalculatedFieldLink> findAllCalculatedFieldLinksByEntityId(TenantId tenantId, EntityId entityId) {
-        log.trace("Executing findAllCalculatedFieldLinksByEntityId, entityId [{}]", entityId);
-        return calculatedFieldLinkDao.findCalculatedFieldLinksByEntityId(tenantId, entityId);
-    }
-
-    @Override
-    public PageData<CalculatedFieldLink> findAllCalculatedFieldLinks(PageLink pageLink) {
-        log.trace("Executing findAllCalculatedFieldLinks, pageLink [{}]", pageLink);
-        validatePageLink(pageLink);
-        return calculatedFieldLinkDao.findAll(pageLink);
-    }
-
-    @Override
     public boolean referencedInAnyCalculatedField(TenantId tenantId, EntityId referencedEntityId) {
         return calculatedFieldDao.findAllByTenantId(tenantId).stream()
                 .filter(calculatedField -> !referencedEntityId.equals(calculatedField.getEntityId()))
@@ -196,13 +231,14 @@ public class BaseCalculatedFieldService extends AbstractEntityService implements
     }
 
     @Override
-    public EntityType getEntityType() {
-        return EntityType.CALCULATED_FIELD;
+    public FluentFuture<Optional<HasId<?>>> findEntityAsync(TenantId tenantId, EntityId entityId) {
+        return FluentFuture.from(calculatedFieldDao.findByIdAsync(tenantId, entityId.getId()))
+                .transform(Optional::ofNullable, directExecutor());
     }
 
-    private void createOrUpdateCalculatedFieldLink(TenantId tenantId, CalculatedField calculatedField) {
-        List<CalculatedFieldLink> links = calculatedField.getConfiguration().buildCalculatedFieldLinks(tenantId, calculatedField.getEntityId(), calculatedField.getId());
-        links.forEach(link -> saveCalculatedFieldLink(tenantId, link));
+    @Override
+    public EntityType getEntityType() {
+        return EntityType.CALCULATED_FIELD;
     }
 
 }

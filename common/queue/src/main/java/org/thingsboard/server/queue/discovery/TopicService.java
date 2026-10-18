@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.discovery;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -38,7 +25,7 @@ public class TopicService {
     @Value("${queue.rule-engine.notifications-topic:tb_rule_engine.notifications}")
     private String tbRuleEngineNotificationsTopic;
 
-    @Value("${queue.transport.notifications-topics:tb_transport.notifications}")
+    @Value("${queue.transport.notifications-topic:tb_transport.notifications}")
     private String tbTransportNotificationsTopic;
 
     @Value("${queue.edge.notifications-topic:tb_edge.notifications}")
@@ -47,7 +34,7 @@ public class TopicService {
     @Value("${queue.edge.event-notifications-topic:tb_edge_event.notifications}")
     private String tbEdgeEventNotificationsTopic;
 
-    @Value("${queue.calculated_fields.notifications-topic:calculated_field.notifications}")
+    @Value("${queue.calculated-fields.notifications-topic:calculated_field.notifications}")
     private String tbCalculatedFieldNotificationsTopic;
 
     private final ConcurrentMap<String, TopicPartitionInfo> tbCoreNotificationTopics = new ConcurrentHashMap<>();
@@ -103,6 +90,9 @@ public class TopicService {
     }
 
     public String buildTopicName(String topic) {
+        if (topic == null) {
+            return null;
+        }
         return prefix.isBlank() ? topic : prefix + "." + topic;
     }
 
@@ -113,9 +103,9 @@ public class TopicService {
     public String buildConsumerGroupId(String servicePrefix, TenantId tenantId, String queueName, Integer partitionId) {
         return this.buildTopicName(
                 servicePrefix + queueName
-                + (tenantId.isSysTenantId() ? "" : ("-isolated-" + tenantId))
-                + "-consumer"
-                + suffix(partitionId));
+                        + (tenantId.isSysTenantId() ? "" : ("-isolated-" + tenantId))
+                        + "-consumer"
+                        + suffix(partitionId));
     }
 
     String suffix(Integer partitionId) {

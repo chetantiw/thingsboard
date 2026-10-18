@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   Component,
   DestroyRef,
@@ -36,37 +22,53 @@ import {
   Validator
 } from '@angular/forms';
 import {
+  checkLatestDataKeys,
   defaultTimeSeriesChartYAxisSettings,
   getNextTimeSeriesYAxisId,
-  TimeSeriesChartYAxes, TimeSeriesChartYAxisId,
+  TimeSeriesChartYAxes,
+  TimeSeriesChartYAxisId,
   TimeSeriesChartYAxisSettings,
   timeSeriesChartYAxisValid,
-  timeSeriesChartYAxisValidator
+  timeSeriesChartYAxisValidator,
+  updateLatestDataKeys
 } from '@home/components/widget/lib/chart/time-series-chart.models';
 import { mergeDeep } from '@core/utils';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { coerceBoolean } from '@shared/decorators/coercion';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { IAliasController } from '@app/core/public-api';
+import { DataKeysCallbacks } from '@home/components/widget/lib/settings/common/key/data-keys.component.models';
+import { Datasource } from '@app/shared/public-api';
 
 @Component({
-  selector: 'tb-time-series-chart-y-axes-panel',
-  templateUrl: './time-series-chart-y-axes-panel.component.html',
-  styleUrls: ['./time-series-chart-y-axes-panel.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => TimeSeriesChartYAxesPanelComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => TimeSeriesChartYAxesPanelComponent),
-      multi: true
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-time-series-chart-y-axes-panel',
+    templateUrl: './time-series-chart-y-axes-panel.component.html',
+    styleUrls: ['./time-series-chart-y-axes-panel.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => TimeSeriesChartYAxesPanelComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => TimeSeriesChartYAxesPanelComponent),
+            multi: true
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class TimeSeriesChartYAxesPanelComponent implements ControlValueAccessor, OnInit, Validator {
+
+  @Input()
+  aliasController: IAliasController;
+
+  @Input()
+  dataKeyCallbacks: DataKeysCallbacks;
+
+  @Input()
+  datasource: Datasource;
 
   @Input()
   disabled: boolean;
@@ -74,6 +76,10 @@ export class TimeSeriesChartYAxesPanelComponent implements ControlValueAccessor,
   @Input()
   @coerceBoolean()
   advanced = false;
+
+  @Input()
+  @coerceBoolean()
+  supportsUnitConversion = false;
 
   @Output()
   axisRemoved = new EventEmitter<TimeSeriesChartYAxisId>();
@@ -109,6 +115,7 @@ export class TimeSeriesChartYAxesPanelComponent implements ControlValueAccessor,
         for (const axis of axes) {
           yAxes[axis.id] = axis;
         }
+        updateLatestDataKeys(Object.values(yAxes), this.datasource, this.dataKeyCallbacks);
         this.propagateChange(yAxes);
       }
     );
@@ -131,7 +138,7 @@ export class TimeSeriesChartYAxesPanelComponent implements ControlValueAccessor,
   }
 
   writeValue(value: TimeSeriesChartYAxes | undefined): void {
-    const yAxes: TimeSeriesChartYAxes = value || {};
+    const yAxes: TimeSeriesChartYAxes = checkLatestDataKeys(value || {}, this.datasource);
     if (!yAxes.default) {
       yAxes.default = mergeDeep({} as TimeSeriesChartYAxisSettings, defaultTimeSeriesChartYAxisSettings,
         {id: 'default', order: 0} as TimeSeriesChartYAxisSettings);
@@ -190,4 +197,5 @@ export class TimeSeriesChartYAxesPanelComponent implements ControlValueAccessor,
     });
     return this.fb.array(axesControls);
   }
+
 }

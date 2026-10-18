@@ -1,18 +1,6 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 @import './../scss/constants';
 
 :host{
@@ -124,7 +112,7 @@
         padding: 3px;
         vertical-align: sub;
         border-radius: 6px;
-        background: #fff;
+        background: var(--mt-surface);
         .mat-icon {
           margin: 0;
         }
@@ -162,7 +150,7 @@
   flex-direction: row;
   align-items: center;
   padding: 12px 12px 12px 0;
-  background: #fff;
+  background: var(--mt-surface);
   gap: 0;
   border-radius: 10px;
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -173,12 +161,12 @@
     top: -8px;
     padding-left: 8px;
     padding-right: 8px;
-    background: #fff;
+    background: var(--mt-surface);
     font-size: 12px;
     font-weight: 400;
     line-height: 16px;
     letter-spacing: 0.4px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 
 }

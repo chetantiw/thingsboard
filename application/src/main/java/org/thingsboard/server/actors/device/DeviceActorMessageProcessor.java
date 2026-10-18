@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.actors.device;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -115,14 +102,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-
-/**
- * @author Andrew Shvayka
- */
 @Slf4j
 public class DeviceActorMessageProcessor extends AbstractContextAwareMsgProcessor {
 
-    static final String SESSION_TIMEOUT_MESSAGE = "session timeout!";
     final TenantId tenantId;
     final DeviceId deviceId;
     final LinkedHashMapRemoveEldest<UUID, SessionInfoMetaData> sessions;
@@ -178,7 +160,7 @@ public class DeviceActorMessageProcessor extends AbstractContextAwareMsgProcesso
     private EdgeId findRelatedEdgeId() {
         List<EntityRelation> result =
                 systemContext.getRelationService().findByToAndType(tenantId, deviceId, EntityRelation.CONTAINS_TYPE, RelationTypeGroup.EDGE);
-        if (result != null && result.size() > 0) {
+        if (result != null && !result.isEmpty()) {
             EntityRelation relationToEdge = result.get(0);
             if (relationToEdge.getFrom() != null && relationToEdge.getFrom().getId() != null) {
                 log.trace("[{}][{}] found edge [{}] for device", tenantId, deviceId, relationToEdge.getFrom().getId());
@@ -270,8 +252,17 @@ public class DeviceActorMessageProcessor extends AbstractContextAwareMsgProcesso
         rpc.setExpirationTime(request.getExpirationTime());
         rpc.setRequest(JacksonUtil.valueToTree(request));
         rpc.setStatus(status);
-        rpc.setAdditionalInfo(JacksonUtil.toJsonNode(request.getAdditionalInfo()));
+        rpc.setAdditionalInfo(getAdditionalInfo(request));
         systemContext.getTbRpcService().save(tenantId, rpc);
+    }
+
+    private JsonNode getAdditionalInfo(ToDeviceRpcRequest request) {
+        try {
+            return JacksonUtil.toJsonNode(request.getAdditionalInfo());
+        } catch (IllegalArgumentException e) {
+            log.debug("Failed to parse additional info [{}]", request.getAdditionalInfo());
+            return JacksonUtil.valueToTree(request.getAdditionalInfo());
+        }
     }
 
     private ToDeviceRpcRequestMsg createToDeviceRpcRequestMsg(ToDeviceRpcRequest request) {
@@ -492,7 +483,7 @@ public class DeviceActorMessageProcessor extends AbstractContextAwareMsgProcesso
         UUID sessionId = getSessionId(sessionInfo);
         DeviceId deviceId = new DeviceId(new UUID(msg.getDeviceIdMSB(), msg.getDeviceIdLSB()));
         ListenableFuture<Void> registrationFuture = systemContext.getClaimDevicesService()
-                        .registerClaimingInfo(tenantId, deviceId, msg.getSecretKey(), msg.getDurationMs());
+                .registerClaimingInfo(tenantId, deviceId, msg.getSecretKey(), msg.getDurationMs());
         Futures.addCallback(registrationFuture, new FutureCallback<>() {
             @Override
             public void onSuccess(Void result) {
@@ -714,7 +705,7 @@ public class DeviceActorMessageProcessor extends AbstractContextAwareMsgProcesso
                         toDeviceRpcPendingMap.remove(requestId);
                         status = RpcStatus.FAILED;
                         response = JacksonUtil.newObjectNode().put("error", "There was a Timeout and all retry " +
-                                                                            "attempts have been exhausted. Retry attempts set: " + maxRpcRetries);
+                                "attempts have been exhausted. Retry attempts set: " + maxRpcRetries);
                     }
                 } else {
                     md.setRetries(md.getRetries() + 1);

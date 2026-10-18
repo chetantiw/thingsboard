@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Injectable } from '@angular/core';
 import {
   CellActionDescriptor,
@@ -26,13 +12,13 @@ import { Router } from '@angular/router';
 import {
   Resource,
   ResourceInfo,
+  ResourceInfoWithReferences,
   ResourceSubType,
   ResourceSubTypeTranslationMap,
   ResourceType,
-  ResourceInfoWithReferences,
   toResourceDeleteResult
 } from '@shared/models/resource.models';
-import { EntityType, entityTypeResources } from '@shared/models/entity-type.models';
+import { EntityType } from '@shared/models/entity-type.models';
 import { NULL_UUID } from '@shared/models/id/has-uuid';
 import { DatePipe } from '@angular/common';
 import { TranslateService } from '@ngx-translate/core';
@@ -47,7 +33,7 @@ import { JsLibraryTableHeaderComponent } from '@home/pages/admin/resource/js-lib
 import { JsResourceComponent } from '@home/pages/admin/resource/js-resource.component';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { ResourceTabsComponent } from '@home/pages/admin/resource/resource-tabs.component';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, Observable, of } from 'rxjs';
 import { parseHttpErrorMessage } from '@core/utils';
 import { ActionNotificationShow } from '@core/notification/notification.actions';
 import { MatDialog } from '@angular/material/dialog';
@@ -57,7 +43,6 @@ import {
   ResourcesInUseDialogData
 } from "@shared/components/resource/resources-in-use-dialog.component";
 import { ResourcesDatasource } from "@home/pages/admin/resource/resources-datasource";
-import { AuthUser } from '@shared/models/user.model';
 
 @Injectable()
 export class JsLibraryTableConfigResolver  {
@@ -82,7 +67,9 @@ export class JsLibraryTableConfigResolver  {
       search: 'javascript.search',
       selectedEntities: 'javascript.selected-javascript-resources'
     };
-    this.config.entityResources = entityTypeResources.get(EntityType.TB_RESOURCE);
+    this.config.entityResources = {
+      helpLinkId: 'jsExtension'
+    };
     this.config.headerComponent = JsLibraryTableHeaderComponent;
 
     this.config.entityTitle = (resource) => resource ?
@@ -97,7 +84,7 @@ export class JsLibraryTableConfigResolver  {
         entity => checkBoxCell(entity.tenantId.id === NULL_UUID)),
     );
 
-    this.config.cellActionDescriptors = this.configureCellActions(getCurrentAuthUser(this.store));
+    this.config.cellActionDescriptors = this.configureCellActions();
 
     this.config.groupActionDescriptors = [{
       name: this.translate.instant('action.delete'),
@@ -117,9 +104,20 @@ export class JsLibraryTableConfigResolver  {
         return this.resourceService.getResourceInfoById(id.id)
       }
     };
-    this.config.saveEntity = resource => {
+    this.config.saveEntity = (resource: Resource, originalResource: Resource) => {
       resource.resourceType = ResourceType.JS_MODULE;
-      let saveObservable = this.resourceService.saveResource(resource);
+      let saveObservable: Observable<Resource>;
+      if (!originalResource) {
+        saveObservable = this.resourceService.uploadResource(resource);
+      } else {
+        const { data, ...resourceInfo } = resource;
+        saveObservable = this.resourceService.updatedResourceInfo(resource.id.id, resourceInfo);
+        if (data) {
+          saveObservable = saveObservable.pipe(
+            switchMap(() => this.resourceService.updatedResourceData(resource.id.id, data))
+          )
+        }
+      }
       if (resource.resourceSubType === ResourceSubType.MODULE) {
         saveObservable = saveObservable.pipe(
           switchMap((saved) => this.resourceService.getResource(saved.id.id))
@@ -137,6 +135,7 @@ export class JsLibraryTableConfigResolver  {
       resourceSubType: ''
     };
     const authUser = getCurrentAuthUser(this.store);
+    this.config.deleteEnabled = (resource) => this.isResourceEditable(resource, authUser.authority);
     this.config.entitySelectionEnabled = (resource) => this.isResourceEditable(resource, authUser.authority);
     this.config.detailsReadonly = (resource) => this.detailsReadonly(resource, authUser.authority);
     return this.config;
@@ -165,6 +164,8 @@ export class JsLibraryTableConfigResolver  {
       case 'downloadResource':
         this.downloadResource(action.event, action.entity);
         return true;
+      case 'deleteLibrary':
+        this.deleteResource(action.event, action.entity);
     }
     return false;
   }
@@ -199,7 +200,11 @@ export class JsLibraryTableConfigResolver  {
         ).subscribe(
           (deleteResult) => {
             if (deleteResult.success) {
-              this.config.updateData();
+              if (this.config.getEntityDetailsPage()) {
+                this.config.getEntityDetailsPage().goBack();
+              } else {
+                this.config.updateData(true);
+              }
             } else if (deleteResult.resourceIsReferencedError) {
               const resources: ResourceInfoWithReferences[] = [{...resource, ...{references: deleteResult.references}}];
               const data = {
@@ -220,11 +225,13 @@ export class JsLibraryTableConfigResolver  {
                   data
               }).afterClosed().subscribe((resources) => {
                 if (resources) {
-                  this.resourceService.deleteResource(resource.id.id, true).subscribe(
-                    () => {
-                      this.config.updateData();
+                  this.resourceService.deleteResource(resource.id.id, true).subscribe(() => {
+                    if (this.config.getEntityDetailsPage()) {
+                      this.config.getEntityDetailsPage().goBack();
+                    } else {
+                      this.config.updateData(true);
                     }
-                  );
+                  });
                 }
               });
             } else {
@@ -275,7 +282,7 @@ export class JsLibraryTableConfigResolver  {
                     message: this.translate.instant('javascript.javascript-resources-are-in-use-text'),
                     deleteText: 'javascript.delete-javascript-resource-in-use-text',
                     selectedText: 'javascript.selected-javascript-resources',
-                    datasource: new ResourcesDatasource(this.resourceService, resourcesWithReferences, entity => true),
+                    datasource: new ResourcesDatasource(this.resourceService, resourcesWithReferences, () => true),
                     columns: ['select', 'title', 'references']
                   }
                 };
@@ -309,7 +316,7 @@ export class JsLibraryTableConfigResolver  {
     }
   }
 
-  private configureCellActions(authUser: AuthUser): Array<CellActionDescriptor<ResourceInfo>> {
+  private configureCellActions(): Array<CellActionDescriptor<ResourceInfo>> {
     const actions: Array<CellActionDescriptor<ResourceInfo>> = [];
     actions.push(
       {
@@ -321,7 +328,7 @@ export class JsLibraryTableConfigResolver  {
       {
         name: this.translate.instant('javascript.delete'),
         icon: 'delete',
-        isEnabled: (resource) => this.isResourceEditable(resource, authUser.authority),
+        isEnabled: (resource) => this.config.deleteEnabled(resource),
         onAction: ($event, entity) => this.deleteResource($event, entity)
       },
     );

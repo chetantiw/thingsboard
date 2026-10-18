@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   additionalMapDataSourcesToDatasources,
   BaseMapSettings,
@@ -27,7 +13,9 @@ import {
   TbCircleData,
   TbMapDatasource,
   TbPolygonCoordinates,
-  TbPolygonRawCoordinates
+  TbPolygonRawCoordinates,
+  TbPolylineCoordinates,
+  TbPolylineRawCoordinates
 } from '@shared/models/widget/maps/map.models';
 import { WidgetContext } from '@home/models/widget-component.models';
 import {
@@ -50,7 +38,14 @@ import {
   UnplacedMapDataItem,
 } from '@home/components/widget/lib/maps/data-layer/latest-map-data-layer';
 import { IWidgetSubscription, PlaceMapItemActionData, WidgetSubscriptionOptions } from '@core/api/widget-api.models';
-import { FormattedData, MapItemType, WidgetAction, WidgetActionType, widgetType } from '@shared/models/widget.models';
+import {
+  FormattedData,
+  mapItemTooltipsTranslation,
+  MapItemType,
+  WidgetAction,
+  WidgetActionType,
+  widgetType
+} from '@shared/models/widget.models';
 import { EntityDataPageLink } from '@shared/models/query/query.models';
 import { CustomTranslatePipe } from '@shared/pipe/custom-translate.pipe';
 import { TbMarkersDataLayer } from '@home/components/widget/lib/maps/data-layer/markers-data-layer';
@@ -73,10 +68,12 @@ import { TbTripsDataLayer } from '@home/components/widget/lib/maps/data-layer/tr
 import { CompiledTbFunction } from '@shared/models/js-function.models';
 import { TbMapDataLayer } from '@home/components/widget/lib/maps/data-layer/map-data-layer';
 import { EntityType } from '@shared/models/entity-type.models';
+import { ShapePatternStorage } from '@home/components/widget/lib/maps/data-layer/shapes-data-layer';
+import { TbPolylineDataLayer } from '@home/components/widget/lib/maps/data-layer/polylines-data-layer';
 import ITooltipsterInstance = JQueryTooltipster.ITooltipsterInstance;
 import TooltipPositioningSide = JQueryTooltipster.TooltipPositioningSide;
 
-type TooltipInstancesData = {root: HTMLElement, instances: ITooltipsterInstance[]};
+type TooltipInstancesData = { root: HTMLElement, instances: ITooltipsterInstance[] };
 
 export abstract class TbMap<S extends BaseMapSettings> {
 
@@ -116,6 +113,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
   protected addRectangleButton: L.TB.ToolbarButton;
   protected addPolygonButton: L.TB.ToolbarButton;
   protected addCircleButton: L.TB.ToolbarButton;
+  protected addPolylineButton: L.TB.ToolbarButton;
 
   protected timeLineComponentRef: ComponentRef<MapTimelinePanelComponent>;
   protected timeLineComponent: MapTimelinePanelComponent;
@@ -124,6 +122,9 @@ export abstract class TbMap<S extends BaseMapSettings> {
   protected addMarkerDataLayers: TbLatestMapDataLayer<any>[];
   protected addPolygonDataLayers: TbLatestMapDataLayer<any>[];
   protected addCircleDataLayers: TbLatestMapDataLayer<any>[];
+  protected addPolylineDataLayers: TbLatestMapDataLayer<any>[];
+
+  protected shapePatternStorage: ShapePatternStorage = {};
 
   private readonly mapResize$: ResizeObserver;
 
@@ -133,6 +134,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
   private currentEditButton: L.TB.ToolbarButton;
 
   private dragMode = true;
+  private createMapItemActionId: string;
 
   private get isPlacingItem(): boolean {
     return !!this.currentEditButton;
@@ -176,6 +178,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
   private setupControls(): Observable<any> {
     if (this.settings.scales?.length) {
       L.control.scale({
+        position: 'bottomright',
         metric: this.settings.scales.includes(MapScale.metric),
         imperial: this.settings.scales.includes(MapScale.imperial)
       }).addTo(this.map);
@@ -262,6 +265,11 @@ export abstract class TbMap<S extends BaseMapSettings> {
       this.dataLayers.push(...circlesDataLayers);
       this.latestDataLayers.push(...circlesDataLayers);
     }
+    if (this.settings.polylines) {
+      const polylinesDataLayers = this.settings.polylines.map(settings => new TbPolylineDataLayer(this, settings));
+      this.dataLayers.push(...polylinesDataLayers);
+      this.latestDataLayers.push(...polylinesDataLayers);
+    }
     if (this.settings.trips) {
       const tripsDataLayers = this.settings.trips.map(settings => new TbTripsDataLayer(this, settings));
       this.dataLayers.push(...tripsDataLayers);
@@ -306,7 +314,8 @@ export abstract class TbMap<S extends BaseMapSettings> {
         () => {
           let datasources: TbMapDatasource[];
           for (const layerType of mapDataLayerTypes) {
-            const typeDatasources = this.latestDataLayers.filter(dl => dl.dataLayerType() === layerType).map(dl => dl.getDatasource());
+            const typeDatasources = this.latestDataLayers.filter(dl => dl.dataLayerType() === layerType)
+              .map(dl => dl.getDataSources()).flat();
             if (!datasources) {
               datasources = typeDatasources;
             } else {
@@ -319,14 +328,21 @@ export abstract class TbMap<S extends BaseMapSettings> {
             const dataLayersSubscriptionOptions: WidgetSubscriptionOptions = {
               datasources,
               hasDataPageLink: true,
-              useDashboardTimewindow: false,
+              useDashboardTimewindow: this.ctx.widgetConfig.useDashboardTimewindow ?? true,
               type: widgetType.latest,
               callbacks: {
                 onDataUpdated: (subscription) => {
-                  this.update(subscription);
+                  try {
+                    this.update(subscription);
+                  } catch (e) {
+                    console.error(e);
+                  }
                 }
               }
             };
+            if (!dataLayersSubscriptionOptions.useDashboardTimewindow) {
+              dataLayersSubscriptionOptions.timeWindowConfig = this.ctx.widgetConfig.timewindow;
+            }
             this.ctx.subscriptionApi.createSubscription(dataLayersSubscriptionOptions, false).subscribe(
               (dataLayersSubscription) => {
                 let pageSize = this.settings.mapPageSize;
@@ -347,7 +363,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
             );
           }
           if (this.tripDataLayers.length) {
-            const tripDatasources = this.tripDataLayers.map(dl => dl.getDatasource());
+            const tripDatasources = this.tripDataLayers.map(dl => dl.getDataSources()).flat();
             const tripDataLayersSubscriptionOptions: WidgetSubscriptionOptions = {
               datasources: tripDatasources,
               hasDataPageLink: true,
@@ -357,10 +373,18 @@ export abstract class TbMap<S extends BaseMapSettings> {
               type: widgetType.timeseries,
               callbacks: {
                 onDataUpdated: (subscription) => {
-                  this.updateTrips(subscription);
+                  try {
+                    this.updateTrips(subscription);
+                  } catch (e) {
+                    console.error(e);
+                  }
                 },
                 onLatestDataUpdated: (subscription) => {
-                  this.updateTripsWithLatestData(subscription);
+                  try {
+                    this.updateTripsWithLatestData(subscription);
+                  } catch (e) {
+                    console.error(e);
+                  }
                 }
               }
             };
@@ -394,88 +418,100 @@ export abstract class TbMap<S extends BaseMapSettings> {
 
   private setupEditMode() {
 
-     this.editToolbar = L.TB.bottomToolbar({
-       mapElement: $(this.mapElement),
-       closeTitle: this.ctx.translate.instant('action.cancel'),
-       onClose: () => {
-         return this.deselectItem(true);
-       }
-     });
+    this.editToolbar = L.TB.bottomToolbar({
+      mapElement: $(this.mapElement),
+      closeTitle: this.ctx.translate.instant('action.cancel'),
+      onClose: () => {
+        return this.deselectItem(true);
+      }
+    });
 
-     this.map.on('click', () => {
-       this.deselectItem();
-     });
+    this.map.on('click', () => {
+      this.deselectItem();
+    });
 
-     if (this.latestDataLayers.some(dl => dl.isEditable())) {
-       this.map.pm.setGlobalOptions({ snappable: false });
-       this.map.pm.applyGlobalOptions();
-     }
+    if (this.latestDataLayers.some(dl => dl.isEditable())) {
+      this.map.pm.setGlobalOptions({snappable: false});
+      this.map.pm.applyGlobalOptions();
+    }
 
-     const dragSupportedDataLayers = this.latestDataLayers.filter(dl => dl.isDragEnabled());
-     const showDragModeButton = this.settings.dragModeButton && dragSupportedDataLayers.length;
-     const addSupportedDataLayers = this.latestDataLayers.filter(dl => dl.isAddEnabled());
+    const dragSupportedDataLayers = this.latestDataLayers.filter(dl => dl.isDragEnabled());
+    const showDragModeButton = this.settings.dragModeButton && dragSupportedDataLayers.length;
+    const addSupportedDataLayers = this.latestDataLayers.filter(dl => dl.isAddEnabled());
 
-     if (showDragModeButton || addSupportedDataLayers.length) {
-       const drawToolbar = L.TB.toolbar({
-         position: this.settings.controlsPosition
-       }).addTo(this.map);
-       if (showDragModeButton) {
-         this.dragModeButton = drawToolbar.toolbarButton({
-           id: 'dragMode',
-           title: this.ctx.translate.instant('widgets.maps.data-layer.drag-drop-mode'),
-           iconClass: 'tb-drag-mode',
-           click: (e, button) => {
-             this.toggleDragMode(e, button);
-           }
-         });
-       }
-       this.addMarkerDataLayers = addSupportedDataLayers.filter(dl => dl.dataLayerType() === 'markers');
-       if (this.addMarkerDataLayers.length) {
-         this.addMarkerButton = drawToolbar.toolbarButton({
-           id: 'addMarker',
-           title: this.ctx.translate.instant('widgets.maps.data-layer.marker.place-marker'),
-           iconClass: 'tb-place-marker',
-           click: (e, button) => {
-             this.placeMarker(e, button);
-           }
-         });
-         this.addMarkerButton.setDisabled(true);
-         this.setPlaceMarkerStyle();
-       }
-       this.addPolygonDataLayers = addSupportedDataLayers.filter(dl => dl.dataLayerType() === 'polygons');
-       if (this.addPolygonDataLayers.length) {
-         this.addRectangleButton = drawToolbar.toolbarButton({
-           id: 'addRectangle',
-           title: this.ctx.translate.instant('widgets.maps.data-layer.polygon.draw-rectangle'),
-           iconClass: 'tb-draw-rectangle',
-           click: (e, button) => {
-             this.drawRectangle(e, button);
-           }
-         });
-         this.addRectangleButton.setDisabled(true);
-         this.addPolygonButton = drawToolbar.toolbarButton({
-           id: 'addPolygon',
-           title: this.ctx.translate.instant('widgets.maps.data-layer.polygon.draw-polygon'),
-           iconClass: 'tb-draw-polygon',
-           click: (e, button) => {
-             this.drawPolygon(e, button);
-           }
-         });
-         this.addPolygonButton.setDisabled(true);
-       }
-       this.addCircleDataLayers = addSupportedDataLayers.filter(dl => dl.dataLayerType() === 'circles');
-       if (this.addCircleDataLayers.length) {
-         this.addCircleButton = drawToolbar.toolbarButton({
-           id: 'addCircle',
-           title: this.ctx.translate.instant('widgets.maps.data-layer.circle.draw-circle'),
-           iconClass: 'tb-draw-circle',
-           click: (e, button) => {
-             this.drawCircle(e, button);
-           }
-         });
-         this.addCircleButton.setDisabled(true);
-       }
-     }
+    if (showDragModeButton || addSupportedDataLayers.length) {
+      const drawToolbar = L.TB.toolbar({
+        position: this.settings.controlsPosition
+      }).addTo(this.map);
+      if (showDragModeButton) {
+        this.dragModeButton = drawToolbar.toolbarButton({
+          id: 'dragMode',
+          title: this.ctx.translate.instant('widgets.maps.data-layer.drag-drop-mode'),
+          iconClass: 'tb-drag-mode',
+          click: (e, button) => {
+            this.toggleDragMode(e, button);
+          }
+        });
+      }
+      this.addMarkerDataLayers = addSupportedDataLayers.filter(dl => dl.dataLayerType() === 'markers');
+      if (this.addMarkerDataLayers.length) {
+        this.addMarkerButton = drawToolbar.toolbarButton({
+          id: 'addMarker',
+          title: this.ctx.translate.instant('widgets.maps.data-layer.marker.place-marker'),
+          iconClass: 'tb-place-marker',
+          click: (e, button) => {
+            this.placeMarker(e, button);
+          }
+        });
+        this.addMarkerButton.setDisabled(true);
+        this.setPlaceMarkerStyle();
+      }
+      this.addPolygonDataLayers = addSupportedDataLayers.filter(dl => dl.dataLayerType() === 'polygons');
+      if (this.addPolygonDataLayers.length) {
+        this.addRectangleButton = drawToolbar.toolbarButton({
+          id: 'addRectangle',
+          title: this.ctx.translate.instant('widgets.maps.data-layer.polygon.draw-rectangle'),
+          iconClass: 'tb-draw-rectangle',
+          click: (e, button) => {
+            this.drawRectangle(e, button);
+          }
+        });
+        this.addRectangleButton.setDisabled(true);
+        this.addPolygonButton = drawToolbar.toolbarButton({
+          id: 'addPolygon',
+          title: this.ctx.translate.instant('widgets.maps.data-layer.polygon.draw-polygon'),
+          iconClass: 'tb-draw-polygon',
+          click: (e, button) => {
+            this.drawPolygon(e, button);
+          }
+        });
+        this.addPolygonButton.setDisabled(true);
+      }
+      this.addCircleDataLayers = addSupportedDataLayers.filter(dl => dl.dataLayerType() === 'circles');
+      if (this.addCircleDataLayers.length) {
+        this.addCircleButton = drawToolbar.toolbarButton({
+          id: 'addCircle',
+          title: this.ctx.translate.instant('widgets.maps.data-layer.circle.draw-circle'),
+          iconClass: 'tb-draw-circle',
+          click: (e, button) => {
+            this.drawCircle(e, button);
+          }
+        });
+        this.addCircleButton.setDisabled(true);
+      }
+      this.addPolylineDataLayers = addSupportedDataLayers.filter(dl => dl.dataLayerType() === 'polylines');
+      if (this.addPolylineDataLayers.length) {
+        this.addPolylineButton = drawToolbar.toolbarButton({
+          id: 'addPolyline',
+          title: this.ctx.translate.instant('widgets.maps.data-layer.polyline.draw-polyline'),
+          iconClass: 'tb-draw-polyline',
+          click: (e, button) => {
+            this.drawPolyline(e, button);
+          }
+        });
+        this.addPolylineButton.setDisabled(true);
+      }
+    }
   }
 
   private toggleDragMode(_e: MouseEvent, button: L.TB.ToolbarButton): void {
@@ -529,6 +565,13 @@ export abstract class TbMap<S extends BaseMapSettings> {
     this.placeItem(e, button, this.addCircleDataLayers, (entity) => this.prepareDrawMode('Circle', {
       startCircle: this.ctx.translate.instant('widgets.maps.data-layer.circle.place-circle-center-hint-with-entity', {entityName: entity.entity.entityDisplayName}),
       finishCircle: this.ctx.translate.instant('widgets.maps.data-layer.circle.finish-circle-hint-with-entity', {entityName: entity.entity.entityDisplayName}),
+    }));
+  }
+
+  private drawPolyline(e: MouseEvent, button: L.TB.ToolbarButton): void {
+    this.placeItem(e, button, this.addPolylineDataLayers, (entity) => this.prepareDrawMode('Line', {
+      startPolyline: this.ctx.translate.instant('widgets.maps.data-layer.polyline.polyline-place-first-point-hint-with-entity', {entityName: entity.entity.entityDisplayName}),
+      finishPolyline: this.ctx.translate.instant('widgets.maps.data-layer.polyline.finish-polyline-hint-with-entity', {entityName: entity.entity.entityDisplayName}),
     }));
   }
 
@@ -653,40 +696,75 @@ export abstract class TbMap<S extends BaseMapSettings> {
       case MapItemType.circle:
         this.createCircle(actionData);
         break;
+      case MapItemType.polyline:
+        this.createPolyline(actionData);
+        break;
     }
   }
 
   private createMarker(actionData: PlaceMapItemActionData) {
     this.createItem(actionData, () => this.prepareDrawMode('Marker', {
-      placeMarker: this.ctx.translate.instant('widgets.maps.data-layer.marker.place-marker-hint')
+      placeMarker: actionData.action.mapItemTooltips.placeMarker
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.placeMarker)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.placeMarker)
     }));
   }
 
   private createRectangle(actionData: PlaceMapItemActionData): void {
     this.createItem(actionData, () => this.prepareDrawMode('Rectangle', {
-      firstVertex: this.ctx.translate.instant('widgets.maps.data-layer.polygon.rectangle-place-first-point-hint'),
-      finishRect: this.ctx.translate.instant('widgets.maps.data-layer.polygon.finish-rectangle-hint')
+      firstVertex: actionData.action.mapItemTooltips.startRect
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.startRect)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.startRect),
+      finishRect: actionData.action.mapItemTooltips.finishRect
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.finishRect)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.finishRect),
     }));
   }
 
   private createPolygon(actionData: PlaceMapItemActionData): void {
     this.createItem(actionData, () => this.prepareDrawMode('Polygon', {
-      firstVertex: this.ctx.translate.instant('widgets.maps.data-layer.polygon.polygon-place-first-point-hint'),
-      continueLine: this.ctx.translate.instant('widgets.maps.data-layer.polygon.continue-polygon-hint'),
-      finishPoly: this.ctx.translate.instant('widgets.maps.data-layer.polygon.finish-polygon-hint')
+      firstVertex: actionData.action.mapItemTooltips.firstVertex
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.firstVertex)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.firstVertex),
+      continueLine: actionData.action.mapItemTooltips.continueLine
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.continueLine)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.continueLine),
+      finishPoly: actionData.action.mapItemTooltips.finishPoly
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.finishPoly)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.finishPoly),
     }));
   }
 
   private createCircle(actionData: PlaceMapItemActionData): void {
     this.createItem(actionData, () => this.prepareDrawMode('Circle', {
-      startCircle: this.ctx.translate.instant('widgets.maps.data-layer.circle.place-circle-center-hint'),
-      finishCircle: this.ctx.translate.instant('widgets.maps.data-layer.circle.finish-circle-hint')
+      startCircle: actionData.action.mapItemTooltips.startCircle
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.startCircle)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.startCircle),
+      finishCircle: actionData.action.mapItemTooltips.finishCircle
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.finishCircle)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.finishCircle),
+    }));
+  }
+
+  private createPolyline(actionData: PlaceMapItemActionData): void {
+    this.createItem(actionData, () => this.prepareDrawMode('Line', {
+      startPolyline: actionData.action.mapItemTooltips.startPolyline
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.startPolyline)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.startPolyline),
+      finishPolyline: actionData.action.mapItemTooltips.finishPolyline
+        ? this.ctx.utilsService.customTranslation(actionData.action.mapItemTooltips.finishPolyline)
+        : this.ctx.translate.instant(mapItemTooltipsTranslation.finishPolyline),
     }));
   }
 
   private createItem(actionData: PlaceMapItemActionData, prepareDrawMode: () => void) {
-    if (this.isPlacingItem) {
+    const actionId = 'id' in actionData.action ? actionData.action.id : 'map-button';
+    if (this.createMapItemActionId === actionId) {
+      this.finishCreatedItem();
       return;
+    }
+    if (isDefined(this.createMapItemActionId)) {
+      this.finishCreatedItem();
     }
     this.updatePlaceItemState(actionData.additionalParams?.button, true);
 
@@ -700,7 +778,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
       // @ts-ignore
       e.layer._pmTempLayer = true;
       e.layer.remove();
-      this.finishAdd();
+      this.finishCreatedItem();
     });
 
     prepareDrawMode();
@@ -713,11 +791,13 @@ export abstract class TbMap<S extends BaseMapSettings> {
         iconClass: 'tb-close',
         title: this.ctx.translate.instant('action.cancel'),
         showText: true,
-        click: this.finishAdd
+        click: this.finishCreatedItem
       }
     ], false);
 
-    const convertLayerToCoordinates = (type: MapItemType, layer: L.Layer): {x: number; y: number} | TbPolygonRawCoordinates | TbCircleData => {
+    this.createMapItemActionId = actionId;
+
+    const convertLayerToCoordinates = (type: MapItemType, layer: L.Layer): { x: number; y: number } | TbPolygonRawCoordinates | TbCircleData => {
       switch (type) {
         case MapItemType.marker:
           if (layer instanceof L.Marker) {
@@ -744,8 +824,22 @@ export abstract class TbMap<S extends BaseMapSettings> {
             return this.coordinatesToCircleData(layer.getLatLng(), layer.getRadius());
           }
           return null;
+        case MapItemType.polyline:
+          if (layer instanceof L.Polyline) {
+            let coordinates: any = layer.getLatLngs();
+            if (coordinates.length === 1) {
+              coordinates = coordinates[0];
+            }
+            return this.coordinatesToPolylineData(coordinates);
+          }
+          return null;
       }
     }
+  }
+
+  private finishCreatedItem = () => {
+    delete this.createMapItemActionId;
+    this.finishAdd();
   }
 
   private finishAdd = () => {
@@ -760,8 +854,8 @@ export abstract class TbMap<S extends BaseMapSettings> {
     this.editToolbar.close();
   }
 
-  private prepareDrawMode(shape: 'Marker' | 'Rectangle' | 'Polygon' | 'Circle', tooltipsTranslation: Record<string, string>) {
-    this.map.pm.setLang('en', { tooltips: tooltipsTranslation }, 'en');
+  private prepareDrawMode(shape: 'Marker' | 'Rectangle' | 'Polygon' | 'Circle' | 'Line', tooltipsTranslation: Record<string, string>) {
+    this.map.pm.setLang('en', {tooltips: tooltipsTranslation}, 'en');
     this.map.pm.enableDraw(shape);
     // @ts-ignore
     L.DomUtil.addClass(this.map.pm.Draw[shape]._hintMarker.getTooltip()._container, 'tb-place-item-label');
@@ -795,46 +889,46 @@ export abstract class TbMap<S extends BaseMapSettings> {
         tooltipData.instances = [];
       }
       $(root)
-      .find('a[role="button"]:not(.leaflet-pm-action)')
-      .each((_index, element) => {
-        let title: string;
-        if (element.title) {
-          title = element.title;
-          $(element).removeAttr('title');
-        } else if (element.parentElement.title) {
-          title = element.parentElement.title;
-          $(element).parent().removeAttr('title');
-        }
-        const tooltip =  $(element).tooltipster(
-          {
-            content: title,
-            theme: 'tooltipster-shadow',
-            delay: 10,
-            triggerClose: {
-              click: true,
-              tap: true,
-              scroll: true,
-              mouseleave: true
-            },
-            side,
-            distance: 2,
-            trackOrigin: true,
-            functionBefore: (_instance, helper) => {
-              if (helper.origin.ariaDisabled === 'true' || helper.origin.parentElement.classList.contains('active')) {
-                return false;
-              }
-            },
+        .find('a[role="button"]:not(.leaflet-pm-action)')
+        .each((_index, element) => {
+          let title: string;
+          if (element.title) {
+            title = element.title;
+            $(element).removeAttr('title');
+          } else if (element.parentElement.title) {
+            title = element.parentElement.title;
+            $(element).parent().removeAttr('title');
           }
-        );
-        const instance = tooltip.tooltipster('instance');
-        tooltipData.instances.push(instance);
-        instance.on('destroyed', () => {
-          const index = tooltipData.instances.indexOf(instance);
-          if (index > -1) {
-            tooltipData.instances.splice(index, 1);
-          }
+          const tooltip = $(element).tooltipster(
+            {
+              content: title,
+              theme: 'tooltipster-shadow',
+              delay: 10,
+              triggerClose: {
+                click: true,
+                tap: true,
+                scroll: true,
+                mouseleave: true
+              },
+              side,
+              distance: 2,
+              trackOrigin: true,
+              functionBefore: (_instance, helper) => {
+                if (helper.origin.ariaDisabled === 'true' || helper.origin.parentElement.classList.contains('active')) {
+                  return false;
+                }
+              },
+            }
+          );
+          const instance = tooltip.tooltipster('instance');
+          tooltipData.instances.push(instance);
+          instance.on('destroyed', () => {
+            const index = tooltipData.instances.indexOf(instance);
+            if (index > -1) {
+              tooltipData.instances.splice(index, 1);
+            }
+          });
         });
-      });
     });
   }
 
@@ -846,6 +940,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
     this.updateTripsAnchors();
     this.updateBounds();
     this.updateEditButtonsStates();
+    this.ctx.updateLabelPatterns();
   }
 
   private updateTrips(subscription: IWidgetSubscription) {
@@ -890,6 +985,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
   private updateTripsAppearance() {
     this.tripDataLayers.forEach(dl => dl.updateAppearance());
   }
+
   private updateTripsTime() {
     this.tripDataLayers.forEach(dl => dl.updateCurrentTime());
   }
@@ -912,7 +1008,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
 
   private calculateCurrentTime(minTime: number, maxTime: number): number {
     if (minTime !== this.minTime || maxTime !== this.maxTime) {
-      if (this.minTime >= this.currentTime || isUndefined(this.currentTime)) {
+      if (this.minTime >= this.currentTime || isUndefined(this.currentTime) || this.currentTime === Infinity) {
         return this.minTime;
       } else if (this.maxTime <= this.currentTime) {
         return this.maxTime;
@@ -937,7 +1033,12 @@ export abstract class TbMap<S extends BaseMapSettings> {
       bounds = new L.LatLngBounds(null, null);
       dataLayersBounds.forEach(b => bounds.extend(b));
       const mapBounds = this.map.getBounds();
-      if (bounds.isValid() && (!this.bounds || !this.bounds.isValid() || (!this.bounds.equals(bounds) || force) && this.settings.fitMapBounds && !mapBounds.contains(bounds))) {
+      if (bounds.isValid() &&
+        (
+          (!this.bounds || !this.bounds.isValid() || (!this.bounds.equals(bounds) || force) && this.settings.fitMapBounds)
+          && !mapBounds.contains(bounds)
+        )
+      ) {
         this.bounds = bounds;
         if (!this.ignoreUpdateBounds && !this.isPlacingItem) {
           this.fitBounds(bounds);
@@ -964,6 +1065,9 @@ export abstract class TbMap<S extends BaseMapSettings> {
       if (this.addCircleButton && this.addCircleButton !== this.currentEditButton) {
         this.addCircleButton.setDisabled(true);
       }
+      if (this.addPolylineButton && this.addPolylineButton !== this.currentEditButton) {
+        this.addPolylineButton.setDisabled(true);
+      }
       this.customActionsToolbar?.setDisabled(true);
     } else {
       if (this.dragModeButton) {
@@ -980,6 +1084,9 @@ export abstract class TbMap<S extends BaseMapSettings> {
       }
       if (this.addCircleButton) {
         this.addCircleButton.setDisabled(!this.addCircleDataLayers.some(dl => dl.isEnabled() && dl.hasUnplacedItems()));
+      }
+      if (this.addPolylineButton) {
+        this.addPolylineButton.setDisabled(!this.addPolylineDataLayers.some(dl => dl.isEnabled() && dl.hasUnplacedItems()));
       }
       this.customActionsToolbar?.setDisabled(false);
     }
@@ -1045,6 +1152,42 @@ export abstract class TbMap<S extends BaseMapSettings> {
     return this.settings.mapType;
   }
 
+  public useShapePattern(patternId: string, prevPatternId?: string): L.TB.Pattern {
+    if (prevPatternId && patternId !== prevPatternId) {
+      this.unUseShapePattern(prevPatternId);
+    }
+    if (this.shapePatternStorage[patternId]) {
+      const patternItem = this.shapePatternStorage[patternId];
+      if (patternId !== prevPatternId) {
+        patternItem.refCount++;
+        return patternItem.pattern;
+      } else {
+        return patternItem.pattern;
+      }
+    }
+  }
+
+  public unUseShapePattern(patternId: string): void {
+    if (patternId) {
+      const patternItem = this.shapePatternStorage[patternId];
+      if (patternItem) {
+        patternItem.refCount--;
+        if (patternItem.refCount === 0) {
+          patternItem.pattern.remove();
+          delete this.shapePatternStorage[patternId];
+        }
+      }
+    }
+  }
+
+  public storeShapePattern(patternId: string, pattern: L.TB.Pattern): void {
+    pattern.addTo(this.map);
+    this.shapePatternStorage[patternId] = {
+      pattern,
+      refCount: 1
+    };
+  }
+
   public enabledDataLayersUpdated() {
     this.updateEditButtonsStates();
     this.updateTripsAnchors();
@@ -1055,7 +1198,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
       $event.preventDefault();
       $event.stopPropagation();
     }
-    const { entityId, entityName, entityLabel, entityType } = data.$datasource;
+    const {entityId, entityName, entityLabel, entityType} = data.$datasource;
     this.ctx.actionsApi.handleWidgetAction($event, action, {
       entityType,
       id: entityId
@@ -1124,7 +1267,7 @@ export abstract class TbMap<S extends BaseMapSettings> {
     }
   }
 
-  public saveLocation(data: FormattedData<TbMapDatasource>, values: {[key: string]: any}): Observable<any> {
+  public saveLocation(data: FormattedData<TbMapDatasource>, values: { [key: string]: any }): Observable<any> {
     const datasource = data.$datasource;
     let dataKeys = datasource.dataKeys;
     if (datasource.latestDataKeys) {
@@ -1234,18 +1377,21 @@ export abstract class TbMap<S extends BaseMapSettings> {
     }
   }
 
-  public abstract locationDataToLatLng(position: {x: number; y: number}): L.LatLng;
+  public abstract locationDataToLatLng(position: { x: number; y: number }): L.LatLng;
 
-  public abstract latLngToLocationData(position: L.LatLng): {x: number; y: number};
+  public abstract latLngToLocationData(position: L.LatLng): { x: number; y: number };
 
   public abstract polygonDataToCoordinates(coordinates: TbPolygonRawCoordinates): TbPolygonRawCoordinates;
 
   public abstract coordinatesToPolygonData(coordinates: TbPolygonCoordinates): TbPolygonRawCoordinates;
 
+  public abstract polylineDataToCoordinates(coordinates: TbPolylineRawCoordinates): TbPolylineRawCoordinates;
+
+  public abstract coordinatesToPolylineData(coordinates: TbPolylineCoordinates): TbPolylineRawCoordinates;
+
   public abstract circleDataToCoordinates(circle: TbCircleData): TbCircleData;
 
   public abstract coordinatesToCircleData(center: L.LatLng, radius: number): TbCircleData;
-
 
 
 }

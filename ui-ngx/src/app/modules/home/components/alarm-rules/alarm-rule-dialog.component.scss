@@ -1,0 +1,25 @@
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+.calculated-field-dialog-container {
+  width: 869px;
+  max-width: 100%;
+
+  .tb-disabled {
+    color: color-mix(in srgb, var(--mt-text) 38%, transparent);
+  }
+}
+
+.clear-alarm-rule {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-left-width: 4px;
+  border-left-color: green;
+  border-radius: 4px;
+  padding: 8px;
+  min-width: 0;
+}
+
+.button-icon {
+  color: color-mix(in srgb, var(--mt-text) 38%, transparent);
+  min-width: 40px;
+}

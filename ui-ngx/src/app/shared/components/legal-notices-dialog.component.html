@@ -1,0 +1,28 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright MuTech Automation
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<mat-toolbar class="mt-dialog-header">
+  <h2>{{ 'mutech.open-source-notices' | translate }}</h2>
+  <span class="flex-1"></span>
+  <button mat-icon-button (click)="close()" type="button" aria-label="{{ 'action.close' | translate }}">
+    <mat-icon class="material-icons">close</mat-icon>
+  </button>
+</mat-toolbar>
+<div mat-dialog-content class="mt-legal">
+  <p>{{ 'mutech.legal-built-on' | translate: {version: version} }}</p>
+  <p>{{ 'mutech.legal-modified' | translate }}</p>
+  <ul class="mt-legal-documents">
+    @for (document of documents; track document.url) {
+      <li>
+        <a [href]="document.url" target="_blank" rel="noopener">
+          <mat-icon class="material-icons">description</mat-icon>
+          <span>{{ document.name | translate }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+  <p class="mt-legal-trademark">{{ 'mutech.legal-trademark' | translate }}</p>
+</div>

@@ -1,18 +1,6 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 @import "../../../../../../scss/constants";
 
 :host {
@@ -47,13 +35,13 @@
 
     legend {
       margin-bottom: 8px;
-      color: rgba(0, 0, 0, .7);
+      color: var(--mt-muted);
       width: fit-content;
     }
 
     .mat-body-2 {
       margin-bottom: 8px;
-      color: rgba(0,0,0,.76);
+      color: var(--mt-muted);
     }
 
     .clear-button-space {
@@ -81,7 +69,7 @@
       min-width: 364px;
     }
     .limit-slider-container {
-      > label {
+      > span {
         margin-right: 16px;
         width: min-content;
         max-width: 40%;
@@ -96,7 +84,7 @@
       flex-direction: column;
       height: 100%;
       padding: 0 !important;
-      color: rgba(0, 0, 0, 0.87);
+      color: var(--mt-text);
 
       .mat-stepper-horizontal {
         display: flex;

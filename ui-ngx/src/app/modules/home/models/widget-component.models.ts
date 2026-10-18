@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { IDashboardComponent } from '@home/models/dashboard-component.models';
 import {
   DataSet,
@@ -38,6 +26,7 @@ import { Timewindow, WidgetTimewindow } from '@shared/models/time/time.models';
 import {
   IAliasController,
   IStateController,
+  IWidgetHttpUtils,
   IWidgetSubscription,
   IWidgetUtils,
   RpcApi,
@@ -51,12 +40,20 @@ import {
   ChangeDetectorRef,
   InjectionToken,
   Injector,
-  NgZone, Renderer2,
+  NgZone,
+  Renderer2,
   TemplateRef,
   Type,
   ViewContainerRef
 } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import {
+  createDefaultHttpOptions,
+  defaultHttpOptions,
+  defaultHttpOptionsFromConfig,
+  defaultHttpOptionsFromParams,
+  defaultHttpUploadOptions
+} from '@core/http/http-utils';
 import { RafService } from '@core/services/raf.service';
 import { WidgetTypeId } from '@shared/models/id/widget-type-id';
 import { TenantId } from '@shared/models/id/tenant-id';
@@ -67,7 +64,8 @@ import {
   formatValue,
   getEntityDetailsPageURL,
   hasDatasourceLabelsVariables,
-  isDefined
+  isDefined,
+  isDefinedAndNotNull
 } from '@core/utils';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
@@ -115,6 +113,9 @@ import { DataKeySettingsFunction } from '@home/components/widget/lib/settings/co
 import { UtilsService } from '@core/services/utils.service';
 import { CompiledTbFunction } from '@shared/models/js-function.models';
 import { FormProperty } from '@shared/models/dynamic-form.models';
+import { ExportableEntity } from '@shared/models/base-data';
+import { TbUnit } from '@shared/models/unit.models';
+import { UnitService } from '@core/services/unit.service';
 
 export interface IWidgetAction {
   name: string;
@@ -132,7 +133,7 @@ export interface WidgetHeaderAction extends IWidgetAction {
   buttonColor?: string;
   buttonFillColor?: string;
   buttonBorderColor?: string;
-  customButtonStyle?: string;
+  customButtonStyle?: {[key: string]: string};
   useShowWidgetHeaderActionFunction: boolean;
   showWidgetHeaderActionFunction: CompiledTbFunction<ShowWidgetHeaderActionFunction>;
 }
@@ -143,7 +144,10 @@ export interface WidgetAction extends IWidgetAction {
 
 export interface IDashboardWidget {
   updateWidgetParams(): void;
+  updateParamsFromData(detectChanges?: boolean): void;
 }
+
+export type WidgetDestroyCallback = () => void;
 
 export class WidgetContext {
 
@@ -170,10 +174,10 @@ export class WidgetContext {
   }
 
   get settings(): any {
-    return this.widget.config.settings;
+    return mtThemedSettings(this.widget.config.settings);
   }
 
-  get units(): string {
+  get units(): TbUnit {
     return this.widget.config.units || '';
   }
 
@@ -222,6 +226,7 @@ export class WidgetContext {
   userSettingsService: UserSettingsService;
   utilsService: UtilsService;
   telemetryWsService: TelemetryWebsocketService;
+  unitService: UnitService;
   telemetrySubscribers?: Array<TelemetrySubscriber | SharedTelemetrySubscriber>;
   date: DatePipe;
   imagePipe: ImagePipe;
@@ -288,6 +293,14 @@ export class WidgetContext {
     getEntityDetailsPageURL
   };
 
+  httpUtils: IWidgetHttpUtils = {
+    defaultHttpOptions,
+    defaultHttpOptionsFromConfig,
+    defaultHttpOptionsFromParams,
+    defaultHttpUploadOptions,
+    createDefaultHttpOptions
+  };
+
   $widgetElement: JQuery<HTMLElement>;
   $container: JQuery<HTMLElement>;
   $containerParent: JQuery<HTMLElement>;
@@ -302,6 +315,8 @@ export class WidgetContext {
   widgetNamespace?: string;
   subscriptionApi?: WidgetSubscriptionApi;
 
+  widgetCssClass?: string;
+
   actionsApi?: WidgetActionsApi;
   activeEntityInfo?: SubscriptionEntityInfo;
 
@@ -312,6 +327,7 @@ export class WidgetContext {
   timeWindow?: WidgetTimewindow;
 
   embedTitlePanel?: boolean;
+  embedActionsPanel?: boolean;
   overflowVisible?: boolean;
 
   hideTitlePanel = false;
@@ -336,6 +352,8 @@ export class WidgetContext {
     ...RxJS,
     ...RxJSOperators
   };
+
+  private destroyCallbacks: WidgetDestroyCallback[] = [];
 
   registerPopoverComponent(popoverComponent: TbPopoverComponent) {
     this.popoverComponents.push(popoverComponent);
@@ -374,6 +392,10 @@ export class WidgetContext {
     for (const labelPattern of this.labelPatterns.values()) {
       labelPattern.update();
     }
+  }
+
+  registerDestroyCallback(destroyCallback: WidgetDestroyCallback) {
+    this.destroyCallbacks.push(destroyCallback);
   }
 
   showSuccessToast(message: string, duration: number = 1000,
@@ -472,6 +494,10 @@ export class WidgetContext {
     }
   }
 
+  updateParamsFromData(detectChanges = false) {
+    this.dashboardWidget.updateParamsFromData(detectChanges);
+  }
+
   updateAliases(aliasIds?: Array<string>) {
     this.aliasController.updateAliases(aliasIds);
   }
@@ -488,6 +514,13 @@ export class WidgetContext {
       labelPattern.destroy();
     }
     this.labelPatterns.clear();
+    this.destroyCallbacks.forEach((destroyCallback) => {
+        try {
+          destroyCallback()
+        } catch (_ignoredError) { /* empty */ }
+      }
+    );
+    this.destroyCallbacks.length = 0;
     this.width = undefined;
     this.height = undefined;
     this.destroyed = true;
@@ -542,7 +575,9 @@ export class LabelVariablePattern {
         const entityInfo = this.ctx.defaultSubscription.getFirstEntityInfo();
         label = createLabelFromSubscriptionEntityInfo(entityInfo, label);
       } else {
-        const datasource = this.ctx.defaultSubscription?.firstDatasource;
+        const datasource = isDefinedAndNotNull(this.ctx.defaultSubscription)
+          ? this.ctx.defaultSubscription.firstDatasource ?? undefined
+          : (this.ctx as any).mapInstance?.getData()[0];
         label = createLabelFromDatasource(datasource, label);
       }
     }
@@ -572,7 +607,7 @@ export interface IDynamicWidgetComponent {
   [key: string]: any;
 }
 
-export interface WidgetInfo extends WidgetTypeDescriptor, WidgetControllerDescriptor {
+export interface WidgetInfo extends WidgetTypeDescriptor, WidgetControllerDescriptor, ExportableEntity<WidgetTypeId> {
   widgetName: string;
   fullFqn: string;
   deprecated: boolean;
@@ -680,6 +715,7 @@ export const toWidgetInfo = (widgetTypeEntity: WidgetType): WidgetInfo => ({
   fullFqn: fullWidgetTypeFqn(widgetTypeEntity),
   deprecated: widgetTypeEntity.deprecated,
   scada: widgetTypeEntity.scada,
+  externalId: widgetTypeEntity.externalId,
   type: widgetTypeEntity.descriptor.type,
   sizeX: widgetTypeEntity.descriptor.sizeX,
   sizeY: widgetTypeEntity.descriptor.sizeY,
@@ -735,6 +771,7 @@ export const toWidgetType = (widgetInfo: WidgetInfo, id: WidgetTypeId, tenantId:
     name: widgetInfo.widgetName,
     deprecated: widgetInfo.deprecated,
     scada: widgetInfo.scada,
+    externalId: widgetInfo.externalId,
     descriptor
   };
 };

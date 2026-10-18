@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.subscription;
 
 import jakarta.annotation.PostConstruct;
@@ -20,10 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-import org.thingsboard.server.cluster.TbClusterService;
-import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.alarm.AlarmInfo;
-import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.id.UserId;
@@ -36,7 +20,6 @@ import org.thingsboard.server.common.data.kv.TsKvEntry;
 import org.thingsboard.server.common.msg.queue.ServiceType;
 import org.thingsboard.server.common.msg.queue.TbCallback;
 import org.thingsboard.server.common.msg.queue.TopicPartitionInfo;
-import org.thingsboard.server.common.msg.rule.engine.DeviceAttributesEventNotificationMsg;
 import org.thingsboard.server.gen.transport.TransportProtos.ToCoreNotificationMsg;
 import org.thingsboard.server.queue.TbQueueProducer;
 import org.thingsboard.server.queue.common.TbProtoQueueMsg;
@@ -73,7 +56,6 @@ public class DefaultSubscriptionManagerService extends TbApplicationEventListene
     private final TbServiceInfoProvider serviceInfoProvider;
     private final TbQueueProducerProvider producerProvider;
     private final TbLocalSubscriptionService localSubscriptionService;
-    private final TbClusterService clusterService;
     private final SubscriptionSchedulerComponent scheduler;
 
     private final Lock subsLock = new ReentrantLock();
@@ -204,15 +186,14 @@ public class DefaultSubscriptionManagerService extends TbApplicationEventListene
 
     @Override
     public void onAttributesDelete(TenantId tenantId, EntityId entityId, String scope, List<String> keys, TbCallback callback) {
-        onAttributesDelete(tenantId, entityId, scope, keys, false, callback);
-    }
-
-    @Override
-    public void onAttributesDelete(TenantId tenantId, EntityId entityId, String scope, List<String> keys, boolean notifyDevice, TbCallback callback) {
-        processAttributesUpdate(entityId, scope,
-                keys.stream().map(key -> new BaseAttributeKvEntry(0, new StringDataEntry(key, ""))).collect(Collectors.toList()));
-        if (entityId.getEntityType() == EntityType.DEVICE && TbAttributeSubscriptionScope.SHARED_SCOPE.name().equalsIgnoreCase(scope) && notifyDevice) {
-            clusterService.pushMsgToCore(DeviceAttributesEventNotificationMsg.onDelete(tenantId, new DeviceId(entityId.getId()), scope, keys), null);
+        try {
+            List<AttributeKvEntry> deletedEntries = keys.stream()
+                    .<AttributeKvEntry>map(key -> new BaseAttributeKvEntry(0L, new StringDataEntry(key, "")))
+                    .toList();
+            processAttributesUpdate(entityId, scope, deletedEntries);
+        } catch (Exception e) {
+            callback.onFailure(e);
+            return;
         }
         callback.onSuccess();
     }

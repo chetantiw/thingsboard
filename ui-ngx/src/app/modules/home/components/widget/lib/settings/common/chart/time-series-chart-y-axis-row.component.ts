@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -29,11 +15,11 @@ import {
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import {
-  AxisPosition,
+  AxisPosition, normalizeAxisLimit,
   timeSeriesAxisPositionTranslations,
   TimeSeriesChartYAxisSettings
 } from '@home/components/widget/lib/chart/time-series-chart.models';
-import { MatButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { TbPopoverService } from '@shared/components/popover.service';
 import { coerceBoolean } from '@shared/decorators/coercion';
 import {
@@ -42,19 +28,22 @@ import {
 import { deepClone } from '@core/utils';
 import { TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TimeSeriesChartYAxesPanelComponent } from '@home/components/widget/lib/settings/common/chart/time-series-chart-y-axes-panel.component';
+import { ValueSourceType } from '@shared/models/widget-settings.models';
 
 @Component({
-  selector: 'tb-time-series-chart-y-axis-row',
-  templateUrl: './time-series-chart-y-axis-row.component.html',
-  styleUrls: ['./time-series-chart-y-axis-row.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => TimeSeriesChartYAxisRowComponent),
-      multi: true
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-time-series-chart-y-axis-row',
+    templateUrl: './time-series-chart-y-axis-row.component.html',
+    styleUrls: ['./time-series-chart-y-axis-row.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => TimeSeriesChartYAxisRowComponent),
+            multi: true
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, OnInit {
 
@@ -69,6 +58,10 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
   @coerceBoolean()
   advanced = false;
 
+  @Input()
+  @coerceBoolean()
+  supportsUnitConversion = false;
+
   @Output()
   axisRemoved = new EventEmitter();
 
@@ -81,6 +74,7 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
   constructor(private fb: UntypedFormBuilder,
               private translate: TranslateService,
               private popoverService: TbPopoverService,
+              private timeSeriesChartYAxesPanel: TimeSeriesChartYAxesPanelComponent,
               private renderer: Renderer2,
               private viewContainerRef: ViewContainerRef,
               private cd: ChangeDetectorRef,
@@ -93,8 +87,8 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
       position: [null, []],
       units: [null, []],
       decimals: [null, []],
-      min: [null, []],
-      max: [null, []],
+      min: this.createLimitFormGroup(),
+      max: this.createLimitFormGroup(),
       show: [null, []]
     });
     this.axisFormGroup.valueChanges.pipe(
@@ -128,22 +122,24 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
 
   writeValue(value: TimeSeriesChartYAxisSettings): void {
     this.modelValue = value;
-    this.axisFormGroup.patchValue(
-      {
-        label: value.label,
-        position: value.position,
-        units: value.units,
-        decimals: value.decimals,
-        min: value.min,
-        max: value.max,
-        show: value.show,
-      }, {emitEvent: false}
-    );
+    const min = normalizeAxisLimit(value.min);
+    const max = normalizeAxisLimit(value.max);
+
+    this.axisFormGroup.patchValue({
+      label: value.label,
+      position: value.position,
+      units: value.units,
+      decimals: value.decimals,
+      min,
+      max,
+      show: value.show,
+    }, { emitEvent: false });
+
     this.updateValidators();
     this.cd.markForCheck();
   }
 
-  editAxis($event: Event, matButton: MatButton) {
+  editAxis($event: Event, matButton: MatIconButton) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -151,17 +147,23 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const ctx: any = {
-        axisType: 'yAxis',
-        panelTitle: this.translate.instant('widgets.time-series-chart.axis.y-axis-settings'),
-        axisSettings: deepClone(this.modelValue),
-        advanced: this.advanced
-      };
-      const yAxisSettingsPanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, TimeSeriesChartAxisSettingsPanelComponent, ['leftOnly', 'leftTopOnly', 'leftBottomOnly'], true, null,
-        ctx,
-        {},
-        {}, {}, true);
+      const yAxisSettingsPanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: TimeSeriesChartAxisSettingsPanelComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: ['leftOnly', 'leftTopOnly', 'leftBottomOnly'],
+        context: {
+          axisType: 'yAxis',
+          panelTitle: this.translate.instant('widgets.time-series-chart.axis.y-axis-settings'),
+          axisSettings: deepClone(this.modelValue),
+          advanced: this.advanced,
+          aliasController: this.timeSeriesChartYAxesPanel.aliasController,
+          dataKeyCallbacks: this.timeSeriesChartYAxesPanel.dataKeyCallbacks,
+          datasource: this.timeSeriesChartYAxesPanel.datasource
+        },
+        isModal: true
+      });
       yAxisSettingsPanelPopover.tbComponentRef.instance.popover = yAxisSettingsPanelPopover;
       yAxisSettingsPanelPopover.tbComponentRef.instance.axisSettingsApplied.subscribe((yAxisSettings) => {
         yAxisSettingsPanelPopover.hide();
@@ -183,6 +185,10 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
     }
   }
 
+  checkIsConstantLimit(limit: 'min' | 'max') {
+    return this.axisFormGroup.get(`${limit}.type`)?.value === ValueSourceType.constant;
+  }
+
   private updateValidators() {
     const show: boolean = this.axisFormGroup.get('show').value;
     if (show) {
@@ -196,10 +202,21 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
       this.axisFormGroup.get('units').disable({emitEvent: false});
       this.axisFormGroup.get('decimals').disable({emitEvent: false});
     }
+    if(!this.checkIsConstantLimit('min')){
+      this.axisFormGroup.get('min').disable({emitEvent: false});
+    } else {
+      this.axisFormGroup.get('min').enable({emitEvent: false});
+    }
+    if(!this.checkIsConstantLimit('max')){
+      this.axisFormGroup.get('max').disable({emitEvent: false});
+    } else {
+      this.axisFormGroup.get('max').enable({emitEvent: false});
+    }
+
   }
 
   private updateModel() {
-    const value = this.axisFormGroup.value;
+    const value = this.axisFormGroup.getRawValue();
     this.modelValue.label = value.label;
     this.modelValue.position = value.position;
     this.modelValue.units = value.units;
@@ -208,5 +225,17 @@ export class TimeSeriesChartYAxisRowComponent implements ControlValueAccessor, O
     this.modelValue.max = value.max;
     this.modelValue.show = value.show;
     this.propagateChange(this.modelValue);
+  }
+
+  private createLimitFormGroup() {
+    return this.fb.group({
+      type: [ValueSourceType.constant, []],
+      value: [null, []],
+      latestKey: [null, []],
+      latestKeyType: [null, []],
+      entityAlias: [null, []],
+      entityKey: [null, []],
+      entityKeyType: [null, []]
+    });
   }
 }

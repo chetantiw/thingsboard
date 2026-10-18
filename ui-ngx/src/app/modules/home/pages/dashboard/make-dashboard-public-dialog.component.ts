@@ -1,20 +1,8 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
-import { Component, Inject, OnInit } from '@angular/core';
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { BrandingService } from '@core/services/branding.service';
+import { Component, Inject, inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
@@ -31,15 +19,19 @@ export interface MakeDashboardPublicDialogData {
 }
 
 @Component({
-  selector: 'tb-make-dashboard-public-dialog',
-  templateUrl: './make-dashboard-public-dialog.component.html',
-  styleUrls: []
+    selector: 'tb-make-dashboard-public-dialog',
+    templateUrl: './make-dashboard-public-dialog.component.html',
+    styleUrls: [],
+    standalone: false
 })
 export class MakeDashboardPublicDialogComponent extends DialogComponent<MakeDashboardPublicDialogComponent> implements OnInit {
 
   dashboard: DashboardInfo;
 
   publicLink: string;
+
+  // Shared dashboards mention the brand, not ThingsBoard.
+  readonly appTitle = inject(BrandingService).appTitle;
 
   constructor(protected store: Store<AppState>,
               protected router: Router,

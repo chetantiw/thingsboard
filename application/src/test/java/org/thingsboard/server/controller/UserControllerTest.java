@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -50,13 +37,17 @@ import org.thingsboard.server.common.data.security.Authority;
 import org.thingsboard.server.common.data.settings.StarredDashboardInfo;
 import org.thingsboard.server.common.data.settings.UserDashboardsInfo;
 import org.thingsboard.server.dao.device.DeviceService;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.dao.service.DaoSqlTest;
 import org.thingsboard.server.dao.user.UserDao;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -116,7 +107,7 @@ public class UserControllerTest extends AbstractControllerTest {
         foundUser.setAdditionalInfo(savedUser.getAdditionalInfo());
         Assert.assertEquals(foundUser, savedUser);
 
-        testNotifyManyEntityManyTimeMsgToEdgeServiceEntityEqAny(foundUser, foundUser,
+        testNotifyManyEntityManyTimeMsgToEdgeServiceEntityEqAny(user.getTenantId(), foundUser, foundUser,
                 SYSTEM_TENANT, customerNUULId, null, SYS_ADMIN_EMAIL,
                 ActionType.ADDED, 1, 1, 1);
         Mockito.reset(tbClusterService, auditLogService);
@@ -155,7 +146,7 @@ public class UserControllerTest extends AbstractControllerTest {
         doDelete("/api/user/" + savedUser.getId().getId().toString())
                 .andExpect(status().isOk());
 
-        testNotifyEntityAllOneTimeLogEntityActionEntityEqClass(foundUser, foundUser.getId(), foundUser.getId(),
+        testNotifyEntityAllOneTimeLogEntityActionEntityEqClass(user.getTenantId(), foundUser, foundUser.getId(), foundUser.getId(),
                 SYSTEM_TENANT, customerNUULId, null, SYS_ADMIN_EMAIL,
                 ActionType.DELETED, ActionType.DELETED, SYSTEM_TENANT.getId().toString());
     }
@@ -233,16 +224,9 @@ public class UserControllerTest extends AbstractControllerTest {
                 .put("password", "testPassword2");
 
         Mockito.doNothing().when(mailService).sendPasswordWasResetEmail(anyString(), anyString());
-        JsonNode tokenInfo = readResponse(
-                doPost("/api/noauth/resetPassword", resetPasswordRequest)
-                        .andExpect(status().isOk()), JsonNode.class);
+        doPost("/api/noauth/resetPassword", resetPasswordRequest)
+                .andExpect(status().isOk());
         Mockito.verify(mailService).sendPasswordWasResetEmail(anyString(), anyString());
-        validateAndSetJwtToken(tokenInfo, email);
-
-        doGet("/api/auth/user")
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.authority", is(Authority.TENANT_ADMIN.name())))
-                .andExpect(jsonPath("$.email", is(email)));
 
         resetTokens();
 
@@ -271,6 +255,37 @@ public class UserControllerTest extends AbstractControllerTest {
     }
 
     @Test
+    public void testFindUsersByIds() throws Exception {
+        loginTenantAdmin();
+        List<User> savedUsers = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            User user = createTenantAdminUser();
+            savedUsers.add(doPost("/api/user", user, User.class));
+        }
+
+        String idsParam = savedUsers.stream()
+                .map(u -> u.getId().getId().toString())
+                .collect(Collectors.joining(","));
+
+        User[] foundUsers = doGet("/api/users?userIds=" + idsParam, User[].class);
+
+        Assert.assertNotNull(foundUsers);
+        Assert.assertEquals(savedUsers.size(), foundUsers.length);
+
+        Map<UUID, User> foundById = Arrays.stream(foundUsers)
+                .collect(Collectors.toMap(u -> u.getId().getId(), Function.identity()));
+
+        for (User savedUser : savedUsers) {
+            User foundUser = foundById.get(savedUser.getId().getId());
+            Assert.assertNotNull("User not found for id " + savedUser.getId().getId(), foundUser);
+
+            foundUser.setAdditionalInfo(savedUser.getAdditionalInfo());
+            Assert.assertEquals(savedUser, foundUser);
+        }
+    }
+
+
+    @Test
     public void testSaveUserWithSameEmail() throws Exception {
         loginSysAdmin();
 
@@ -289,6 +304,26 @@ public class UserControllerTest extends AbstractControllerTest {
         testNotifyEntityEqualsOneTimeServiceNeverError(user,
                 SYSTEM_TENANT, null, SYS_ADMIN_EMAIL,
                 ActionType.ADDED, new DataValidationException(msgError));
+    }
+
+    @Test
+    public void testShouldNotDeleteLastTenantAdmin() throws Exception {
+        loginSysAdmin();
+
+        User tenantAdmin2 = new User();
+        tenantAdmin2.setAuthority(Authority.TENANT_ADMIN);
+        tenantAdmin2.setTenantId(tenantId);
+        tenantAdmin2.setEmail("tenant2@thingsboard.io");
+        tenantAdmin2 = doPost("/api/user", tenantAdmin2, User.class);
+
+        // delete second tenant admin - ok
+        doDelete("/api/user/" + tenantAdmin2.getId().getId().toString())
+                .andExpect(status().isOk());
+
+        // delete last tenant admin - forbidden
+        doDelete("/api/user/" + tenantAdminUser.getId().getId().toString())
+                .andExpect(status().isBadRequest())
+                .andExpect(statusReason(containsString("At least one tenant administrator must remain!")));
     }
 
     @Test
@@ -401,7 +436,7 @@ public class UserControllerTest extends AbstractControllerTest {
 
         User testManyUser = new User();
         testManyUser.setTenantId(tenantId);
-        testNotifyManyEntityManyTimeMsgToEdgeServiceEntityEqAny(testManyUser, testManyUser,
+        testNotifyManyEntityManyTimeMsgToEdgeServiceEntityEqAny(tenantId, testManyUser, testManyUser,
                 SYSTEM_TENANT, customerNUULId, null, SYS_ADMIN_EMAIL,
                 ActionType.ADDED, cntEntity, cntEntity, cntEntity);
 
@@ -513,7 +548,7 @@ public class UserControllerTest extends AbstractControllerTest {
         }
         User testManyUser = new User();
         testManyUser.setTenantId(tenantId);
-        testNotifyManyEntityManyTimeMsgToEdgeServiceEntityEqAny(testManyUser, testManyUser,
+        testNotifyManyEntityManyTimeMsgToEdgeServiceEntityEqAny(tenantId, testManyUser, testManyUser,
                 SYSTEM_TENANT, customerNUULId, null, SYS_ADMIN_EMAIL,
                 ActionType.DELETED, cntEntity, NUMBER_OF_USERS, cntEntity, "");
 
@@ -669,6 +704,7 @@ public class UserControllerTest extends AbstractControllerTest {
         String email = "testEmail1";
         List<UserId> expectedCustomerUserIds = new ArrayList<>();
         expectedCustomerUserIds.add(customerUserId);
+        expectedCustomerUserIds.add(secondCustomerUserId);
         for (int i = 0; i < 45; i++) {
             User customerUser = createCustomerUser(customerId);
             customerUser.setEmail(email + StringUtils.randomAlphanumeric((int) (5 + Math.random() * 10)) + "@thingsboard.org");
@@ -1248,9 +1284,9 @@ public class UserControllerTest extends AbstractControllerTest {
         Assert.assertEquals(savedDashboard2.getTitle(), starred.getTitle());
 
         //TEST renaming in the cache.
-        savedDashboard1.setTitle(RandomStringUtils.randomAlphanumeric(10));
+        savedDashboard1.setTitle(RandomStringUtils.secure().nextAlphanumeric(10));
         savedDashboard1 = doPost("/api/dashboard", savedDashboard1, Dashboard.class);
-        savedDashboard2.setTitle(RandomStringUtils.randomAlphanumeric(10));
+        savedDashboard2.setTitle(RandomStringUtils.secure().nextAlphanumeric(10));
         savedDashboard2 = doPost("/api/dashboard", savedDashboard2, Dashboard.class);
 
         newSettings = doGet("/api/user/dashboards/" + savedDashboard1.getId().getId() + "/unstar", UserDashboardsInfo.class);

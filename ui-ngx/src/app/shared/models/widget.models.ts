@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { BaseData, ExportableEntity } from '@shared/models/base-data';
 import { TenantId } from '@shared/models/id/tenant-id';
 import { WidgetTypeId } from '@shared/models/id/widget-type-id';
@@ -33,21 +19,25 @@ import { PageComponent } from '@shared/components/page.component';
 import { AfterViewInit, DestroyRef, Directive, EventEmitter, inject, Inject, OnInit, Type } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
-import { AbstractControl, UntypedFormGroup } from '@angular/forms';
+import { AbstractControl, UntypedFormGroup, ValidatorFn } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { Dashboard } from '@shared/models/dashboard.models';
 import { IAliasController } from '@core/api/widget-api.models';
-import { isNotEmptyStr, mergeDeepIgnoreArray } from '@core/utils';
+import { isNotEmptyStr, mergeDeep, mergeDeepIgnoreArray } from '@core/utils';
 import { WidgetConfigComponentData } from '@home/models/widget-component.models';
-import { ComponentStyle, Font, TimewindowStyle } from '@shared/models/widget-settings.models';
+import { ComponentStyle, Font, TimewindowStyle, ValueFormatProcessor } from '@shared/models/widget-settings.models';
 import { NULL_UUID } from '@shared/models/id/has-uuid';
 import { EntityInfoData, HasTenantId, HasVersion } from '@shared/models/entity.models';
-import { DataKeysCallbacks, DataKeySettingsFunction } from '@home/components/widget/lib/settings/common/key/data-keys.component.models';
+import {
+  DataKeysCallbacks,
+  DataKeySettingsFunction
+} from '@home/components/widget/lib/settings/common/key/data-keys.component.models';
 import { WidgetConfigCallbacks } from '@home/components/widget/config/widget-config.component.models';
 import { TbFunction } from '@shared/models/js-function.models';
 import { FormProperty, jsonFormSchemaToFormProperties } from '@shared/models/dynamic-form.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Device } from '@shared/models/device.models';
+import { TbUnit } from '@shared/models/unit.models';
+import { ImageResourceInfo } from '@shared/models/resource.models';
 
 export enum widgetType {
   timeseries = 'timeseries',
@@ -67,6 +57,8 @@ export interface WidgetTypeData {
   configHelpLinkId: string;
   template: WidgetTypeTemplate;
 }
+
+export const widgetTitleAutocompleteValues = ['entityName', 'entityLabel'];
 
 export const widgetTypesData = new Map<widgetType, WidgetTypeData>(
   [
@@ -185,6 +177,7 @@ export interface WidgetTypeParameters {
   previewWidth?: string;
   previewHeight?: string;
   embedTitlePanel?: boolean;
+  embedActionsPanel?: boolean;
   overflowVisible?: boolean;
   hideDataTab?: boolean;
   hideDataSettings?: boolean;
@@ -193,6 +186,7 @@ export interface WidgetTypeParameters {
   dataKeySettingsFunction?: DataKeySettingsFunction;
   displayRpcMessageToast?: boolean;
   targetDeviceOptional?: boolean;
+  supportsUnitConversion?: boolean;
   additionalWidgetActionTypes?: WidgetActionType[];
 }
 
@@ -205,7 +199,7 @@ export interface WidgetControllerDescriptor {
   actionSources?: {[actionSourceId: string]: WidgetActionSource};
 }
 
-export interface BaseWidgetType extends BaseData<WidgetTypeId>, HasTenantId, HasVersion {
+export interface BaseWidgetType extends BaseData<WidgetTypeId>, HasTenantId, HasVersion, ExportableEntity<WidgetTypeId> {
   tenantId: TenantId;
   fqn: string;
   name: string;
@@ -328,6 +322,7 @@ export interface LegendConfig {
   showAvg: boolean;
   showTotal: boolean;
   showLatest: boolean;
+  valueFormat: ValueFormatProcessor;
 }
 
 export const defaultLegendConfig = (wType: widgetType): LegendConfig => ({
@@ -338,7 +333,8 @@ export const defaultLegendConfig = (wType: widgetType): LegendConfig => ({
   showMax: false,
   showAvg: wType === widgetType.timeseries,
   showTotal: false,
-  showLatest: false
+  showLatest: false,
+  valueFormat: null
 });
 
 export enum ComparisonResultType {
@@ -366,7 +362,7 @@ export interface KeyInfo {
   color?: string;
   funcBody?: TbFunction;
   postFuncBody?: TbFunction;
-  units?: string;
+  units?: TbUnit;
   decimals?: number;
 }
 
@@ -391,7 +387,6 @@ export interface DataKey extends KeyInfo {
   inLegend?: boolean;
   isAdditional?: boolean;
   origDataKeyIndex?: number;
-  _hash?: number;
 }
 
 export type CellClickColumnInfo = Pick<DataKey, 'name' | 'label'>;
@@ -482,6 +477,14 @@ export const targetDeviceValid = (targetDevice?: TargetDevice): boolean =>
     ((targetDevice.type === TargetDeviceType.device && !!targetDevice.deviceId) ||
       (targetDevice.type === TargetDeviceType.entity && !!targetDevice.entityAliasId));
 
+export const widgetTypeHasTimewindow = (type: widgetType): boolean => {
+  return type === widgetType.timeseries || type === widgetType.alarm;
+}
+
+export const widgetTypeCanHaveTimewindow = (type: widgetType): boolean => {
+  return widgetTypeHasTimewindow(type) || type === widgetType.latest;
+}
+
 export const datasourcesHasAggregation = (datasources?: Array<Datasource>): boolean => {
   if (datasources) {
     const foundDatasource = datasources.find(datasource => {
@@ -554,6 +557,7 @@ export interface DatasourceData extends DataSetHolder {
 export interface LegendKey {
   dataKey: DataKey;
   dataIndex: number;
+  valueFormat: ValueFormatProcessor;
 }
 
 export interface LegendKeyData {
@@ -614,11 +618,36 @@ export enum WidgetMobileActionType {
   deviceProvision = 'deviceProvision',
 }
 
+export interface ActionConfig {
+  title: string,
+  formControlName: string,
+  functionName: string,
+  functionArgs: string[],
+  helpId?: string
+}
+
+export enum ProvisionType {
+  auto = 'auto',
+  wiFi = 'wiFi',
+  ble = 'ble',
+  softAp = 'softAp'
+}
+
+export const provisionTypeTranslationMap = new Map<ProvisionType, string>(
+  [
+    [ ProvisionType.auto, 'widget-action.mobile.auto' ],
+    [ ProvisionType.wiFi, 'widget-action.mobile.wi-fi' ],
+    [ ProvisionType.ble, 'widget-action.mobile.ble' ],
+    [ ProvisionType.softAp, 'widget-action.mobile.soft-ap' ],
+  ]
+);
+
 export enum MapItemType {
   marker = 'marker',
   polygon = 'polygon',
   rectangle = 'rectangle',
-  circle = 'circle'
+  circle = 'circle',
+  polyline = 'polyline'
 }
 
 export const widgetActionTypes = Object.keys(WidgetActionType)
@@ -658,6 +687,7 @@ export const mapItemTypeTranslationMap = new Map<MapItemType, string>(
     [ MapItemType.polygon, 'widget-action.map-item.polygon' ],
     [ MapItemType.rectangle, 'widget-action.map-item.rectangle' ],
     [ MapItemType.circle, 'widget-action.map-item.circle' ],
+    [ MapItemType.polyline, 'widget-action.map-item.polyline' ]
   ]
 )
 
@@ -667,6 +697,7 @@ export interface MobileLaunchResult {
 
 export interface MobileImageResult {
   imageUrl: string;
+  imageInfo?: ImageResourceInfo;
 }
 
 export interface MobileQrCodeResult {
@@ -698,10 +729,12 @@ export interface WidgetMobileActionResult<T extends MobileActionResult> {
 
 export interface ProvisionSuccessDescriptor {
   handleProvisionSuccessFunction: TbFunction;
+  provisionType?: string;
 }
 
 export interface ProcessImageDescriptor {
   processImageFunction: TbFunction;
+  saveToGallery?: boolean;
 }
 
 export interface ProcessLaunchResultDescriptor {
@@ -735,6 +768,7 @@ export interface WidgetMobileActionDescriptor extends WidgetMobileActionDescript
   type: WidgetMobileActionType;
   handleErrorFunction?: TbFunction;
   handleEmptyResultFunction?: TbFunction;
+  handleNonMobileFallbackFunction?: TbFunction;
 }
 
 export interface CustomActionDescriptor {
@@ -769,7 +803,34 @@ export interface WidgetAction extends CustomActionDescriptor {
   mobileAction?: WidgetMobileActionDescriptor;
   url?: string;
   mapItemType?: MapItemType;
+  mapItemTooltips?: MapItemTooltips;
 }
+
+export interface MapItemTooltips {
+  placeMarker?: string;
+  firstVertex?: string;
+  continueLine?: string;
+  finishPoly?: string;
+  startRect?: string;
+  finishRect?: string;
+  startCircle?: string;
+  finishCircle?: string;
+  startPolyline?: string;
+  finishPolyline?: string;
+}
+
+export const mapItemTooltipsTranslation: Required<MapItemTooltips> = Object.freeze({
+  placeMarker: 'widgets.maps.data-layer.marker.place-marker-hint',
+  firstVertex: 'widgets.maps.data-layer.polygon.polygon-place-first-point-hint',
+  continueLine: 'widgets.maps.data-layer.polygon.continue-polygon-hint',
+  finishPoly: 'widgets.maps.data-layer.polygon.finish-polygon-hint',
+  startRect: 'widgets.maps.data-layer.polygon.rectangle-place-first-point-hint',
+  finishRect: 'widgets.maps.data-layer.polygon.finish-rectangle-hint',
+  startCircle: 'widgets.maps.data-layer.circle.place-circle-center-hint',
+  finishCircle: 'widgets.maps.data-layer.circle.finish-circle-hint',
+  startPolyline: 'widgets.maps.data-layer.polyline.polyline-place-first-point-hint',
+  finishPolyline: 'widgets.maps.data-layer.polyline.finish-polyline-hint'
+})
 
 export interface WidgetActionDescriptor extends WidgetAction {
   id: string;
@@ -780,7 +841,7 @@ export interface WidgetActionDescriptor extends WidgetAction {
   buttonColor?: string;
   buttonFillColor?: string;
   buttonBorderColor?: string;
-  customButtonStyle?: string;
+  customButtonStyle?: {[key: string]: string};
   displayName?: string;
   useShowWidgetActionFunction?: boolean;
   showWidgetActionFunction?: TbFunction;
@@ -872,7 +933,7 @@ export interface WidgetConfig {
   widgetStyle?: ComponentStyle;
   widgetCss?: string;
   titleStyle?: ComponentStyle;
-  units?: string;
+  units?: TbUnit;
   decimals?: number;
   noDataDisplayMessage?: string;
   pageSize?: number;
@@ -976,9 +1037,9 @@ export abstract class WidgetSettingsComponent extends PageComponent implements
 
   set settings(value: WidgetSettings) {
     if (!value) {
-      this.settingsValue = this.defaultSettings();
+      this.settingsValue = mergeDeep({}, this.defaultSettings());
     } else {
-      this.settingsValue = mergeDeepIgnoreArray(this.defaultSettings(), value);
+      this.settingsValue = mergeDeepIgnoreArray({}, this.defaultSettings(), value);
     }
     if (!this.settingsSet) {
       this.settingsSet = true;
@@ -1077,5 +1138,4 @@ export abstract class WidgetSettingsComponent extends PageComponent implements
 
   protected onWidgetConfigSet(widgetConfig: WidgetConfigComponentData) {
   }
-
 }

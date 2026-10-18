@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   Component,
   DestroyRef,
@@ -35,7 +21,7 @@ import {
 } from '@shared/models/widget-settings.models';
 import { TranslateService } from '@ngx-translate/core';
 import { DatePipe } from '@angular/common';
-import { MatButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { TbPopoverService } from '@shared/components/popover.service';
 import { deepClone, mergeDeep } from '@core/utils';
 import {
@@ -48,21 +34,22 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
-  selector: 'tb-date-format-select',
-  templateUrl: './date-format-select.component.html',
-  styleUrls: [],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => DateFormatSelectComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-date-format-select',
+    templateUrl: './date-format-select.component.html',
+    styleUrls: [],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => DateFormatSelectComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class DateFormatSelectComponent implements OnInit, ControlValueAccessor {
 
   @ViewChild('customFormatButton', {static: false})
-  customFormatButton: MatButton;
+  customFormatButton: MatIconButton;
 
   @Input()
   disabled: boolean;
@@ -154,7 +141,7 @@ export class DateFormatSelectComponent implements OnInit, ControlValueAccessor {
     }
   }
 
-  openDateFormatSettingsPopup($event: Event, matButton: MatButton) {
+  openDateFormatSettingsPopup($event: Event, matButton: MatIconButton) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -162,14 +149,16 @@ export class DateFormatSelectComponent implements OnInit, ControlValueAccessor {
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const ctx: any = {
-        dateFormat: deepClone(this.modelValue)
-      };
-      const dateFormatSettingsPanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, DateFormatSettingsPanelComponent, 'top', true, null,
-        ctx,
-        {},
-        {}, {}, true);
+      const dateFormatSettingsPanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: DateFormatSettingsPanelComponent,
+        hostView: this.viewContainerRef,
+        context: {
+          dateFormat: deepClone(this.modelValue)
+        },
+        isModal: true
+      });
       dateFormatSettingsPanelPopover.tbComponentRef.instance.popover = dateFormatSettingsPanelPopover;
       dateFormatSettingsPanelPopover.tbComponentRef.instance.dateFormatApplied.subscribe((dateFormat) => {
         dateFormatSettingsPanelPopover.hide();
@@ -179,7 +168,7 @@ export class DateFormatSelectComponent implements OnInit, ControlValueAccessor {
     }
   }
 
-  openAutoFormatSettingsPopup($event: Event, matButton: MatButton) {
+  openAutoFormatSettingsPopup($event: Event, matButton: MatIconButton) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -187,15 +176,18 @@ export class DateFormatSelectComponent implements OnInit, ControlValueAccessor {
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const ctx: any = {
-        autoDateFormatSettings: mergeDeep({} as AutoDateFormatSettings,
-          defaultAutoDateFormatSettings, this.modelValue.autoDateFormatSettings)
-      };
-      const autoDateFormatSettingsPanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, AutoDateFormatSettingsPanelComponent, ['leftOnly', 'leftTopOnly', 'leftBottomOnly'], true, null,
-        ctx,
-        {},
-        {}, {}, true);
+      const autoDateFormatSettingsPanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: AutoDateFormatSettingsPanelComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: ['leftOnly', 'leftTopOnly', 'leftBottomOnly'],
+        context: {
+          autoDateFormatSettings: mergeDeep({} as AutoDateFormatSettings,
+            defaultAutoDateFormatSettings, this.modelValue.autoDateFormatSettings)
+        },
+        isModal: true
+      });
       autoDateFormatSettingsPanelPopover.tbComponentRef.instance.popover = autoDateFormatSettingsPanelPopover;
       autoDateFormatSettingsPanelPopover.tbComponentRef.instance.autoDateFormatSettingsApplied.subscribe((autoDateFormatSettings) => {
         autoDateFormatSettingsPanelPopover.hide();

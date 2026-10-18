@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import {
   calculateInterpolationRatio,
   calculateLastPoints, DataLayerColorSettings, DataLayerColorType,
@@ -44,7 +32,7 @@ import { MarkerDataProcessor } from '@home/components/widget/lib/maps/data-layer
 
 type TripRouteData = {[time: number]: FormattedData<TbMapDatasource>};
 
-interface PointItem {
+export interface PointItem {
   point: L.CircleMarker;
   tooltip?: L.Popup;
 }
@@ -327,7 +315,7 @@ class TbTripDataItem extends TbDataLayerItem<TripsDataLayerSettings, TbTripsData
     if (this.settings.label.show) {
       this.marker.unbindTooltip();
       const label = this.dataLayer.dataLayerLabelProcessor.processPattern(data, dsData);
-      const labelColor = this.dataLayer.getCtx().widgetConfig.color;
+      const labelColor = mtColor(this.dataLayer.getCtx().widgetConfig.color);
       const content: L.Content = `<div style="color: ${labelColor};"><b>${label}</b></div>`;
       this.marker.bindTooltip(content, { className: 'tb-marker-label', permanent: true, direction: 'top', offset: this.labelOffset });
     }
@@ -351,10 +339,10 @@ class TbTripDataItem extends TbDataLayerItem<TripsDataLayerSettings, TbTripsData
         rotationAngle: this.settings.rotateMarker ? this.settings.offsetAngle : 0
       };
     }
+    const timeStamp = Object.keys(result);
     if (timeline) {
       const xKey = this.settings.xKey.label;
       const yKey = this.settings.yKey.label;
-      const timeStamp = Object.keys(result);
       for (let i = 0; i < timeStamp.length - 1; i++) {
         if (isUndefined(result[timeStamp[i + 1]][xKey]) || isUndefined(result[timeStamp[i + 1]][yKey])) {
           for (let j = i + 2; j < timeStamp.length - 1; j++) {
@@ -374,6 +362,13 @@ class TbTripDataItem extends TbDataLayerItem<TripsDataLayerSettings, TbTripsData
           result[timeStamp[i]].rotationAngle += findRotationAngle(startPoint, endPoint);
         }
       }
+      if (this.settings.rotateMarker && timeStamp.length > 1) {
+        result[timeStamp[timeStamp.length - 1]].rotationAngle = result[timeStamp[timeStamp.length - 2]].rotationAngle;
+      }
+    } else if (this.settings.rotateMarker && timeStamp.length > 1) {
+      const startPoint = this.dataLayer.dataProcessor.extractLocation(result[timeStamp[timeStamp.length - 2]], dsData);
+      const endPoint = this.dataLayer.dataProcessor.extractLocation(result[timeStamp[timeStamp.length - 1]], dsData);
+      result[timeStamp[timeStamp.length - 1]].rotationAngle += findRotationAngle(startPoint, endPoint);
     }
     return result;
   }
@@ -528,22 +523,33 @@ export class TbTripsDataLayer extends TbMapDataLayer<TripsDataLayerSettings, TbT
     };
   }
 
-  protected setupDatasource(datasource: TbMapDatasource): TbMapDatasource {
-    datasource.dataKeys = [this.settings.xKey, this.settings.yKey];
+  protected calculateDataKeys(): DataKey[] {
+    const dataKeys = [this.settings.xKey, this.settings.yKey];
     const additionalKeys = this.allColorSettings().filter(settings => settings.type === DataLayerColorType.range && settings.rangeKey)
-                                                  .map(settings => settings.rangeKey);
+    .map(settings => settings.rangeKey);
     if (this.settings.additionalDataKeys?.length) {
       additionalKeys.push(...this.settings.additionalDataKeys);
     }
     if (additionalKeys.length) {
       const tsKeys = additionalKeys.filter(key => key.type === DataKeyType.timeseries);
+      dataKeys.push(...tsKeys);
+    }
+    return dataKeys;
+  }
+
+  protected calculateLatestDataKeys(): DataKey[] {
+    const additionalKeys = this.allColorSettings().filter(settings => settings.type === DataLayerColorType.range && settings.rangeKey)
+    .map(settings => settings.rangeKey);
+    if (this.settings.additionalDataKeys?.length) {
+      additionalKeys.push(...this.settings.additionalDataKeys);
+    }
+    if (additionalKeys.length) {
       const latestKeys = additionalKeys.filter(key => key.type !== DataKeyType.timeseries);
-      datasource.dataKeys.push(...tsKeys);
       if (latestKeys.length) {
-        datasource.latestDataKeys = latestKeys;
+        return latestKeys;
       }
     }
-    return datasource;
+    return [];
   }
 
   protected allColorSettings(): DataLayerColorSettings[] {

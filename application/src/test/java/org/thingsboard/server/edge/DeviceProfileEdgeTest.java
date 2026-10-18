@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.edge;
 
 import com.google.protobuf.AbstractMessage;
@@ -83,7 +70,7 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
         DeviceProfileUpdateMsg deviceProfileUpdateMsg = (DeviceProfileUpdateMsg) latestMessage;
         DeviceProfile deviceProfileMsg = JacksonUtil.fromString(deviceProfileUpdateMsg.getEntity(), DeviceProfile.class, true);
         Assert.assertNotNull(deviceProfileMsg);
-        Assert.assertEquals(deviceProfile, deviceProfileMsg);
+        compareHasVersionEntities(deviceProfile, deviceProfileMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, deviceProfileUpdateMsg.getMsgType());
 
         // update device profile
@@ -108,7 +95,7 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
         deviceProfileUpdateMsg = (DeviceProfileUpdateMsg) latestMessage;
         deviceProfileMsg = JacksonUtil.fromString(deviceProfileUpdateMsg.getEntity(), DeviceProfile.class, true);
         Assert.assertNotNull(deviceProfileMsg);
-        Assert.assertEquals(deviceProfile, deviceProfileMsg);
+        compareHasVersionEntities(deviceProfile, deviceProfileMsg);
 
         // delete profile
         edgeImitator.expectMessageAmount(1);
@@ -128,31 +115,43 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
 
     @Test
     public void testDeleteDeviceProfilesWhenEdgeIsOffline() throws Exception {
+        //2 message RuleChain and RuleChainMetadata
         RuleChainId thermostatsRuleChainId = createEdgeRuleChainAndAssignToEdge("Thermostats Rule Chain");
 
         // create device profile
         DeviceProfile deviceProfile = this.createDeviceProfile("ONE_MORE_DEVICE_PROFILE", null);
         deviceProfile.setDefaultEdgeRuleChainId(thermostatsRuleChainId);
         extendDeviceProfileData(deviceProfile);
+
+        //1 message DeviceProfile
         edgeImitator.expectMessageAmount(1);
         deviceProfile = doPost("/api/deviceProfile", deviceProfile, DeviceProfile.class);
         Assert.assertTrue(edgeImitator.waitForMessages());
+
         AbstractMessage latestMessage = edgeImitator.getLatestMessage();
         Assert.assertTrue(latestMessage instanceof DeviceProfileUpdateMsg);
         DeviceProfileUpdateMsg deviceProfileUpdateMsg = (DeviceProfileUpdateMsg) latestMessage;
         DeviceProfile deviceProfileMsg = JacksonUtil.fromString(deviceProfileUpdateMsg.getEntity(), DeviceProfile.class, true);
         Assert.assertNotNull(deviceProfileMsg);
-        Assert.assertEquals(deviceProfile, deviceProfileMsg);
+        compareHasVersionEntities(deviceProfile, deviceProfileMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, deviceProfileUpdateMsg.getMsgType());
 
         // delete profile when edge is offline
         edgeImitator.disconnect();
+        verifyEdgeDisconnected();
+
         doDelete("/api/deviceProfile/" + deviceProfile.getUuidId())
                 .andExpect(status().isOk());
+
+        // 25 sync message
+        // + 1 RuleChain Added
+        // + 1 RuleChainMetadata Added
+        // + 1 DeviceProfile Delete
+        edgeImitator.expectMessageAmount(SYNC_MESSAGE_COUNT + 3);
+
         edgeImitator.connect();
-        // 27 sync message
-        // + 1 delete message
-        edgeImitator.expectMessageAmount(28);
+        verifyEdgeConnected();
+
         Assert.assertTrue(edgeImitator.waitForMessages());
 
         latestMessage = edgeImitator.getLatestMessage();
@@ -174,7 +173,7 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
         DeviceProfileUpdateMsg deviceProfileUpdateMsg = (DeviceProfileUpdateMsg) latestMessage;
         DeviceProfile deviceProfileMsg = JacksonUtil.fromString(deviceProfileUpdateMsg.getEntity(), DeviceProfile.class, true);
         Assert.assertNotNull(deviceProfileMsg);
-        Assert.assertEquals(deviceProfile, deviceProfileMsg);
+        compareHasVersionEntities(deviceProfile, deviceProfileMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, deviceProfileUpdateMsg.getMsgType());
         Assert.assertEquals(DeviceTransportType.SNMP, deviceProfileMsg.getTransportType());
 
@@ -212,7 +211,7 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
         DeviceProfileUpdateMsg deviceProfileUpdateMsg = (DeviceProfileUpdateMsg) latestMessage;
         DeviceProfile deviceProfileMsg = JacksonUtil.fromString(deviceProfileUpdateMsg.getEntity(), DeviceProfile.class, true);
         Assert.assertNotNull(deviceProfileMsg);
-        Assert.assertEquals(deviceProfile, deviceProfileMsg);
+        compareHasVersionEntities(deviceProfile, deviceProfileMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, deviceProfileUpdateMsg.getMsgType());
         Assert.assertEquals(DeviceTransportType.LWM2M, deviceProfileMsg.getTransportType());
 
@@ -233,13 +232,13 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
         Assert.assertFalse(transportConfiguration.getBootstrap().isEmpty());
         LwM2MBootstrapServerCredential lwM2MBootstrapServerCredential = transportConfiguration.getBootstrap().get(0);
         Assert.assertTrue(lwM2MBootstrapServerCredential instanceof NoSecLwM2MBootstrapServerCredential);
-        NoSecLwM2MBootstrapServerCredential noSecLwM2MBootstrapServerCredential = (NoSecLwM2MBootstrapServerCredential) lwM2MBootstrapServerCredential;
+        NoSecLwM2MBootstrapServerCredential noSecLwM2MBootstrapSectionDmServerCredential = (NoSecLwM2MBootstrapServerCredential) lwM2MBootstrapServerCredential;
 
-        Assert.assertEquals("PUBLIC_KEY", noSecLwM2MBootstrapServerCredential.getServerPublicKey());
-        Assert.assertEquals(Integer.valueOf(123), noSecLwM2MBootstrapServerCredential.getShortServerId());
-        Assert.assertFalse(noSecLwM2MBootstrapServerCredential.isBootstrapServerIs());
-        Assert.assertEquals("localhost", noSecLwM2MBootstrapServerCredential.getHost());
-        Assert.assertEquals(Integer.valueOf(5685), noSecLwM2MBootstrapServerCredential.getPort());
+        Assert.assertEquals("PUBLIC_KEY", noSecLwM2MBootstrapSectionDmServerCredential.getServerPublicKey());
+        Assert.assertEquals(Integer.valueOf(123), noSecLwM2MBootstrapSectionDmServerCredential.getShortServerId());
+        Assert.assertFalse(noSecLwM2MBootstrapSectionDmServerCredential.isBootstrapServerIs());
+        Assert.assertEquals("localhost", noSecLwM2MBootstrapSectionDmServerCredential.getHost());
+        Assert.assertEquals(Integer.valueOf(5685), noSecLwM2MBootstrapSectionDmServerCredential.getPort());
 
         TelemetryMappingConfiguration observeAttr = transportConfiguration.getObserveAttr();
         Assert.assertEquals("batteryLevel", observeAttr.getKeyName().get("/3_1.2/0/9"));
@@ -261,7 +260,7 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
         DeviceProfileUpdateMsg deviceProfileUpdateMsg = (DeviceProfileUpdateMsg) latestMessage;
         DeviceProfile deviceProfileMsg = JacksonUtil.fromString(deviceProfileUpdateMsg.getEntity(), DeviceProfile.class, true);
         Assert.assertNotNull(deviceProfileMsg);
-        Assert.assertEquals(deviceProfile, deviceProfileMsg);
+        compareHasVersionEntities(deviceProfile, deviceProfileMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, deviceProfileUpdateMsg.getMsgType());
         Assert.assertEquals(DeviceTransportType.COAP, deviceProfileMsg.getTransportType());
 
@@ -401,15 +400,15 @@ public class DeviceProfileEdgeTest extends AbstractEdgeTest {
                 JacksonUtil.fromString(AbstractLwM2MIntegrationTest.TELEMETRY_WITHOUT_OBSERVE, TelemetryMappingConfiguration.class);
         transportConfiguration.setObserveAttr(observeAttrConfiguration);
 
-        List<LwM2MBootstrapServerCredential> bootstrap = new ArrayList<>();
-        AbstractLwM2MBootstrapServerCredential bootstrapServerCredential = new NoSecLwM2MBootstrapServerCredential();
-        bootstrapServerCredential.setServerPublicKey("PUBLIC_KEY");
-        bootstrapServerCredential.setShortServerId(123);
-        bootstrapServerCredential.setBootstrapServerIs(false);
-        bootstrapServerCredential.setHost("localhost");
-        bootstrapServerCredential.setPort(5685);
-        bootstrap.add(bootstrapServerCredential);
-        transportConfiguration.setBootstrap(bootstrap);
+        List<LwM2MBootstrapServerCredential> bootstrapSections = new ArrayList<>();
+        AbstractLwM2MBootstrapServerCredential bootstrapSectionServerCredential = new NoSecLwM2MBootstrapServerCredential();
+        bootstrapSectionServerCredential.setServerPublicKey("PUBLIC_KEY");
+        bootstrapSectionServerCredential.setShortServerId(123);
+        bootstrapSectionServerCredential.setBootstrapServerIs(false);
+        bootstrapSectionServerCredential.setHost("localhost");
+        bootstrapSectionServerCredential.setPort(5685);
+        bootstrapSections.add(bootstrapSectionServerCredential);
+        transportConfiguration.setBootstrap(bootstrapSections);
 
         return transportConfiguration;
     }

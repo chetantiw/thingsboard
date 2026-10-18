@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   CellActionDescriptorType,
   DateEntityTableColumn,
@@ -22,7 +8,14 @@ import {
   EntityTableColumn,
   EntityTableConfig
 } from '@home/models/entity/entities-table-config.models';
-import { DebugEventType, Event, EventBody, EventType, FilterEventBody } from '@shared/models/event.models';
+import {
+  DebugEventType,
+  Event as DebugEvent,
+  Event,
+  EventBody,
+  EventType,
+  FilterEventBody
+} from '@shared/models/event.models';
 import { TimePageLink } from '@shared/models/page/page-link';
 import { TranslateService } from '@ngx-translate/core';
 import { DatePipe } from '@angular/common';
@@ -59,7 +52,6 @@ import { AppState } from '@core/core.state';
 export class EventTableConfig extends EntityTableConfig<Event, TimePageLink> {
 
   eventTypeValue: EventType | DebugEventType;
-  hideClearEventAction = false;
 
   private filterParams: FilterEventBody = {};
   private filterColumns: FilterEntityColumn[] = [];
@@ -95,7 +87,9 @@ export class EventTableConfig extends EntityTableConfig<Event, TimePageLink> {
               private cd: ChangeDetectorRef,
               private store: Store<AppState>,
               public testButtonLabel?: string,
-              private debugEventSelected?: EventEmitter<EventBody>) {
+              private debugEventSelected?: EventEmitter<EventBody>,
+              public hideClearEventAction = false,
+              public disableDebugEventAction = false) {
     super();
     this.loadDataOnInit = false;
     this.tableTitle = '';
@@ -453,7 +447,7 @@ export class EventTableConfig extends EntityTableConfig<Event, TimePageLink> {
           this.cellActionDescriptors.push({
             name: this.translate.instant('rulenode.test-with-this-message', {test: this.translate.instant(this.testButtonLabel)}),
             icon: 'bug_report',
-            isEnabled: (entity) => entity.body.type === 'IN' || entity.body.error !== undefined,
+            isEnabled: (entity) => (entity.body.type === 'IN' || entity.body.error !== undefined) && !this.disableDebugEventAction,
             onAction: ($event, entity) => {
               this.debugEventSelected.next(entity.body);
             }
@@ -462,9 +456,9 @@ export class EventTableConfig extends EntityTableConfig<Event, TimePageLink> {
         break;
       case DebugEventType.DEBUG_CALCULATED_FIELD:
         this.cellActionDescriptors.push({
-          name: this.translate.instant('common.test-with-this-message', {test: this.translate.instant(this.testButtonLabel)}),
+          name: this.translate.instant('calculated-fields.test-with-this-message'),
           icon: 'bug_report',
-          isEnabled: () => true,
+          isEnabled: (event) => !this.disableDebugEventAction && !!(event as DebugEvent).body.arguments,
           onAction: (_, entity) => this.debugEventSelected.next(entity.body)
         });
         break;
@@ -571,7 +565,7 @@ export class EventTableConfig extends EntityTableConfig<Event, TimePageLink> {
     if ($event) {
       $event.stopPropagation();
     }
-    const target = $event.target || $event.srcElement || $event.currentTarget;
+    const target = $event.target || $event.currentTarget;
     const config = new OverlayConfig({
       panelClass: 'tb-panel-container',
       backdropClass: 'cdk-overlay-transparent-backdrop',

@@ -1,22 +1,7 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.queue;
 
-import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -35,6 +20,7 @@ import org.thingsboard.server.common.msg.queue.TbCallback;
 import org.thingsboard.server.common.msg.rpc.FromDeviceRpcResponse;
 import org.thingsboard.server.common.util.ProtoUtils;
 import org.thingsboard.server.dao.queue.QueueService;
+import org.thingsboard.server.dao.resource.TbResourceDataCache;
 import org.thingsboard.server.dao.tenant.TbTenantProfileCache;
 import org.thingsboard.server.gen.transport.TransportProtos;
 import org.thingsboard.server.gen.transport.TransportProtos.QueueDeleteMsg;
@@ -47,10 +33,9 @@ import org.thingsboard.server.queue.discovery.QueueKey;
 import org.thingsboard.server.queue.discovery.event.PartitionChangeEvent;
 import org.thingsboard.server.queue.util.TbRuleEngineComponent;
 import org.thingsboard.server.service.apiusage.TbApiUsageStateService;
-import org.thingsboard.server.service.cf.CalculatedFieldCache;
 import org.thingsboard.server.service.profile.TbAssetProfileCache;
 import org.thingsboard.server.service.profile.TbDeviceProfileCache;
-import org.thingsboard.server.service.queue.processing.AbstractConsumerService;
+import org.thingsboard.server.service.queue.processing.AbstractPartitionBasedConsumerService;
 import org.thingsboard.server.service.queue.ruleengine.TbRuleEngineConsumerContext;
 import org.thingsboard.server.service.queue.ruleengine.TbRuleEngineQueueConsumerManager;
 import org.thingsboard.server.service.rpc.TbRuleEngineDeviceRpcService;
@@ -66,8 +51,7 @@ import java.util.stream.Collectors;
 
 @Service
 @TbRuleEngineComponent
-@Slf4j
-public class DefaultTbRuleEngineConsumerService extends AbstractConsumerService<ToRuleEngineNotificationMsg> implements TbRuleEngineConsumerService {
+public class DefaultTbRuleEngineConsumerService extends AbstractPartitionBasedConsumerService<ToRuleEngineNotificationMsg> implements TbRuleEngineConsumerService {
 
     private final TbRuleEngineConsumerContext ctx;
     private final QueueService queueService;
@@ -81,21 +65,20 @@ public class DefaultTbRuleEngineConsumerService extends AbstractConsumerService<
                                               QueueService queueService,
                                               TbDeviceProfileCache deviceProfileCache,
                                               TbAssetProfileCache assetProfileCache,
+                                              TbResourceDataCache tbResourceDataCache,
                                               TbTenantProfileCache tenantProfileCache,
                                               TbApiUsageStateService apiUsageStateService,
                                               PartitionService partitionService,
                                               ApplicationEventPublisher eventPublisher,
-                                              JwtSettingsService jwtSettingsService,
-                                              CalculatedFieldCache calculatedFieldCache) {
-        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, calculatedFieldCache, apiUsageStateService, partitionService, eventPublisher, jwtSettingsService);
+                                              JwtSettingsService jwtSettingsService) {
+        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, tbResourceDataCache, apiUsageStateService, partitionService, eventPublisher, jwtSettingsService);
         this.ctx = ctx;
         this.tbDeviceRpcService = tbDeviceRpcService;
         this.queueService = queueService;
     }
 
-    @PostConstruct
-    public void init() {
-        super.init("tb-rule-engine");
+    @Override
+    protected void onStartUp() {
         List<Queue> queues = queueService.findAllQueues();
         for (Queue configuration : queues) {
             if (partitionService.isManagedByCurrentService(configuration.getTenantId())) {
@@ -106,7 +89,7 @@ public class DefaultTbRuleEngineConsumerService extends AbstractConsumerService<
     }
 
     @Override
-    protected void onTbApplicationEvent(PartitionChangeEvent event) {
+    protected void onPartitionChangeEvent(PartitionChangeEvent event) {
         event.getNewPartitions().forEach((queueKey, partitions) -> {
             if (DataConstants.CF_QUEUE_NAME.equals(queueKey.getQueueName()) || DataConstants.CF_STATES_QUEUE_NAME.equals(queueKey.getQueueName())) {
                 return;
@@ -151,6 +134,11 @@ public class DefaultTbRuleEngineConsumerService extends AbstractConsumerService<
     }
 
     @Override
+    protected String getPrefix() {
+        return "tb-rule-engine";
+    }
+
+    @Override
     protected long getNotificationPollDuration() {
         return ctx.getPollDuration();
     }
@@ -178,9 +166,9 @@ public class DefaultTbRuleEngineConsumerService extends AbstractConsumerService<
             callback.onSuccess();
         } else if (nfMsg.hasFromDeviceRpcResponse()) {
             TransportProtos.FromDeviceRPCResponseProto proto = nfMsg.getFromDeviceRpcResponse();
-            RpcError error = proto.getError() > 0 ? RpcError.values()[proto.getError()] : null;
+            RpcError error = RpcError.fromProtoErrorCode(proto.getError());
             FromDeviceRpcResponse response = new FromDeviceRpcResponse(new UUID(proto.getRequestIdMSB(), proto.getRequestIdLSB())
-                    , proto.getResponse(), error);
+                    , proto.hasResponse() ? proto.getResponse() : null, error);
             tbDeviceRpcService.processRpcResponseFromDevice(response);
             callback.onSuccess();
         } else if (nfMsg.getQueueUpdateMsgsCount() > 0) {

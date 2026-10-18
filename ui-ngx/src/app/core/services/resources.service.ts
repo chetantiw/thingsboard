@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   createNgModule,
   Inject,
@@ -24,14 +10,17 @@ import {
   ɵCssSelectorList,
   ɵNG_COMP_DEF,
   ɵNG_MOD_DEF,
-  ɵNgModuleDef
+  ɵNG_PIPE_DEF,
+  ɵNgModuleDef,
+  ɵPipeDef,
+  DOCUMENT
 } from '@angular/core';
-import { DOCUMENT } from '@angular/common';
+
 import { forkJoin, from, Observable, ReplaySubject, throwError } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { IModulesMap } from '@modules/common/modules-map.models';
 import { TbResourceId } from '@shared/models/id/tb-resource-id';
-import { camelCase, isObject } from '@core/utils';
+import { camelCase, isObject, isUndefined } from '@core/utils';
 import { AuthService } from '@core/auth/auth.service';
 import { select, Store } from '@ngrx/store';
 import { selectIsAuthenticated } from '@core/auth/auth.selectors';
@@ -285,6 +274,29 @@ export class ResourcesService {
         const moduleInfo: ModuleInfo = {
           module: moduleDef,
           components: []
+        }
+        const declarationsDecl = moduleDef.declarations;
+        let declarations: Type<any>[];
+        if (Array.isArray(declarationsDecl)) {
+          declarations = declarationsDecl;
+        } else {
+          declarations = declarationsDecl();
+        }
+        if (declarations) {
+          for (const decl of declarations) {
+            if (ɵNG_COMP_DEF in decl) {
+              const component: ɵComponentDef<any> = decl[ɵNG_COMP_DEF];
+              if (isUndefined(component.standalone) || component.standalone) {
+                (component as any).standalone = false;
+              }
+            }
+            if (ɵNG_PIPE_DEF in decl) {
+              const pipe: ɵPipeDef<any> = decl[ɵNG_PIPE_DEF];
+              if (isUndefined(pipe.standalone) || pipe.standalone) {
+                (pipe as any).standalone = false;
+              }
+            }
+          }
         }
         modulesWithComponents.modules.push(moduleInfo);
         const exportsDecl = moduleDef.exports;

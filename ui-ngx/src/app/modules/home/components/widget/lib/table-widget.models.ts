@@ -1,22 +1,10 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtColor, mtToken, mtWidgetThemeEnabled } from '@shared/models/mutech-widget-theme';
 import { EntityId } from '@shared/models/id/entity-id';
 import { DataKey, FormattedData, WidgetActionDescriptor, WidgetConfig } from '@shared/models/widget.models';
-import { getDescendantProp, isDefined, isDefinedAndNotNull, isNotEmptyStr } from '@core/utils';
+import { getDescendantProp, isDefined, isNotEmptyStr } from '@core/utils';
 import { AlarmDataInfo, alarmFields } from '@shared/models/alarm.models';
 import tinycolor from 'tinycolor2';
 import { Direction } from '@shared/models/page/sort-order';
@@ -34,6 +22,7 @@ import {
 } from '@shared/models/js-function.models';
 import { forkJoin, Observable, of, ReplaySubject } from 'rxjs';
 import { catchError, map, share } from 'rxjs/operators';
+import type { ValueFormatProcessor } from '@shared/models/widget-settings.models';
 
 type ColumnVisibilityOptions = 'visible' | 'hidden' | 'hidden-mobile';
 
@@ -106,8 +95,7 @@ export interface CellContentFunctionInfo {
 
 export interface CellContentInfo {
   contentFunction: Observable<CellContentFunctionInfo>;
-  units?: string;
-  decimals?: number;
+  valueFormat: ValueFormatProcessor
 }
 
 export type CellStyleFunction = (...args: any[]) => any;
@@ -433,18 +421,18 @@ export function noDataMessage(noDataDisplayMessage: string, defaultMessage: stri
   return translate.instant(defaultMessage);
 }
 
-export function constructTableCssString(widgetConfig: WidgetConfig): string {
-  const origColor = widgetConfig.color || 'rgba(0, 0, 0, 0.87)';
-  const origBackgroundColor = widgetConfig.backgroundColor || 'rgb(255, 255, 255)';
-  const currentEntityColor = 'rgba(221, 221, 221, 0.65)';
+export function constructTableCssString(widgetConfig: WidgetConfig, isTabsEnabled = false): string {
+  const origColor = mtColor(widgetConfig.color || 'rgba(0, 0, 0, 0.87)');
+  const origBackgroundColor = mtColor(widgetConfig.backgroundColor || 'rgb(255, 255, 255)');
+  const currentEntityColor = mtWidgetThemeEnabled() ? tinycolor(mtToken('accent')).setAlpha(0.16).toRgbString() : 'rgba(221, 221, 221, 0.65)';
   const currentEntityStickyColor = tinycolor.mix(origBackgroundColor,
-    tinycolor(currentEntityColor).setAlpha(1),  65).toRgbString();
-  const selectedColor = 'rgba(221, 221, 221, 0.5)';
+    tinycolor(currentEntityColor).setAlpha(1), tinycolor(currentEntityColor).getAlpha() * 100).toRgbString();
+  const selectedColor = mtWidgetThemeEnabled() ? tinycolor(mtToken('accent')).setAlpha(0.12).toRgbString() : 'rgba(221, 221, 221, 0.5)';
   const selectedStickyColor = tinycolor.mix(origBackgroundColor,
-    tinycolor(selectedColor).setAlpha(1),  50).toRgbString();
-  const hoverColor = 'rgba(221, 221, 221, 0.3)';
+    tinycolor(selectedColor).setAlpha(1), tinycolor(selectedColor).getAlpha() * 100).toRgbString();
+  const hoverColor = mtWidgetThemeEnabled() ? tinycolor(mtToken('accent')).setAlpha(0.07).toRgbString() : 'rgba(221, 221, 221, 0.3)';
   const hoverStickyColor = tinycolor.mix(origBackgroundColor,
-    tinycolor(hoverColor).setAlpha(1),  30).toRgbString();
+    tinycolor(hoverColor).setAlpha(1), tinycolor(hoverColor).getAlpha() * 100).toRgbString();
   const defaultColor = tinycolor(origColor);
   const mdDark = defaultColor.setAlpha(0.87).toRgbString();
   const mdDarkSecondary = defaultColor.setAlpha(0.54).toRgbString();
@@ -452,111 +440,48 @@ export function constructTableCssString(widgetConfig: WidgetConfig): string {
   const mdDarkDisabled2 = defaultColor.setAlpha(0.38).toRgbString();
   const mdDarkDivider = defaultColor.setAlpha(0.12).toRgbString();
 
-  const cssString =
-    '.mat-mdc-input-element::placeholder {\n' +
-    '   color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-input-element::-moz-placeholder {\n' +
-    '   color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-input-element::-webkit-input-placeholder {\n' +
-    '   color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-input-element:-ms-input-placeholder {\n' +
-    '   color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    'mat-toolbar.mat-mdc-table-toolbar {\n' +
-    'color: ' + mdDark + ';\n' +
-    '}\n' +
-    'mat-toolbar.mat-mdc-table-toolbar:not([color="primary"]) button.mat-mdc-icon-button mat-icon {\n' +
-    'color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-tab .mdc-tab__text-label {\n' +
-    'color: ' + mdDark + ';\n' +
-    '}\n' +
-    '.mat-mdc-tab-header-pagination-chevron {\n' +
-    'border-color: ' + mdDark + ';\n' +
-    '}\n' +
-    '.mat-mdc-tab-header-pagination-disabled .mat-mdc-tab-header-pagination-chevron {\n' +
-    'border-color: ' + mdDarkDisabled2 + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-header-row {\n' +
-    'background-color: ' + origBackgroundColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-header-cell {\n' +
-    'color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-cell, .mat-mdc-table .mat-mdc-header-cell {\n' +
-    'border-bottom-color: ' + mdDarkDivider + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-cell .mat-mdc-checkbox ' +
-    '.mdc-checkbox__native-control:focus:enabled:not(:checked):not(:indeterminate):not([data-indeterminate=true])'+
-    '~.mdc-checkbox__background, ' +
-    '.mat-table .mat-header-cell .mat-mdc-checkbox ' +
-    '.mdc-checkbox__native-control:focus:enabled:not(:checked):not(:indeterminate):not([data-indeterminate=true])'+
-    '~.mdc-checkbox__background {\n' +
-    'border-color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row .mat-mdc-cell.mat-mdc-table-sticky {\n' +
-    'transition: background-color .2s;\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row.tb-current-entity {\n' +
-    'background-color: ' + currentEntityColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row.tb-current-entity .mat-mdc-cell.mat-mdc-table-sticky {\n' +
-    'background-color: ' + currentEntityStickyColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row:hover:not(.tb-current-entity) {\n' +
-    'background-color: ' + hoverColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row:hover:not(.tb-current-entity) .mat-mdc-cell.mat-mdc-table-sticky {\n' +
-    'background-color: ' + hoverStickyColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row.mat-row-select.mat-selected:not(.tb-current-entity) {\n' +
-    'background-color: ' + selectedColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row.mat-row-select.mat-selected:not(.tb-current-entity) .mat-mdc-cell.mat-mdc-table-sticky {\n' +
-    'background-color: ' + selectedStickyColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row .mat-mdc-cell.mat-mdc-table-sticky, .mat-mdc-table .mat-mdc-header-cell.mat-mdc-table-sticky {\n' +
-    'background-color: ' + origBackgroundColor + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-row {\n' +
-    'color: ' + mdDark + ';\n' +
-    'background-color: rgba(0, 0, 0, 0);\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-cell button.mat-mdc-icon-button mat-icon {\n' +
-    'color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-cell button.mat-mdc-icon-button[disabled][disabled] mat-icon {\n' +
-    'color: ' + mdDarkDisabled + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-cell button.mat-mdc-icon-button tb-icon {\n' +
-    'color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-table .mat-mdc-cell button.mat-mdc-icon-button[disabled][disabled] tb-icon {\n' +
-    'color: ' + mdDarkDisabled + ';\n' +
-    '}\n' +
-    '.mat-divider {\n' +
-    'border-top-color: ' + mdDarkDivider + ';\n' +
-    '}\n' +
-    '.mat-mdc-paginator {\n' +
-    'color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-paginator button.mat-mdc-icon-button {\n' +
-    'color: ' + mdDarkSecondary + ';\n' +
-    '}\n' +
-    '.mat-mdc-paginator button.mat-mdc-icon-button[disabled][disabled] {\n' +
-    'color: ' + mdDarkDisabled + ';\n' +
-    '}\n' +
-    '.mat-mdc-paginator .mat-mdc-select-value {\n' +
-    'color: ' + mdDarkSecondary + ';\n' +
-    '}';
-  return cssString;
+  let cssString = ` {
+    --mat-toolbar-container-text-color: ${mdDark};
+    --mat-table-header-headline-color: ${mdDarkSecondary};
+    --mat-table-row-item-label-text-color: ${mdDark};
+    --mat-icon-color: ${mdDarkSecondary};
+    --mat-icon-button-disabled-icon-color: ${mdDarkDisabled};
+    --mat-divider-color: ${mdDarkDivider};
+    --mat-paginator-container-text-color: ${mdDarkSecondary};
+    --mat-icon-button-icon-color: ${mdDarkSecondary};
+    --mat-paginator-enabled-icon-color: ${mdDarkSecondary};
+    --mat-paginator-disabled-icon-color: ${mdDarkDisabled};
+    --mat-select-enabled-trigger-text-color: ${mdDarkSecondary};
+    --mat-select-disabled-trigger-text-color: ${mdDarkDisabled};
+    --mat-table-row-item-outline-color: ${mdDarkDivider};
+    --mat-checkbox-unselected-focus-icon-color: ${mdDarkSecondary};
+
+    --tb-orig-background-color: ${origBackgroundColor};
+    --tb-current-entity-color: ${currentEntityColor};
+    --tb-current-entity-sticky-color: ${currentEntityStickyColor};
+    --tb-hover-color: ${hoverColor};
+    --tb-hover-sticky-color: ${hoverStickyColor};
+    --tb-selected-color: ${selectedColor};
+    --tb-selected-sticky-color: ${selectedStickyColor};
+  }
+  `;
+  if (isTabsEnabled) {
+    cssString += `
+    .mat-mdc-tab-group {
+      --mat-tab-inactive-label-text-color: ${mdDarkSecondary};
+      --mat-tab-pagination-icon-color: ${mdDark};
+      --mat-tab-pagination-disabled-icon-color: ${mdDarkDisabled2};
+      --mat-tab-inactive-ripple-color: ${mdDarkSecondary};
+      --mat-tab-inactive-focus-label-text-color: ${mdDarkSecondary};
+      --mat-tab-inactive-hover-label-text-color: ${mdDarkSecondary};
+    }
+    `
+  }
+  return cssString ;
 }
 
-export function getHeaderTitle(dataKey: DataKey, keySettings: TableWidgetDataKeySettings, utils: UtilsService) {
-  if (isDefined(keySettings.customTitle) && isNotEmptyStr(keySettings.customTitle)) {
+export function getHeaderTitle(dataKey: DataKey, keySettings: TableWidgetDataKeySettings | undefined, utils: UtilsService) {
+  if (isNotEmptyStr(keySettings?.customTitle)) {
     return utils.customTranslation(keySettings.customTitle, keySettings.customTitle);
   }
   return dataKey.label;
@@ -564,11 +489,18 @@ export function getHeaderTitle(dataKey: DataKey, keySettings: TableWidgetDataKey
 
 export function buildPageStepSizeValues(pageStepCount: number, pageStepIncrement: number): Array<number> {
   const pageSteps: Array<number> = [];
-  if (isDefinedAndNotNull(pageStepCount) && pageStepCount > 0 && pageStepCount <= 100 &&
-    isDefinedAndNotNull(pageStepIncrement) && pageStepIncrement > 0) {
+  if (isValidPageStepCount(pageStepCount) && isValidPageStepIncrement(pageStepIncrement)) {
     for (let i = 1; i <= pageStepCount; i++) {
       pageSteps.push(pageStepIncrement * i);
     }
   }
   return pageSteps;
+}
+
+export function isValidPageStepIncrement(value: number): boolean {
+  return Number.isInteger(value) && value > 0;
+}
+
+export function isValidPageStepCount(value: number): boolean {
+  return Number.isInteger(value) && value > 0 && value <= 100;
 }

@@ -1,31 +1,18 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.queue.kafka;
 
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.thingsboard.server.queue.util.PropertyUtils;
+import org.thingsboard.server.queue.util.TbKafkaComponent;
 
 import java.util.Map;
 
 @Component
-@ConditionalOnProperty(prefix = "queue", value = "type", havingValue = "kafka")
+@TbKafkaComponent
 public class TbKafkaTopicConfigs {
 
     public static final String NUM_PARTITIONS_SETTING = "partitions";
@@ -62,6 +49,8 @@ public class TbKafkaTopicConfigs {
     private String edqsRequestsProperties;
     @Value("${queue.kafka.topic-properties.edqs-state:}")
     private String edqsStateProperties;
+    @Value("${queue.kafka.topic-properties.tasks:}")
+    private String tasksProperties;
 
     @Getter
     private Map<String, String> coreConfigs;
@@ -99,6 +88,8 @@ public class TbKafkaTopicConfigs {
     private Map<String, String> edqsRequestsConfigs;
     @Getter
     private Map<String, String> edqsStateConfigs;
+    @Getter
+    private Map<String, String> tasksConfigs;
 
     @PostConstruct
     private void init() {
@@ -122,6 +113,7 @@ public class TbKafkaTopicConfigs {
         edqsEventsConfigs = PropertyUtils.getProps(edqsEventsProperties);
         edqsRequestsConfigs = PropertyUtils.getProps(edqsRequestsProperties);
         edqsStateConfigs = PropertyUtils.getProps(edqsStateProperties);
+        tasksConfigs = PropertyUtils.getProps(tasksProperties);
     }
 
 }

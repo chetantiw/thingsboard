@@ -1,19 +1,6 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -21,7 +8,8 @@ import {
   Component,
   ElementRef,
   EventEmitter,
-  Input, NgZone,
+  Input,
+  NgZone,
   OnChanges,
   OnDestroy,
   OnInit,
@@ -55,11 +43,11 @@ import {
   GroupActionDescriptor,
   HeaderActionDescriptor
 } from '@home/models/entity/entities-table-config.models';
-import { EntityTypeTranslation } from '@shared/models/entity-type.models';
+import { EntityType, EntityTypeTranslation } from '@shared/models/entity-type.models';
 import { DialogService } from '@core/services/dialog.service';
 import { AddEntityDialogComponent } from './add-entity-dialog.component';
 import { AddEntityDialogData, EntityAction } from '@home/models/entity/entity-component.models';
-import { calculateIntervalStartEndTime, HistoryWindowType, Timewindow } from '@shared/models/time/time.models';
+import { getTimePageLinkInterval, Timewindow } from '@shared/models/time/time.models';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TbAnchorComponent } from '@shared/components/tb-anchor.component';
 import { isDefined, isEqual, isNotEmptyStr, isUndefined } from '@core/utils';
@@ -68,12 +56,17 @@ import { hidePageSizePixelValue } from '@shared/models/constants';
 import { EntitiesTableAction, IEntitiesTableComponent } from '@home/models/entity/entity-table-component.models';
 import { EntityDetailsPanelComponent } from '@home/components/entity/entity-details-panel.component';
 import { FormBuilder } from '@angular/forms';
+import { AppearanceService } from '@core/services/appearance.service';
+
+type EntitiesViewMode = 'table' | 'tiles';
+const VIEW_MODE_STORAGE_PREFIX = 'mt_view_';
 
 @Component({
-  selector: 'tb-entities-table',
-  templateUrl: './entities-table.component.html',
-  styleUrls: ['./entities-table.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'tb-entities-table',
+    templateUrl: './entities-table.component.html',
+    styleUrls: ['./entities-table.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class EntitiesTableComponent extends PageComponent implements IEntitiesTableComponent, AfterViewInit, OnInit, OnChanges, OnDestroy {
 
@@ -115,6 +108,10 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
   isDetailsOpen = false;
   detailsPanelOpened = new EventEmitter<boolean>();
 
+  tilesSupported = false;
+  viewMode: EntitiesViewMode = 'table';
+  isCurrentEntityFn = (entity: BaseData<HasId>) => this.dataSource?.isCurrentEntity(entity) ?? false;
+
   @ViewChild('entityTableHeader', {static: true}) entityTableHeaderAnchor: TbAnchorComponent;
 
   @ViewChild('searchInput') searchInputField: ElementRef;
@@ -143,6 +140,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
               private elementRef: ElementRef,
               private fb: FormBuilder,
               private zone: NgZone,
+              private appearanceService: AppearanceService,
               public viewContainerRef: ViewContainerRef) {
     super(store);
   }
@@ -202,6 +200,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
 
     this.entitiesTableConfig.setTable(this);
     this.translations = this.entitiesTableConfig.entityTranslations;
+    this.initViewMode();
 
     this.headerActionDescriptors = [...this.entitiesTableConfig.headerActionDescriptors];
     this.groupActionDescriptors = [...this.entitiesTableConfig.groupActionDescriptors];
@@ -259,7 +258,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
 
     if (this.entitiesTableConfig.useTimePageLink) {
       this.timewindow = this.entitiesTableConfig.defaultTimewindowInterval;
-      const interval = this.getTimePageLinkInterval();
+      const interval = getTimePageLinkInterval(this.timewindow);
       this.pageLink = new TimePageLink(10, 0, null, sortOrder,
         interval.startTime, interval.endTime);
     } else {
@@ -424,7 +423,7 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
     }
     if (this.entitiesTableConfig.useTimePageLink) {
       const timePageLink = this.pageLink as TimePageLink;
-      const interval = this.getTimePageLinkInterval();
+      const interval = getTimePageLinkInterval(this.timewindow);
       timePageLink.startTime = interval.startTime;
       timePageLink.endTime = interval.endTime;
     }
@@ -432,31 +431,6 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
     if (reloadEntity && this.isDetailsOpen && this.entityDetailsPanel) {
       this.entityDetailsPanel.reloadEntity();
     }
-  }
-
-  private getTimePageLinkInterval(): {startTime?: number; endTime?: number} {
-    const interval: {startTime?: number; endTime?: number} = {};
-    switch (this.timewindow.history.historyType) {
-      case HistoryWindowType.LAST_INTERVAL:
-        const currentTime = Date.now();
-        interval.startTime = currentTime - this.timewindow.history.timewindowMs;
-        interval.endTime = currentTime;
-        break;
-      case HistoryWindowType.FIXED:
-        interval.startTime = this.timewindow.history.fixedTimewindow.startTimeMs;
-        interval.endTime = this.timewindow.history.fixedTimewindow.endTimeMs;
-        break;
-      case HistoryWindowType.INTERVAL:
-        const startEndTime = calculateIntervalStartEndTime(this.timewindow.history.quickInterval);
-        interval.startTime = startEndTime[0];
-        interval.endTime = startEndTime[1];
-        break;
-      case HistoryWindowType.FOR_ALL_TIME:
-        interval.startTime = null;
-        interval.endTime = null;
-        break;
-    }
-    return interval;
   }
 
   private dataLoaded(col?: number, row?: number) {
@@ -468,6 +442,35 @@ export class EntitiesTableComponent extends PageComponent implements IEntitiesTa
       this.cellTooltipCache.length = 0;
       this.cellStyleCache.length = 0;
     }
+  }
+
+  get tilesMode(): boolean {
+    return this.tilesSupported && this.viewMode === 'tiles';
+  }
+
+  setViewMode(viewMode: EntitiesViewMode) {
+    this.viewMode = viewMode;
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_PREFIX + this.entitiesTableConfig.entityType, viewMode);
+    } catch {
+      // Storage may be unavailable; the choice then lasts for this page only.
+    }
+  }
+
+  private initViewMode() {
+    this.tilesSupported = this.entitiesTableConfig.entityType === EntityType.DEVICE;
+    if (!this.tilesSupported) {
+      this.viewMode = 'table';
+      return;
+    }
+    let stored: string = null;
+    try {
+      stored = localStorage.getItem(VIEW_MODE_STORAGE_PREFIX + this.entitiesTableConfig.entityType);
+    } catch {
+      stored = null;
+    }
+    this.viewMode = stored === 'table' || stored === 'tiles' ? stored
+      : (this.appearanceService.appearance.layout === 'control' ? 'tiles' : 'table');
   }
 
   onRowClick($event: Event, entity) {

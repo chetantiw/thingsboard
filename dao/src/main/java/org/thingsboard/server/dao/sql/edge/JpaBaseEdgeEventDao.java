@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.edge;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
@@ -44,7 +31,7 @@ import org.thingsboard.server.dao.sql.TbSqlBlockingQueueWrapper;
 import org.thingsboard.server.dao.sqlts.insert.sql.SqlPartitioningRepository;
 import org.thingsboard.server.dao.util.SqlDao;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -58,6 +45,7 @@ import static org.thingsboard.server.dao.model.ModelConstants.NULL_UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class JpaBaseEdgeEventDao extends JpaPartitionedAbstractDao<EdgeEventEntity, EdgeEvent> implements EdgeEventDao {
+    private static final List<SortOrder> SORT_ORDERS = Collections.singletonList(new SortOrder("seqId"));
 
     private final UUID systemTenantId = NULL_UUID;
 
@@ -84,9 +72,6 @@ public class JpaBaseEdgeEventDao extends JpaPartitionedAbstractDao<EdgeEventEnti
 
     @Value("${sql.edge_events.partition_size:168}")
     private int partitionSizeInHours;
-
-    @Value("${sql.ttl.edge_events.edge_events_ttl:2628000}")
-    private long edgeEventsTtl;
 
     private static final String TABLE_NAME = ModelConstants.EDGE_EVENT_TABLE_NAME;
 
@@ -175,11 +160,6 @@ public class JpaBaseEdgeEventDao extends JpaPartitionedAbstractDao<EdgeEventEnti
 
     @Override
     public PageData<EdgeEvent> findEdgeEvents(UUID tenantId, EdgeId edgeId, Long seqIdStart, Long seqIdEnd, TimePageLink pageLink) {
-        List<SortOrder> sortOrders = new ArrayList<>();
-        if (pageLink.getSortOrder() != null) {
-            sortOrders.add(pageLink.getSortOrder());
-        }
-        sortOrders.add(new SortOrder("seqId"));
         return DaoUtil.toPageData(
                 edgeEventRepository
                         .findEdgeEventsByTenantIdAndEdgeId(
@@ -190,7 +170,7 @@ public class JpaBaseEdgeEventDao extends JpaPartitionedAbstractDao<EdgeEventEnti
                                 pageLink.getEndTime(),
                                 seqIdStart,
                                 seqIdEnd,
-                                DaoUtil.toPageable(pageLink, sortOrders)));
+                                DaoUtil.toPageable(pageLink, SORT_ORDERS)));
     }
 
     @Override

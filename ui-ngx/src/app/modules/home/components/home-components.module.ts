@@ -1,19 +1,6 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '@app/shared/shared.module';
@@ -23,6 +10,7 @@ import { DetailsPanelComponent } from '@home/components/details-panel.component'
 import { EntityDetailsPanelComponent } from '@home/components/entity/entity-details-panel.component';
 import { AuditLogDetailsDialogComponent } from '@home/components/audit-log/audit-log-details-dialog.component';
 import { AuditLogTableComponent } from '@home/components/audit-log/audit-log-table.component';
+import { AuditLogHeaderComponent } from '@home/components/audit-log/audit-log-header.component';
 import { EventTableHeaderComponent } from '@home/components/event/event-table-header.component';
 import { EventTableComponent } from '@home/components/event/event-table.component';
 import { EventFilterPanelComponent } from '@home/components/event/event-filter-panel.component';
@@ -112,6 +100,7 @@ import { StatesControllerModule } from '@home/components/dashboard-page/states/s
 import { DashboardLayoutComponent } from '@home/components/dashboard-page/layout/dashboard-layout.component';
 import { EditWidgetComponent } from '@home/components/dashboard-page/edit-widget.component';
 import { DashboardWidgetSelectComponent } from '@home/components/dashboard-page/dashboard-widget-select.component';
+import { IotHubComponentsModule } from '@home/components/iot-hub/iot-hub-components.module';
 import { AddWidgetDialogComponent } from '@home/components/dashboard-page/add-widget-dialog.component';
 import { ManageDashboardLayoutsDialogComponent } from '@home/components/dashboard-page/layout/manage-dashboard-layouts-dialog.component';
 import {
@@ -124,7 +113,6 @@ import { EmbedDashboardDialogComponent } from '@home/components/widget/dialog/em
 import { EMBED_DASHBOARD_DIALOG_TOKEN } from '@home/components/widget/dialog/embed-dashboard-dialog-token';
 import { EdgeDownlinkTableComponent } from '@home/components/edge/edge-downlink-table.component';
 import { EdgeDownlinkTableHeaderComponent } from '@home/components/edge/edge-downlink-table-header.component';
-import { DisplayWidgetTypesPanelComponent } from '@home/components/dashboard-page/widget-types-panel.component';
 import { AlarmDurationPredicateValueComponent } from '@home/components/profile/alarm/alarm-duration-predicate-value.component';
 import { DashboardImageDialogComponent } from '@home/components/dashboard-page/dashboard-image-dialog.component';
 import {
@@ -183,38 +171,41 @@ import {
 } from '@home/components/dashboard-page/layout/select-dashboard-breakpoint.component';
 import { EntityChipsComponent } from '@home/components/entity/entity-chips.component';
 import { DashboardViewComponent } from '@home/components/dashboard-view/dashboard-view.component';
-import { CalculatedFieldsTableComponent } from '@home/components/calculated-fields/calculated-fields-table.component';
-import { CalculatedFieldDialogComponent } from '@home/components/calculated-fields/components/dialog/calculated-field-dialog.component';
 import {
   EntityDebugSettingsButtonComponent
 } from '@home/components/entity/debug/entity-debug-settings-button.component';
-import {
-  CalculatedFieldArgumentsTableComponent
-} from '@home/components/calculated-fields/components/arguments-table/calculated-field-arguments-table.component';
-import {
-  CalculatedFieldArgumentPanelComponent
-} from '@home/components/calculated-fields/components/panel/calculated-field-argument-panel.component';
-import {
-  CalculatedFieldDebugDialogComponent
-} from '@home/components/calculated-fields/components/debug-dialog/calculated-field-debug-dialog.component';
-import {
-  CalculatedFieldScriptTestDialogComponent
-} from '@home/components/calculated-fields/components/test-dialog/calculated-field-script-test-dialog.component';
-import {
-  CalculatedFieldTestArgumentsComponent
-} from '@home/components/calculated-fields/components/test-arguments/calculated-field-test-arguments.component';
+import { CheckConnectivityDialogComponent } from '@home/components/ai-model/check-connectivity-dialog.component';
+import { AIModelDialogComponent } from '@home/components/ai-model/ai-model-dialog.component';
+import { ResourcesDialogComponent } from "@home/components/resources/resources-dialog.component";
+import { ResourcesLibraryComponent } from "@home/components/resources/resources-library.component";
+import { CalculatedFieldsTableComponent } from '@home/components/calculated-fields/calculated-fields-table.component';
+import { CalculatedFieldsModule } from '@home/components/calculated-fields/calculated-field.module';
+import { AlarmRuleModule } from "@home/components/alarm-rules/alarm-rule.module";
+import { AlarmRulesTableComponent } from "@home/components/alarm-rules/alarm-rules-table.component";
+import { ApiKeysTableComponent } from '@home/components/api-key/api-keys-table.component';
+import { AddApiKeyDialogComponent } from '@home/components/api-key/add-api-key-dialog.component';
+import { EditApiKeyDescriptionPanelComponent } from '@home/components/api-key/edit-api-key-description-panel.component';
+import { ApiKeyGeneratedDialogComponent } from '@home/components/api-key/api-key-generated-dialog.component';
+import { ApiKeysTableDialogComponent } from '@home/components/api-key/api-keys-table-dialog.component';
+import { AuditLogFilterComponent } from "@home/components/audit-log/audit-log-filter.component";
+import { EventsDialogComponent } from '@home/dialogs/events-dialog.component';
+
+import { EntityTilesComponent } from '@home/components/mutech/entity-tiles.component';
 
 @NgModule({
   declarations:
     [
       RouterTabsComponent,
       EntitiesTableComponent,
+      EntityTilesComponent,
       AddEntityDialogComponent,
       DetailsPanelComponent,
       EntityDetailsPanelComponent,
       EntityDetailsPageComponent,
       AuditLogTableComponent,
       AuditLogDetailsDialogComponent,
+      CalculatedFieldsTableComponent,
+      AlarmRulesTableComponent,
       EventContentDialogComponent,
       EventTableHeaderComponent,
       EventTableComponent,
@@ -325,7 +316,6 @@ import {
       DashboardStateDialogComponent,
       DashboardImageDialogComponent,
       EmbedDashboardDialogComponent,
-      DisplayWidgetTypesPanelComponent,
       TenantProfileQueuesComponent,
       QueueFormComponent,
       RepositorySettingsComponent,
@@ -347,18 +337,26 @@ import {
       SendNotificationButtonComponent,
       EntityChipsComponent,
       DashboardViewComponent,
-      CalculatedFieldsTableComponent,
-      CalculatedFieldDialogComponent,
-      CalculatedFieldArgumentsTableComponent,
-      CalculatedFieldArgumentPanelComponent,
-      CalculatedFieldDebugDialogComponent,
-      CalculatedFieldScriptTestDialogComponent,
-      CalculatedFieldTestArgumentsComponent,
+      CheckConnectivityDialogComponent,
+      AIModelDialogComponent,
+      ResourcesDialogComponent,
+      ResourcesLibraryComponent,
+      ApiKeysTableComponent,
+      ApiKeysTableDialogComponent,
+      AddApiKeyDialogComponent,
+      EditApiKeyDescriptionPanelComponent,
+      ApiKeyGeneratedDialogComponent,
+      AuditLogHeaderComponent,
+      AuditLogFilterComponent,
+      EventsDialogComponent,
     ],
   imports: [
     CommonModule,
     SharedModule,
     SharedHomeComponentsModule,
+    CalculatedFieldsModule,
+    AlarmRuleModule,
+    IotHubComponentsModule,
     WidgetConfigComponentsModule,
     BasicWidgetConfigModule,
     Lwm2mProfileComponentsModule,
@@ -376,6 +374,8 @@ import {
     EntityDetailsPanelComponent,
     EntityDetailsPageComponent,
     AuditLogTableComponent,
+    CalculatedFieldsTableComponent,
+    AlarmRulesTableComponent,
     EventTableComponent,
     EdgeDownlinkTableHeaderComponent,
     EdgeDownlinkTableComponent,
@@ -461,6 +461,7 @@ import {
     SelectDashboardBreakpointComponent,
     EditWidgetComponent,
     DashboardWidgetSelectComponent,
+    IotHubComponentsModule,
     AddWidgetDialogComponent,
     MoveWidgetsDialogComponent,
     ManageDashboardLayoutsDialogComponent,
@@ -470,7 +471,6 @@ import {
     DashboardStateDialogComponent,
     DashboardImageDialogComponent,
     EmbedDashboardDialogComponent,
-    DisplayWidgetTypesPanelComponent,
     TenantProfileQueuesComponent,
     QueueFormComponent,
     RepositorySettingsComponent,
@@ -492,13 +492,13 @@ import {
     SendNotificationButtonComponent,
     EntityChipsComponent,
     DashboardViewComponent,
-    CalculatedFieldsTableComponent,
-    CalculatedFieldDialogComponent,
-    CalculatedFieldArgumentsTableComponent,
-    CalculatedFieldArgumentPanelComponent,
-    CalculatedFieldDebugDialogComponent,
-    CalculatedFieldScriptTestDialogComponent,
-    CalculatedFieldTestArgumentsComponent,
+    CheckConnectivityDialogComponent,
+    AIModelDialogComponent,
+    ResourcesDialogComponent,
+    ResourcesLibraryComponent,
+    ApiKeysTableComponent,
+    ApiKeysTableDialogComponent,
+    EventsDialogComponent,
   ],
   providers: [
     WidgetComponentService,

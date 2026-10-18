@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data.oauth2;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -30,6 +17,7 @@ import org.thingsboard.server.common.data.HasTenantId;
 import org.thingsboard.server.common.data.id.OAuth2ClientId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.validation.Length;
+import org.thingsboard.server.common.data.validation.NoXss;
 
 import java.util.List;
 
@@ -42,6 +30,7 @@ public class OAuth2Client extends BaseDataWithAdditionalInfo<OAuth2ClientId> imp
     private TenantId tenantId;
     @Schema(description = "Oauth2 client title")
     @NotBlank
+    @NoXss
     @Length(fieldName = "title", max = 100, message = "cannot be longer than 100 chars")
     private String title;
     @Schema(description = "Config for mapping OAuth2 log in response to platform entities", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -91,7 +80,10 @@ public class OAuth2Client extends BaseDataWithAdditionalInfo<OAuth2ClientId> imp
     @Schema(description = "List of platforms for which usage of the OAuth2 client is allowed (empty for all allowed)")
     @Length(fieldName = "platforms")
     private List<PlatformType> platforms;
-    @Schema(description = "Additional info of OAuth2 client (e.g. providerName)", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Additional info of OAuth2 client. " +
+                          "Must include: 'providerName' (string, name of the OAuth2 provider).",
+            requiredMode = Schema.RequiredMode.REQUIRED,
+            example = "{\"providerName\":\"Google\"}")
     private JsonNode additionalInfo;
 
     public OAuth2Client() {
@@ -126,4 +118,5 @@ public class OAuth2Client extends BaseDataWithAdditionalInfo<OAuth2ClientId> imp
     public String getName() {
         return title;
     }
+
 }

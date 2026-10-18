@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.msg;
 
 import lombok.Getter;
@@ -136,19 +123,26 @@ public enum MsgType {
     EDGE_SYNC_RESPONSE_FROM_EDGE_SESSION_MSG,
 
 
-    CF_INIT_MSG, // Sent to init particular calculated field;
-    CF_LINK_INIT_MSG, // Sent to init particular calculated field;
+    CF_CACHE_INIT_MSG, // Sent to init caches for CF actor;
     CF_STATE_RESTORE_MSG, // Sent to restore particular calculated field entity state;
+    CF_STATE_PARTITION_RESTORE_MSG,
     CF_PARTITIONS_CHANGE_MSG, // Sent when cluster event occures;
 
     CF_ENTITY_LIFECYCLE_MSG, // Sent on CF/Device/Asset create/update/delete;
+    CF_ENTITY_ACTION_EVENT_MSG,
+    CF_ALARM_ACTION_MSG,
     CF_TELEMETRY_MSG, // Sent from queue to actor system;
     CF_LINKED_TELEMETRY_MSG, // Sent from queue to actor system;
 
     /* CF Manager Actor -> CF Entity actor */
     CF_ENTITY_TELEMETRY_MSG,
     CF_ENTITY_INIT_CF_MSG,
-    CF_ENTITY_DELETE_MSG;
+    CF_ENTITY_DELETE_MSG,
+
+    CF_RELATION_ACTION_MSG,
+
+    CF_ARGUMENT_RESET_MSG, // Sent to reset argument;
+    CF_REEVALUATE_MSG;
 
     @Getter
     private final boolean ignoreOnStart;

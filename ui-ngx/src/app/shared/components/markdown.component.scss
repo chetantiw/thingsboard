@@ -1,18 +1,6 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 :host {
   .tb-markdown-view {
     display: block;
@@ -270,7 +258,7 @@
         outline: none;
         position: absolute;
         width: 206px;
-        height: 42px;
+        height: 32px;
         top: 0;
         right: 32px;
         background: 0 0;
@@ -281,11 +269,11 @@
         user-select: none;
 
         &.multiline {
-          right: 44px;
+          right: 38px;
         }
 
         p {
-          padding: 8px;
+          padding: 8px 8px 0;
           top: 1px;
           transition: .2s;
           color: #2a7dec;
@@ -298,13 +286,13 @@
         }
 
         div {
-          background-color: #fff;
+          background-color: var(--mt-surface);
           position: absolute;
           width: 38px;
-          height: 38px;
+          height: 28px;
           top: 3px;
           right: 3px;
-          padding: 10px;
+          padding: 10px 10px 0;
 
           img {
             position: initial;

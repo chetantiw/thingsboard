@@ -1,25 +1,39 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data.query;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
+import io.swagger.v3.oas.annotations.media.Schema;
+import org.thingsboard.server.common.data.id.EntityId;
+import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.common.data.id.UserId;
 
+import static org.thingsboard.server.common.data.query.AliasEntityId.resolveAliasEntityId;
+
+@Schema(
+        description = "Filter for selecting entities",
+        discriminatorProperty = "type",
+        discriminatorMapping = {
+                @DiscriminatorMapping(value = "singleEntity", schema = SingleEntityFilter.class),
+                @DiscriminatorMapping(value = "entityList", schema = EntityListFilter.class),
+                @DiscriminatorMapping(value = "entityName", schema = EntityNameFilter.class),
+                @DiscriminatorMapping(value = "entityType", schema = EntityTypeFilter.class),
+                @DiscriminatorMapping(value = "assetType", schema = AssetTypeFilter.class),
+                @DiscriminatorMapping(value = "deviceType", schema = DeviceTypeFilter.class),
+                @DiscriminatorMapping(value = "edgeType", schema = EdgeTypeFilter.class),
+                @DiscriminatorMapping(value = "entityViewType", schema = EntityViewTypeFilter.class),
+                @DiscriminatorMapping(value = "apiUsageState", schema = ApiUsageStateFilter.class),
+                @DiscriminatorMapping(value = "relationsQuery", schema = RelationsQueryFilter.class),
+                @DiscriminatorMapping(value = "assetSearchQuery", schema = AssetSearchQueryFilter.class),
+                @DiscriminatorMapping(value = "deviceSearchQuery", schema = DeviceSearchQueryFilter.class),
+                @DiscriminatorMapping(value = "entityViewSearchQuery", schema = EntityViewSearchQueryFilter.class),
+                @DiscriminatorMapping(value = "edgeSearchQuery", schema = EdgeSearchQueryFilter.class)
+        }
+)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
@@ -45,4 +59,17 @@ public interface EntityFilter {
 
     @JsonIgnore
     EntityFilterType getType();
+
+    static void resolveEntityFilter(EntityFilter filter, TenantId tenantId, UserId userId, EntityId userOwnerId) {
+        if (filter instanceof SingleEntityFilter singleEntityFilter) {
+            AliasEntityId resolved = resolveAliasEntityId(singleEntityFilter.getSingleEntity(), tenantId, userId, userOwnerId);
+            singleEntityFilter.setSingleEntity(resolved);
+        } else if (filter instanceof RelationsQueryFilter queryFilter) {
+            AliasEntityId resolved = resolveAliasEntityId(queryFilter.getRootEntity(), tenantId, userId, userOwnerId);
+            queryFilter.setRootEntity(resolved);
+        } else if (filter instanceof EntitySearchQueryFilter queryFilter) {
+            AliasEntityId resolved = resolveAliasEntityId(queryFilter.getRootEntity(), tenantId, userId, userOwnerId);
+            queryFilter.setRootEntity(resolved);
+        }
+    }
 }

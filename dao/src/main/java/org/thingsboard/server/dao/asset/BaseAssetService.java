@@ -1,21 +1,8 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.asset;
 
-
+import com.google.common.util.concurrent.FluentFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -26,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.thingsboard.server.common.data.EntitySubtype;
 import org.thingsboard.server.common.data.EntityType;
+import org.thingsboard.server.common.data.NameConflictPolicy;
+import org.thingsboard.server.common.data.NameConflictStrategy;
 import org.thingsboard.server.common.data.ProfileEntityIdInfo;
 import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.asset.Asset;
@@ -51,7 +40,7 @@ import org.thingsboard.server.dao.entity.EntityCountService;
 import org.thingsboard.server.dao.eventsourcing.ActionEntityEvent;
 import org.thingsboard.server.dao.eventsourcing.DeleteEntityEvent;
 import org.thingsboard.server.dao.eventsourcing.SaveEntityEvent;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.dao.service.DataValidator;
 import org.thingsboard.server.dao.service.PaginatedRemover;
 import org.thingsboard.server.dao.sql.JpaExecutorService;
@@ -62,6 +51,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.thingsboard.server.dao.DaoUtil.toUUIDs;
 import static org.thingsboard.server.dao.service.Validator.validateId;
 import static org.thingsboard.server.dao.service.Validator.validateIds;
@@ -93,8 +83,8 @@ public class BaseAssetService extends AbstractCachedEntityService<AssetCacheKey,
     @Autowired
     private JpaExecutorService executor;
 
-    @TransactionalEventListener(classes = AssetCacheEvictEvent.class)
     @Override
+    @TransactionalEventListener
     public void handleEvictEvent(AssetCacheEvictEvent event) {
         List<AssetCacheKey> keys = new ArrayList<>(2);
         keys.add(new AssetCacheKey(event.getTenantId(), event.getNewName()));
@@ -147,13 +137,23 @@ public class BaseAssetService extends AbstractCachedEntityService<AssetCacheKey,
     }
 
     @Override
+    public Asset saveAsset(Asset asset, NameConflictStrategy nameConflictStrategy) {
+        return saveEntity(asset, () -> saveAsset(asset, true, nameConflictStrategy));
+    }
+
+    @Override
     public Asset saveAsset(Asset asset, boolean doValidate) {
+        return saveEntity(asset, () -> saveAsset(asset, doValidate, NameConflictStrategy.DEFAULT));
+    }
+
+    private Asset saveAsset(Asset asset, boolean doValidate, NameConflictStrategy nameConflictStrategy) {
         log.trace("Executing saveAsset [{}]", asset);
-        Asset oldAsset = null;
+        Asset oldAsset = (asset.getId() != null) ? assetDao.findById(asset.getTenantId(), asset.getId().getId()) : null;
+        if (nameConflictStrategy.policy() == NameConflictPolicy.UNIQUIFY && (oldAsset == null || !oldAsset.getName().equals(asset.getName()))) {
+            uniquifyEntityName(asset, oldAsset, asset::setName, EntityType.ASSET, nameConflictStrategy);
+        }
         if (doValidate) {
-            oldAsset = assetValidator.validate(asset, Asset::getTenantId);
-        } else if (asset.getId() != null) {
-            oldAsset = findAssetById(asset.getTenantId(), asset.getId());
+            assetValidator.validate(asset, Asset::getTenantId);
         }
         AssetCacheEvictEvent evictEvent = new AssetCacheEvictEvent(asset.getTenantId(), asset.getName(), oldAsset != null ? oldAsset.getName() : null);
         Asset savedAsset;
@@ -291,6 +291,14 @@ public class BaseAssetService extends AbstractCachedEntityService<AssetCacheKey,
         log.trace("Executing findProfileEntityIdInfos, pageLink [{}]", pageLink);
         validatePageLink(pageLink);
         return assetDao.findProfileEntityIdInfos(pageLink);
+    }
+
+    @Override
+    public PageData<ProfileEntityIdInfo> findProfileEntityIdInfosByTenantId(TenantId tenantId, PageLink pageLink) {
+        log.trace("Executing findProfileEntityIdInfosByTenantId, tenantId[{}], pageLink [{}]", tenantId, pageLink);
+        validateId(tenantId, id -> INCORRECT_TENANT_ID + id);
+        validatePageLink(pageLink);
+        return assetDao.findProfileEntityIdInfosByTenantId(tenantId.getId(), pageLink);
     }
 
     @Override
@@ -509,6 +517,12 @@ public class BaseAssetService extends AbstractCachedEntityService<AssetCacheKey,
     @Override
     public Optional<HasId<?>> findEntity(TenantId tenantId, EntityId entityId) {
         return Optional.ofNullable(findAssetById(tenantId, new AssetId(entityId.getId())));
+    }
+
+    @Override
+    public FluentFuture<Optional<HasId<?>>> findEntityAsync(TenantId tenantId, EntityId entityId) {
+        return FluentFuture.from(findAssetByIdAsync(tenantId, new AssetId(entityId.getId())))
+                .transform(Optional::ofNullable, directExecutor());
     }
 
     @Override

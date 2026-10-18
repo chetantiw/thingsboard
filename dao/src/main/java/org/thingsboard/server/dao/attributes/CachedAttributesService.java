@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.attributes;
 
 import com.google.common.util.concurrent.Futures;
@@ -30,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.thingsboard.server.cache.TbCacheValueWrapper;
 import org.thingsboard.server.cache.VersionedTbCache;
 import org.thingsboard.server.common.data.AttributeScope;
+import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.ObjectType;
 import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.edqs.AttributeKv;
@@ -37,6 +25,7 @@ import org.thingsboard.server.common.data.id.DeviceProfileId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.kv.AttributeKvEntry;
+import org.thingsboard.server.common.data.kv.AttributesSaveResult;
 import org.thingsboard.server.common.data.kv.BaseAttributeKvEntry;
 import org.thingsboard.server.common.data.util.TbPair;
 import org.thingsboard.server.common.msg.edqs.EdqsService;
@@ -56,7 +45,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.thingsboard.server.dao.attributes.AttributeUtils.validate;
 
@@ -65,6 +53,7 @@ import static org.thingsboard.server.dao.attributes.AttributeUtils.validate;
 @Primary
 @Slf4j
 public class CachedAttributesService implements AttributesService {
+
     private static final String STATS_NAME = "attributes.cache";
     public static final String LOCAL_CACHE_TYPE = "caffeine";
 
@@ -150,7 +139,7 @@ public class CachedAttributesService implements AttributesService {
                     List<AttributeKvEntry> cachedAttributes = wrappedCachedAttributes.values().stream()
                             .map(TbCacheValueWrapper::get)
                             .filter(Objects::nonNull)
-                            .collect(Collectors.toList());
+                            .toList();
                     if (wrappedCachedAttributes.size() == attributeKeys.size()) {
                         log.trace("[{}][{}] Found all attributes from cache: {}", entityId, scope, attributeKeys);
                         return Futures.immediateFuture(cachedAttributes);
@@ -158,8 +147,6 @@ public class CachedAttributesService implements AttributesService {
 
                     Set<String> notFoundAttributeKeys = new HashSet<>(attributeKeys);
                     notFoundAttributeKeys.removeAll(wrappedCachedAttributes.keySet());
-
-                    List<AttributeCacheKey> notFoundKeys = notFoundAttributeKeys.stream().map(k -> new AttributeCacheKey(scope, entityId, k)).collect(Collectors.toList());
 
                     // DB call should run in DB executor, not in cache-related executor
                     return jpaExecutorService.submit(() -> {
@@ -213,42 +200,56 @@ public class CachedAttributesService implements AttributesService {
     }
 
     @Override
-    public List<String> findAllKeysByEntityIds(TenantId tenantId, List<EntityId> entityIds, String scope) {
-        if (StringUtils.isEmpty(scope)) {
+    public List<String> findAllKeysByEntityIdsAndScope(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
+        if (scope == null) {
             return attributesDao.findAllKeysByEntityIds(tenantId, entityIds);
         } else {
-            return attributesDao.findAllKeysByEntityIdsAndAttributeType(tenantId, entityIds, scope);
+            return attributesDao.findAllKeysByEntityIdsAndScope(tenantId, entityIds, scope);
         }
     }
 
     @Override
-    public ListenableFuture<Long> save(TenantId tenantId, EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
+    public ListenableFuture<List<String>> findAllKeysByEntityIdsAndScopeAsync(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
+        return attributesDao.findAllKeysByEntityIdsAndScopeAsync(tenantId, entityIds, scope);
+    }
+
+    @Override
+    public List<AttributeKvEntry> findLatestByEntityIdsAndScope(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
+        return attributesDao.findLatestByEntityIdsAndScope(tenantId, entityIds, scope);
+    }
+
+    @Override
+    public ListenableFuture<List<AttributeKvEntry>> findLatestByEntityIdsAndScopeAsync(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
+        return attributesDao.findLatestByEntityIdsAndScopeAsync(tenantId, entityIds, scope);
+    }
+
+    @Override
+    public ListenableFuture<AttributesSaveResult> save(TenantId tenantId, EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
         validate(entityId, scope);
         AttributeUtils.validate(attribute, valueNoXssValidation);
-        return doSave(tenantId, entityId, scope, attribute);
+        return doSave(tenantId, entityId, scope, List.of(attribute));
     }
 
     @Override
-    public ListenableFuture<List<Long>> save(TenantId tenantId, EntityId entityId, AttributeScope scope, List<AttributeKvEntry> attributes) {
+    public ListenableFuture<AttributesSaveResult> save(TenantId tenantId, EntityId entityId, AttributeScope scope, List<AttributeKvEntry> attributes) {
         validate(entityId, scope);
         AttributeUtils.validate(attributes, valueNoXssValidation);
-
-        List<ListenableFuture<Long>> futures = new ArrayList<>(attributes.size());
-        for (var attribute : attributes) {
-            futures.add(doSave(tenantId, entityId, scope, attribute));
-        }
-
-        return Futures.allAsList(futures);
+        return doSave(tenantId, entityId, scope, attributes);
     }
 
-    private ListenableFuture<Long> doSave(TenantId tenantId, EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
-        ListenableFuture<Long> future = attributesDao.save(tenantId, entityId, scope, attribute);
-        return Futures.transform(future, version -> {
-            BaseAttributeKvEntry attributeKvEntry = new BaseAttributeKvEntry(((BaseAttributeKvEntry) attribute).getKv(), attribute.getLastUpdateTs(), version);
-            put(entityId, scope, attributeKvEntry);
-            edqsService.onUpdate(tenantId, ObjectType.ATTRIBUTE_KV, new AttributeKv(entityId, scope, attributeKvEntry, version));
-            return version;
-        }, cacheExecutor);
+    private ListenableFuture<AttributesSaveResult> doSave(TenantId tenantId, EntityId entityId, AttributeScope scope, List<AttributeKvEntry> attributes) {
+        List<ListenableFuture<Long>> futures = new ArrayList<>(attributes.size());
+        for (var attribute : attributes) {
+            ListenableFuture<Long> future = Futures.transform(attributesDao.save(tenantId, entityId, scope, attribute), version -> {
+                BaseAttributeKvEntry attributeKvEntry = new BaseAttributeKvEntry(((BaseAttributeKvEntry) attribute).getKv(), attribute.getLastUpdateTs(), version);
+                put(entityId, scope, attributeKvEntry);
+                TenantId edqsTenantId = entityId.getEntityType() == EntityType.TENANT ? (TenantId) entityId : tenantId;
+                edqsService.onUpdate(edqsTenantId, ObjectType.ATTRIBUTE_KV, new AttributeKv(entityId, scope, attributeKvEntry, version));
+                return version;
+            }, cacheExecutor);
+            futures.add(future);
+        }
+        return Futures.transform(Futures.allAsList(futures), AttributesSaveResult::of, MoreExecutors.directExecutor());
     }
 
     private void put(EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
@@ -267,10 +268,11 @@ public class CachedAttributesService implements AttributesService {
             Long version = keyVersionPair.getSecond();
             cache.evict(new AttributeCacheKey(scope, entityId, key), version);
             if (version != null) {
-                edqsService.onDelete(tenantId, ObjectType.ATTRIBUTE_KV, new AttributeKv(entityId, scope, key, version));
+                TenantId edqsTenantId = entityId.getEntityType() == EntityType.TENANT ? (TenantId) entityId : tenantId;
+                edqsService.onDelete(edqsTenantId, ObjectType.ATTRIBUTE_KV, new AttributeKv(entityId, scope, key, version));
             }
             return key;
-        }, cacheExecutor)).collect(Collectors.toList()));
+        }, cacheExecutor)).toList());
     }
 
     @Override

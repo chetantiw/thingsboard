@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtColor } from '@shared/models/mutech-widget-theme';
 import {
   DataLayerEditAction,
   MapDataLayerSettings,
@@ -117,6 +105,7 @@ export abstract class TbLatestDataLayerItem<S extends MapDataLayerSettings = Map
   public dragModeUpdated() {
     if (this.dataLayer.isEditMode() && !this.selected) {
       if (this.dataLayer.allowDrag()) {
+        this.disableDrag();
         this.enableDrag();
         this.addItemClass('tb-draggable');
       } else {
@@ -164,6 +153,7 @@ export abstract class TbLatestDataLayerItem<S extends MapDataLayerSettings = Map
       this.addItemClass('tb-hoverable');
     }
     if (this.dataLayer.allowDrag()) {
+      this.disableDrag();
       this.enableDrag();
       this.addItemClass('tb-draggable');
     }
@@ -198,7 +188,7 @@ export abstract class TbLatestDataLayerItem<S extends MapDataLayerSettings = Map
     if (this.settings.label.show) {
       this.unbindLabel();
       const label = this.dataLayer.dataLayerLabelProcessor.processPattern(data, dsData);
-      const labelColor = this.dataLayer.getCtx().widgetConfig.color;
+      const labelColor = mtColor(this.dataLayer.getCtx().widgetConfig.color);
       const content: L.Content = `<div style="color: ${labelColor};"><b>${label}</b></div>`;
       this.bindLabel(content);
     }

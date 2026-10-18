@@ -1,21 +1,9 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.telemetry;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.util.concurrent.FluentFuture;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -60,6 +48,8 @@ import org.thingsboard.server.service.subscription.TbSubscriptionUtils;
 
 import java.util.Collection;
 
+import static org.thingsboard.server.common.data.alarm.AlarmCommentSubType.SEVERITY_CHANGED;
+
 /**
  * Created by ashvayka on 27.03.18.
  */
@@ -101,7 +91,12 @@ public class DefaultAlarmSubscriptionService extends AbstractSubscriptionService
 
     @Override
     public AlarmApiCallResult clearAlarm(TenantId tenantId, AlarmId alarmId, long clearTs, JsonNode details) {
-        return withWsCallback(alarmService.clearAlarm(tenantId, alarmId, clearTs, details));
+        return clearAlarm(tenantId, alarmId, clearTs, details, true);
+    }
+
+    @Override
+    public AlarmApiCallResult clearAlarm(TenantId tenantId, AlarmId alarmId, long clearTs, JsonNode details, boolean pushEvent) {
+        return withWsCallback(alarmService.clearAlarm(tenantId, alarmId, clearTs, details, pushEvent));
     }
 
     @Override
@@ -115,7 +110,7 @@ public class DefaultAlarmSubscriptionService extends AbstractSubscriptionService
     }
 
     @Override
-    public Boolean deleteAlarm(TenantId tenantId, AlarmId alarmId) {
+    public boolean deleteAlarm(TenantId tenantId, AlarmId alarmId) {
         AlarmApiCallResult result = alarmService.delAlarm(tenantId, alarmId);
         onAlarmDeleted(result);
         return result.isSuccessful();
@@ -169,6 +164,11 @@ public class DefaultAlarmSubscriptionService extends AbstractSubscriptionService
     @Override
     public Alarm findLatestActiveByOriginatorAndType(TenantId tenantId, EntityId originator, String type) {
         return alarmService.findLatestActiveByOriginatorAndType(tenantId, originator, type);
+    }
+
+    @Override
+    public FluentFuture<Alarm> findLatestActiveByOriginatorAndTypeAsync(TenantId tenantId, EntityId originator, String type) {
+        return alarmService.findLatestActiveByOriginatorAndTypeAsync(tenantId, originator, type);
     }
 
     @Override
@@ -240,8 +240,11 @@ public class DefaultAlarmSubscriptionService extends AbstractSubscriptionService
                 AlarmComment.AlarmCommentBuilder alarmComment = AlarmComment.builder()
                         .alarmId(alarm.getId())
                         .type(AlarmCommentType.SYSTEM)
-                        .comment(JacksonUtil.newObjectNode().put("text",
-                                String.format("Alarm severity was updated from %s to %s", result.getOldSeverity(), alarm.getSeverity())));
+                        .comment(JacksonUtil.newObjectNode()
+                                .put("text", String.format(SEVERITY_CHANGED.getText(), result.getOldSeverity(), alarm.getSeverity()))
+                                .put("subtype", SEVERITY_CHANGED.name())
+                                .put("oldSeverity", result.getOldSeverity().name())
+                                .put("newSeverity", alarm.getSeverity().name()));
                 if (request != null && request.getUserId() != null) {
                     alarmComment.userId(request.getUserId());
                 }

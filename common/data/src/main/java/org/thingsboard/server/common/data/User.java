@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -91,7 +78,7 @@ public class User extends BaseDataWithAdditionalInfo<UserId> implements HasName,
         return super.getCreatedTime();
     }
 
-    @Schema(description = "JSON object with the Tenant Id.", accessMode = Schema.AccessMode.READ_ONLY)
+    @Schema(description = "JSON object with the Tenant Id.")
     public TenantId getTenantId() {
         return tenantId;
     }
@@ -100,7 +87,7 @@ public class User extends BaseDataWithAdditionalInfo<UserId> implements HasName,
         this.tenantId = tenantId;
     }
 
-    @Schema(description = "JSON object with the Customer Id.", accessMode = Schema.AccessMode.READ_ONLY)
+    @Schema(description = "JSON object with the Customer Id.")
     public CustomerId getCustomerId() {
         return customerId;
     }
@@ -161,7 +148,16 @@ public class User extends BaseDataWithAdditionalInfo<UserId> implements HasName,
         this.phone = phone;
     }
 
-    @Schema(description = "Additional parameters of the user", implementation = com.fasterxml.jackson.databind.JsonNode.class)
+    @Schema(description = "Additional parameters of the user. " +
+            "May include: 'defaultDashboardId' (string, UUID of the default dashboard), " +
+            "'defaultDashboardFullscreen' (boolean), " +
+            "'homeDashboardId' (string, UUID of the home dashboard), " +
+            "'homeDashboardHideToolbar' (boolean), " +
+            "'lang' (string, user locale, e.g. 'en_US'), " +
+            "'authProviderName' (string, name of the authentication provider).",
+            implementation = com.fasterxml.jackson.databind.JsonNode.class,
+            example = "{\"defaultDashboardId\":\"784f394c-42b6-435a-983c-b7beff2784f9\",\"defaultDashboardFullscreen\":false," +
+                    "\"homeDashboardId\":\"784f394c-42b6-435a-983c-b7beff2784f9\",\"homeDashboardHideToolbar\":true,\"lang\":\"en_US\"}")
     @Override
     public JsonNode getAdditionalInfo() {
         return super.getAdditionalInfo();

@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, ElementRef, EventEmitter, forwardRef, Input, OnInit, Output, ViewChild } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -33,24 +19,25 @@ import { DeviceProfileService } from '@core/http/device-profile.service';
 import { Direction } from '@shared/models/page/sort-order';
 import { isDefined, isDefinedAndNotNull, isObject, isString } from '@core/utils';
 import { PageLink } from '@shared/models/page/page-link';
-import { TruncatePipe } from '@shared/pipe/truncate.pipe';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatAutocompleteTrigger } from '@angular/material/autocomplete';
 
 @Component({
-  selector: 'tb-profile-lwm2m-object-list',
-  templateUrl: './lwm2m-object-list.component.html',
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => Lwm2mObjectListComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => Lwm2mObjectListComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-profile-lwm2m-object-list',
+    templateUrl: './lwm2m-object-list.component.html',
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => Lwm2mObjectListComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => Lwm2mObjectListComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class Lwm2mObjectListComponent implements ControlValueAccessor, OnInit, Validator {
 
@@ -79,13 +66,12 @@ export class Lwm2mObjectListComponent implements ControlValueAccessor, OnInit, V
   @Output()
   removeList = new EventEmitter<any>();
 
-  @ViewChild('objectInput') objectInput: ElementRef<HTMLInputElement>;
+  @ViewChild('objectInput', {static: true}) objectInput: ElementRef<HTMLInputElement>;
+  @ViewChild('objectInput', {static: true, read: MatAutocompleteTrigger}) matAutocompleteTrigger: MatAutocompleteTrigger;
 
-  private propagateChange = (v: any) => {
-  }
+  private propagateChange: (value: any) => void = () => {};
 
-  constructor(public truncate: TruncatePipe,
-              private deviceProfileService: DeviceProfileService,
+  constructor(private deviceProfileService: DeviceProfileService,
               private fb: UntypedFormBuilder) {
     this.lwm2mListFormGroup = this.fb.group({
       objectsList: [this.objectsList],
@@ -113,7 +99,7 @@ export class Lwm2mObjectListComponent implements ControlValueAccessor, OnInit, V
     this.propagateChange = fn;
   }
 
-  registerOnTouched(fn: any): void {
+  registerOnTouched(_fn: any): void {
   }
 
   ngOnInit() {
@@ -139,6 +125,9 @@ export class Lwm2mObjectListComponent implements ControlValueAccessor, OnInit, V
       this.lwm2mListFormGroup.disable({emitEvent: false});
       if (isDefined(this.objectInput)) {
         this.clear('', false);
+      }
+      if (this.matAutocompleteTrigger.panelOpen) {
+        this.matAutocompleteTrigger.closePanel();
       }
     } else {
       this.lwm2mListFormGroup.enable({emitEvent: false});

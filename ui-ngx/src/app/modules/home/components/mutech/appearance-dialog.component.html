@@ -1,0 +1,95 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright MuTech Automation
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+@if (appearance$ | async; as appearance) {
+  <mat-toolbar class="mt-dialog-header">
+    <h2>{{ 'mutech.appearance' | translate }}</h2>
+    <span class="flex-1"></span>
+    <button mat-icon-button (click)="close()" type="button" aria-label="{{ 'action.close' | translate }}">
+      <mat-icon class="material-icons">close</mat-icon>
+    </button>
+  </mat-toolbar>
+  <div mat-dialog-content class="mt-appearance">
+    <p class="mt-appearance-hint">{{ 'mutech.appearance-hint' | translate }}</p>
+
+    <section>
+      <h3>{{ 'mutech.layout' | translate }}</h3>
+      <div class="mt-option-grid">
+        @for (layout of layouts; track layout.id) {
+          <button type="button" class="mt-option mt-layout-option"
+                  [class.mt-selected]="appearance.layout === layout.id"
+                  [attr.aria-pressed]="appearance.layout === layout.id"
+                  (click)="setLayout(layout.id)">
+            <span class="mt-layout-preview" [class.mt-preview-control]="layout.id === 'control'">
+              <span class="mt-preview-nav"></span>
+              <span class="mt-preview-body">
+                <span class="mt-preview-bar"></span>
+                <span class="mt-preview-cards"><span></span><span></span><span></span></span>
+              </span>
+            </span>
+            <span class="mt-option-title">{{ layout.name | translate }}</span>
+            <span class="mt-option-hint">{{ layout.hint | translate }}</span>
+          </button>
+        }
+      </div>
+    </section>
+
+    <section>
+      <h3>{{ 'mutech.theme' | translate }}</h3>
+      <div class="mt-option-grid mt-theme-grid">
+        @for (theme of themes; track theme.id) {
+          <button type="button" class="mt-option mt-theme-option"
+                  [class.mt-selected]="isSelectedTheme(appearance, theme.id)"
+                  [attr.aria-pressed]="isSelectedTheme(appearance, theme.id)"
+                  (click)="setTheme(theme.id)">
+            <span class="mt-theme-swatch" [style.background]="theme.bg">
+              <span [style.background]="theme.rail"></span>
+              <span [style.background]="theme.surface"></span>
+              <span [style.background]="theme.accent"></span>
+            </span>
+            <span class="mt-option-title">{{ theme.name }}</span>
+          </button>
+        }
+      </div>
+      <mat-slide-toggle class="mt-follow-system"
+                        [checked]="appearance.followSystem"
+                        (change)="setFollowSystem($event.checked)">
+        {{ 'mutech.follow-system' | translate }}
+      </mat-slide-toggle>
+    </section>
+
+    @if (startPageSupported) {
+      <section>
+        <h3>{{ 'mutech.start-page' | translate }}</h3>
+        <mat-button-toggle-group [value]="appearance.startPage" (change)="setStartPage($event.value)">
+          @for (page of startPages; track page.id) {
+            <mat-button-toggle [value]="page.id">{{ page.name | translate }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+        <span class="mt-appearance-note">{{ 'mutech.start-page-hint' | translate }}</span>
+      </section>
+    }
+
+    <section>
+      <h3>{{ 'mutech.widget-style' | translate }}</h3>
+      <mat-button-toggle-group [value]="appearance.widgetStyle" (change)="setWidgetStyle($event.value)">
+        @for (style of widgetStyles; track style.id) {
+          <mat-button-toggle [value]="style.id">{{ style.name | translate }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+      <span class="mt-appearance-note">{{ 'mutech.widget-style-hint' | translate }}</span>
+    </section>
+
+    <section>
+      <h3>{{ 'mutech.density' | translate }}</h3>
+      <mat-button-toggle-group [value]="appearance.density" (change)="setDensity($event.value)">
+        @for (density of densities; track density.id) {
+          <mat-button-toggle [value]="density.id">{{ density.name | translate }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </section>
+  </div>
+}

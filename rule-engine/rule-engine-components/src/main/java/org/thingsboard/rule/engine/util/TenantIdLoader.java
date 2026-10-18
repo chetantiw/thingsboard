@@ -1,30 +1,17 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.util;
 
 import org.thingsboard.rule.engine.api.TbContext;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.HasTenantId;
-import org.thingsboard.server.common.data.cf.CalculatedFieldLink;
+import org.thingsboard.server.common.data.id.AiModelId;
 import org.thingsboard.server.common.data.id.AlarmId;
+import org.thingsboard.server.common.data.id.ApiKeyId;
 import org.thingsboard.server.common.data.id.ApiUsageStateId;
 import org.thingsboard.server.common.data.id.AssetId;
 import org.thingsboard.server.common.data.id.AssetProfileId;
 import org.thingsboard.server.common.data.id.CalculatedFieldId;
-import org.thingsboard.server.common.data.id.CalculatedFieldLinkId;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DashboardId;
 import org.thingsboard.server.common.data.id.DeviceId;
@@ -33,6 +20,7 @@ import org.thingsboard.server.common.data.id.DomainId;
 import org.thingsboard.server.common.data.id.EdgeId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityViewId;
+import org.thingsboard.server.common.data.id.JobId;
 import org.thingsboard.server.common.data.id.MobileAppBundleId;
 import org.thingsboard.server.common.data.id.MobileAppId;
 import org.thingsboard.server.common.data.id.NotificationRequestId;
@@ -145,6 +133,7 @@ public class TenantIdLoader {
                 tenantEntity = ctx.getNotificationRequestService().findNotificationRequestById(ctxTenantId, new NotificationRequestId(id));
                 break;
             case NOTIFICATION:
+            case ADMIN_SETTINGS:
                 return ctxTenantId;
             case NOTIFICATION_RULE:
                 tenantEntity = ctx.getNotificationRuleService().findNotificationRuleById(ctxTenantId, new NotificationRuleId(id));
@@ -167,13 +156,14 @@ public class TenantIdLoader {
             case CALCULATED_FIELD:
                 tenantEntity = ctx.getCalculatedFieldService().findById(ctxTenantId, new CalculatedFieldId(id));
                 break;
-            case CALCULATED_FIELD_LINK:
-                CalculatedFieldLink calculatedFieldLink = ctx.getCalculatedFieldService().findCalculatedFieldLinkById(ctxTenantId, new CalculatedFieldLinkId(id));
-                if (calculatedFieldLink != null) {
-                    tenantEntity = ctx.getCalculatedFieldService().findById(ctxTenantId, calculatedFieldLink.getCalculatedFieldId());
-                } else {
-                    tenantEntity = null;
-                }
+            case JOB:
+                tenantEntity = ctx.getJobService().findJobById(ctxTenantId, new JobId(id));
+                break;
+            case AI_MODEL:
+                tenantEntity = ctx.getAiModelService().findAiModelById(ctxTenantId, new AiModelId(id)).orElse(null);
+                break;
+            case API_KEY:
+                tenantEntity = ctx.getApiKeyService().findApiKeyById(ctxTenantId, new ApiKeyId(id));
                 break;
             default:
                 throw new RuntimeException("Unexpected entity type: " + entityId.getEntityType());

@@ -1,18 +1,7 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+    SPDX-License-Identifier: Apache-2.0
 
 -->
 <div class="tb-details-buttons xs:flex xs:flex-col">
@@ -30,7 +19,7 @@
   </button>
   <button mat-raised-button color="primary"
           [disabled]="(isLoading$ | async)"
-          (click)="onEntityAction($event, 'delete')"
+          (click)="onEntityAction($event, 'deleteLibrary')"
           [class.!hidden]="hideDelete() || isEdit">
     {{ 'javascript.delete' | translate }}
   </button>
@@ -70,7 +59,7 @@
                      formControlName="data"
                      [required]="isAdd"
                      label="{{ 'javascript.resource-file' | translate }}"
-                     [readAsBinary]="true"
+                     [workFromFileObj]="true"
                      [maxSizeByte]="maxResourceSize"
                      [allowedExtensions]="getAllowedExtensions()"
                      [contentConvertFunction]="convertToBase64File"
@@ -80,6 +69,7 @@
                      (fileNameChanged)="entityForm?.get('fileName').patchValue($event)">
       </tb-file-input>
       <tb-js-func *ngIf="entityForm.get('resourceSubType').value === ResourceSubType.MODULE"
+                  [helpPopupStyle]="{ width: '1000px' }"
                   helpId="resource/js-resource-module_fn"
                   formControlName="content"
                   required
@@ -91,8 +81,7 @@
           <label class="tb-title no-padding tb-required"
                  [class.tb-error]="entityForm.get('content').invalid && entityForm.get('content').touched"
                  style="font-size: 16px;">
-            {{ 'javascript.module-script' | translate }}
-          </label>
+            {{ 'javascript.module-script' | translate }}</label>
           <tb-file-input *ngIf="(isAdd || isEdit)"
                          asButton
                          uploadButtonText="{{ 'javascript.upload-from-file' | translate }}"

@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -33,7 +21,8 @@ import {
   ComponentStyle,
   getDataKey,
   overlayStyle,
-  textStyle
+  textStyle,
+  ValueFormatProcessor
 } from '@shared/models/widget-settings.models';
 import { isDefinedAndNotNull } from '@core/utils';
 import {
@@ -48,12 +37,16 @@ import { Observable } from 'rxjs';
 import { ImagePipe } from '@shared/pipe/image.pipe';
 import { DomSanitizer } from '@angular/platform-browser';
 import { TbTimeSeriesChart } from '@home/components/widget/lib/chart/time-series-chart';
+import { WidgetComponent } from '@home/components/widget/widget.component';
+import { TbUnit } from '@shared/models/unit.models';
+import { UnitService } from '@core/services/unit.service';
 
 @Component({
-  selector: 'tb-range-chart-widget',
-  templateUrl: './range-chart-widget.component.html',
-  styleUrls: ['./range-chart-widget.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-range-chart-widget',
+    templateUrl: './range-chart-widget.component.html',
+    styleUrls: ['./range-chart-widget.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class RangeChartWidgetComponent implements OnInit, OnDestroy, AfterViewInit {
 
@@ -80,13 +73,14 @@ export class RangeChartWidgetComponent implements OnInit, OnDestroy, AfterViewIn
   visibleRangeItems: RangeItem[];
 
   private decimals = 0;
-  private units = '';
+  private units: TbUnit = '';
 
   private rangeItems: RangeItem[];
 
   private timeSeriesChart: TbTimeSeriesChart;
 
-  constructor(private imagePipe: ImagePipe,
+  constructor(public widgetComponent: WidgetComponent,
+              private imagePipe: ImagePipe,
               private sanitizer: DomSanitizer,
               private renderer: Renderer2,
               private cd: ChangeDetectorRef) {
@@ -94,7 +88,8 @@ export class RangeChartWidgetComponent implements OnInit, OnDestroy, AfterViewIn
 
   ngOnInit(): void {
     this.ctx.$scope.rangeChartWidget = this;
-    this.settings = {...rangeChartDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...rangeChartDefaultSettings, ...this.ctx.settings});
+    const unitService = this.ctx.$injector.get(UnitService);
 
     this.decimals = this.ctx.decimals;
     this.units = this.ctx.units;
@@ -109,11 +104,17 @@ export class RangeChartWidgetComponent implements OnInit, OnDestroy, AfterViewIn
       dataKey.settings = rangeChartTimeSeriesKeySettings(this.settings);
     }
 
+    const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {
+      units: this.units,
+      decimals: this.decimals,
+      ignoreUnitSymbol: true
+    });
+
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);
     this.padding = this.settings.background.overlay.enabled ? undefined : this.settings.padding;
 
-    this.rangeItems = toRangeItems(this.settings.rangeColors);
+    this.rangeItems = toRangeItems(this.settings.rangeColors, valueFormat);
     this.visibleRangeItems = this.rangeItems.filter(item => item.visible);
 
     this.showLegend = this.settings.showLegend && !!this.rangeItems.length;
@@ -146,6 +147,12 @@ export class RangeChartWidgetComponent implements OnInit, OnDestroy, AfterViewIn
   public onDataUpdated() {
     if (this.timeSeriesChart) {
       this.timeSeriesChart.update();
+    }
+  }
+
+  public onLatestDataUpdated() {
+    if (this.timeSeriesChart) {
+      this.timeSeriesChart.latestUpdated();
     }
   }
 

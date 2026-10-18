@@ -1,18 +1,6 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 :host {
   display: flex;
   width: 100%;
@@ -20,9 +8,13 @@
 
   mat-sidenav-container {
     flex: 1;
+    background: var(--mt-bg);
   }
   mat-sidenav.tb-site-sidenav {
-    width: 250px;
+    width: 260px;
+    border: 0;
+    background: var(--mt-rail);
+    color: var(--mt-nav-text);
     @media (max-width:456px) {
       width: calc(100% - 56px);
     }
@@ -31,21 +23,29 @@
       flex-shrink: 0;
       white-space: nowrap;
       .tb-nav-header-toolbar {
-        min-height: 64px;
+        min-height: 72px;
         height: inherit;
-        padding: 0;
+        padding: 0 20px;
         z-index: 2;
         flex-shrink: 0;
         white-space: nowrap;
-        border-bottom: 1px solid rgba(0, 0, 0, .12);
+        background: var(--mt-rail-header);
+        color: var(--mt-nav-text);
         & > div {
-          height: 64px;
+          height: 72px;
+          align-items: center;
           .tb-logo-title {
             width: auto;
             max-width: 100%;
-            height: 36px;
+            height: 52px;
             max-height: 100%;
+            margin: auto 0;
+          }
+          .mt-emblem {
+            width: 44px;
+            height: 44px;
             margin: auto;
+            object-fit: contain;
           }
         }
       }
@@ -53,18 +53,102 @@
     .tb-side-menu-toolbar {
       overflow-y: auto;
       height: inherit;
-      padding: 0;
+      padding: 12px 12px 24px;
+      background: transparent;
+      color: var(--mt-nav-text);
+      white-space: normal;
+    }
+
+    // Control Room: a slim floating icon rail.
+    &.mt-rail {
+      width: 104px;
+      padding: 16px 0 16px 16px;
+      background: transparent;
+      @media (max-width:456px) {
+        width: 104px;
+      }
+      ::ng-deep > .mat-drawer-inner-container {
+        border-radius: var(--mt-radius-xl);
+        background: var(--mt-rail);
+        border: 1px solid var(--mt-rail-border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .tb-nav-header .tb-nav-header-toolbar {
+        background: transparent;
+        padding: 0;
+      }
+      .tb-side-menu-toolbar {
+        padding: 4px 0 16px;
+      }
     }
   }
-  .tb-primary-toolbar {
+
+  .tb-primary-toolbar.mt-header {
     z-index: 2;
+    height: 72px;
+    min-height: 72px;
+    padding: 0 20px 0 24px;
+    gap: 6px;
+    background: var(--mt-header-bg);
+    color: var(--mt-text);
+    border-bottom: 1px solid var(--mt-border);
     h1 {
       font-size: 24px !important;
       font-weight: 400 !important;
     }
   }
+  .mt-command-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 42px;
+    min-width: 260px;
+    margin-right: 6px;
+    padding: 0 8px 0 14px;
+    border-radius: var(--mt-radius);
+    border: 1px solid var(--mt-border);
+    background: var(--mt-surface-2);
+    color: var(--mt-muted);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    .mt-command-label {
+      flex: 1;
+      text-align: left;
+    }
+    kbd {
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--mt-border);
+      background: var(--mt-surface);
+      font-family: var(--mt-font-mono);
+      font-size: 11px;
+    }
+    &:hover {
+      border-color: var(--mt-muted);
+    }
+  }
   .tb-main-content {
     overflow: auto;
     position: relative;
+    background: var(--mt-bg);
+  }
+}
+
+:host-context(.mt-layout-control) {
+  .tb-primary-toolbar.mt-header {
+    height: 88px;
+    min-height: 88px;
+    border-bottom: 0;
+    background: transparent;
+    padding-top: 8px;
+  }
+  .mt-command-button {
+    min-width: 340px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--mt-surface);
   }
 }

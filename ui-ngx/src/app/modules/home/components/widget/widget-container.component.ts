@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtThemedCss } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -48,6 +36,7 @@ import { TbContextMenuEvent } from '@shared/models/jquery-event.models';
 import { WidgetHeaderActionButtonType } from '@shared/models/widget.models';
 import ITooltipsterInstance = JQueryTooltipster.ITooltipsterInstance;
 import ITooltipsterGeoHelper = JQueryTooltipster.ITooltipsterGeoHelper;
+import { WidgetComponent } from '@home/components/widget/widget.component';
 
 export enum WidgetComponentActionType {
   MOUSE_DOWN,
@@ -66,11 +55,12 @@ export class WidgetComponentAction {
 
 // @dynamic
 @Component({
-  selector: 'tb-widget-container',
-  templateUrl: './widget-container.component.html',
-  styleUrls: ['./widget-container.component.scss'],
-  encapsulation: ViewEncapsulation.None,
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'tb-widget-container',
+    templateUrl: './widget-container.component.html',
+    styleUrls: ['./widget-container.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: false
 })
 export class WidgetContainerComponent extends PageComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
 
@@ -148,10 +138,10 @@ export class WidgetContainerComponent extends PageComponent implements OnInit, O
 
   ngOnInit(): void {
     this.widget.widgetContext.containerChangeDetector = this.cd;
-    const cssString = this.widget.widget.config.widgetCss;
+    const cssString = mtThemedCss(this.widget.widget.config.widgetCss);
     if (isNotEmptyStr(cssString)) {
-      this.cssClass =
-        this.utils.applyCssToElement(this.renderer, this.gridsterItem.el, 'tb-widget-css', cssString);
+      this.cssClass = this.utils.applyCssToElement(this.renderer, this.gridsterItem.el, 'tb-widget-css', cssString, true);
+      this.widget.widgetContext.widgetCssClass = this.cssClass;
     }
     $(this.gridsterItem.el).on('mousedown', (e) => this.onMouseDown(e.originalEvent));
     $(this.gridsterItem.el).on('click', (e) => this.onClicked(e.originalEvent));
@@ -214,6 +204,12 @@ export class WidgetContainerComponent extends PageComponent implements OnInit, O
       event,
       actionType: WidgetComponentActionType.MOUSE_DOWN
     });
+  }
+
+  widgetActionAbsolute(widgetComponent: WidgetComponent, absolute = false) {
+    return absolute ? true :
+      !(this.widget.showWidgetTitlePanel && !widgetComponent.widgetContext?.embedTitlePanel &&
+        (this.widget.showTitle||this.widget.hasTimewindow)) && !widgetComponent.widgetContext?.embedActionsPanel;
   }
 
   onClicked(event: MouseEvent): void {
@@ -387,7 +383,7 @@ export class WidgetContainerComponent extends PageComponent implements OnInit, O
 }
 
 @Component({
-  template: `
+    template: `
     <div class="tb-widget-action-container">
       <div class="tb-widget-reference-panel tb-primary-fill" *ngIf="container.widget.isReference">
         {{ 'widget.reference' | translate }}
@@ -424,8 +420,9 @@ export class WidgetContainerComponent extends PageComponent implements OnInit, O
         </button>
       </div>
     </div>`,
-  styles: [],
-  encapsulation: ViewEncapsulation.None
+    styles: [],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class EditWidgetActionsTooltipComponent implements AfterViewInit {
 

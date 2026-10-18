@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -29,12 +16,17 @@ import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.security.Authority;
 import org.thingsboard.server.common.data.widget.WidgetsBundle;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.dao.service.DaoSqlTest;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -149,6 +141,37 @@ public class WidgetsBundleControllerTest extends AbstractControllerTest {
         Assert.assertNotNull(foundWidgetsBundle);
         Assert.assertEquals(savedWidgetsBundle, foundWidgetsBundle);
     }
+
+    @Test
+    public void testFindWidgetsBundlesByIds() throws Exception {
+        List<WidgetsBundle> savedWidgetsBundles = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            WidgetsBundle widgetsBundle = new WidgetsBundle();
+            widgetsBundle.setTitle("My widgets bundle " + i);
+            savedWidgetsBundles.add(doPost("/api/widgetsBundle", widgetsBundle, WidgetsBundle.class));
+        }
+
+        String idsParam = savedWidgetsBundles.stream()
+                .map(wb -> wb.getId().getId().toString())
+                .collect(Collectors.joining(","));
+
+        WidgetsBundle[] foundWidgetsBundles =
+                doGet("/api/widgetsBundles?widgetsBundleIds=" + idsParam, WidgetsBundle[].class);
+
+        Assert.assertNotNull(foundWidgetsBundles);
+        Assert.assertEquals(savedWidgetsBundles.size(), foundWidgetsBundles.length);
+
+        Map<UUID, WidgetsBundle> foundById = Arrays.stream(foundWidgetsBundles)
+                .collect(Collectors.toMap(wb -> wb.getId().getId(), Function.identity()));
+
+        for (WidgetsBundle savedWidgetsBundle : savedWidgetsBundles) {
+            UUID id = savedWidgetsBundle.getId().getId();
+            WidgetsBundle foundWidgetsBundle = foundById.get(id);
+            Assert.assertNotNull("WidgetsBundle not found for id " + id, foundWidgetsBundle);
+            Assert.assertEquals(savedWidgetsBundle, foundWidgetsBundle);
+        }
+    }
+
 
     @Test
     public void testDeleteWidgetsBundle() throws Exception {

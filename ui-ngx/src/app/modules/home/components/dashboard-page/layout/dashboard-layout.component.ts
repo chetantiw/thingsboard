@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtBackdropColor, mtWidgetThemeChanged$ } from '@shared/models/mutech-widget-theme';
 import { Component, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ILayoutController } from '@home/components/dashboard-page/layout/layout.models';
 import { DashboardContext, DashboardPageLayoutContext } from '@home/components/dashboard-page/dashboard-page.models';
@@ -36,15 +24,15 @@ import { TbCheatSheetComponent } from '@shared/components/cheatsheet.component';
 import { TbPopoverComponent } from '@shared/components/popover.component';
 import { ImagePipe } from '@shared/pipe/image.pipe';
 import { map } from 'rxjs/operators';
-import { displayGrids } from 'angular-gridster2/lib/gridsterConfig.interface';
 import { BreakpointId, LayoutType, ViewFormatType } from '@shared/models/dashboard.models';
 import { isNotEmptyStr } from '@core/utils';
 import { TbContextMenuEvent } from '@shared/models/jquery-event.models';
 
 @Component({
-  selector: 'tb-dashboard-layout',
-  templateUrl: './dashboard-layout.component.html',
-  styleUrls: ['./dashboard-layout.component.scss']
+    selector: 'tb-dashboard-layout',
+    templateUrl: './dashboard-layout.component.html',
+    styleUrls: ['./dashboard-layout.component.scss'],
+    standalone: false
 })
 export class DashboardLayoutComponent extends PageComponent implements ILayoutController, DashboardCallbacks, OnInit, OnDestroy {
 
@@ -114,7 +102,7 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
     return this.layoutCtx.gridSettings.minColumns || this.layoutCtx.gridSettings.columns || 24;
   }
 
-  get displayGrid(): displayGrids {
+  get displayGrid(): 'always' | 'onDrag&Resize' | 'none' {
     return this.layoutCtx.displayGrid || 'onDrag&Resize';
   }
 
@@ -163,6 +151,10 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
         this.dashboardCtx.runChangeDetection();
       })
     );
+    this.rxSubscriptions.push(mtWidgetThemeChanged$.subscribe(() => {
+      this.loadDashboardStyle();
+      this.dashboardCtx.runChangeDetection();
+    }));
   }
 
   ngOnDestroy(): void {
@@ -245,7 +237,7 @@ export class DashboardLayoutComponent extends PageComponent implements ILayoutCo
   }
 
   private loadDashboardStyle() {
-    this.dashboardStyle = {'background-color': this.layoutCtx.gridSettings.backgroundColor,
+    this.dashboardStyle = {'background-color': mtBackdropColor(this.layoutCtx.gridSettings.backgroundColor),
       'background-repeat': 'no-repeat',
       'background-attachment': 'scroll',
       'background-size': this.layoutCtx.gridSettings.backgroundSizeMode || '100%',

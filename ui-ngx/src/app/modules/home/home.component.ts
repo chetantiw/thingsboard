@@ -1,23 +1,11 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
-import { AfterViewInit, Component, ElementRef, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { BrandingService } from '@core/services/branding.service';
+import { AfterViewInit, Component, ElementRef, HostListener, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { skip, startWith, Subject } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
 
 import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
 import { PageComponent } from '@shared/components/page.component';
@@ -34,11 +22,16 @@ import { RouterTabsComponent } from '@home/components/router-tabs.component';
 import { FormBuilder } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { isDefined, isDefinedAndNotNull } from '@core/utils';
+import { MatDialog } from '@angular/material/dialog';
+import { AppearanceService } from '@core/services/appearance.service';
+import { CommandPaletteDialogComponent } from '@home/components/mutech/command-palette-dialog.component';
+import { AppearanceDialogComponent } from '@home/components/mutech/appearance-dialog.component';
 
 @Component({
-  selector: 'tb-home',
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.scss']
+    selector: 'tb-home',
+    templateUrl: './home.component.html',
+    styleUrls: ['./home.component.scss'],
+    standalone: false
 })
 export class HomeComponent extends PageComponent implements AfterViewInit, OnInit, OnDestroy {
 
@@ -52,10 +45,16 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
   sidenavMode: 'over' | 'push' | 'side' = 'side';
   sidenavOpened = true;
 
-  logo = 'assets/logo_title_white.svg';
+  logo$ = this.brandingService.branding$.pipe(map(branding => branding.logoUrl || 'assets/logo_title_white.svg'));
+  emblem$ = this.brandingService.branding$.pipe(map(branding => branding.emblemUrl || branding.logoUrl || 'assets/mutech-emblem.png'));
+  appTitle$ = this.brandingService.appTitle$;
+
+  compactNav$ = this.appearanceService.compactNavigation$;
 
   @ViewChild('sidenav')
   sidenav: MatSidenav;
+
+  @ViewChild('mainContent', { static: true }) mainContent: ElementRef<HTMLElement>;
 
   @ViewChild('searchInput') searchInputField: ElementRef;
 
@@ -73,6 +72,9 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
               @Inject(WINDOW) private window: Window,
               private activeComponentService: ActiveComponentService,
               private fb: FormBuilder,
+              private dialog: MatDialog,
+              private appearanceService: AppearanceService,
+              private brandingService: BrandingService,
               public breakpointObserver: BreakpointObserver) {
     super(store);
   }
@@ -113,6 +115,35 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
     ).subscribe(value => this.searchTextUpdated(value.trim()));
   }
 
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent) {
+    if ((event.ctrlKey || event.metaKey) && event.key?.toLowerCase() === 'k' && !this.forceFullscreen) {
+      event.preventDefault();
+      this.openCommandPalette();
+    }
+  }
+
+  openCommandPalette() {
+    if (!this.dialog.getDialogById(CommandPaletteDialogComponent.dialogId)) {
+      this.dialog.open(CommandPaletteDialogComponent, {
+        id: CommandPaletteDialogComponent.dialogId,
+        panelClass: ['tb-dialog', 'mt-command-palette-panel'],
+        position: {top: '12vh'},
+        width: '640px',
+        maxWidth: '92vw',
+        autoFocus: 'first-tabbable'
+      });
+    }
+  }
+
+  openAppearance() {
+    this.dialog.open(AppearanceDialogComponent, {
+      panelClass: ['tb-dialog', 'mt-appearance-panel'],
+      width: '560px',
+      maxWidth: '94vw'
+    });
+  }
+
   sidenavClicked() {
     if (this.sidenavMode === 'over') {
       this.sidenav.toggle();
@@ -135,6 +166,7 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
 
   activeComponentChanged(activeComponent: any) {
     this.activeComponentService.setCurrentActiveComponent(activeComponent);
+    this.mainContent?.nativeElement?.scrollTo({ top: 0, left: 0 });
     if (!this.activeComponent) {
       setTimeout(() => {
         this.updateActiveComponent(activeComponent);

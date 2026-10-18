@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.actors.calculatedField;
 
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +8,8 @@ import org.thingsboard.server.actors.TbActorCtx;
 import org.thingsboard.server.actors.TbActorException;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.TenantId;
+import org.thingsboard.server.common.msg.CalculatedFieldStatePartitionRestoreMsg;
+import org.thingsboard.server.common.msg.TbActorStopReason;
 import org.thingsboard.server.common.msg.ToCalculatedFieldSystemMsg;
 import org.thingsboard.server.common.msg.cf.CalculatedFieldPartitionChangeMsg;
 
@@ -48,6 +37,12 @@ public class CalculatedFieldEntityActor extends AbstractCalculatedFieldActor {
     }
 
     @Override
+    public void destroy(TbActorStopReason stopReason, Throwable cause) throws TbActorException {
+        log.debug("[{}] Stopping CF entity actor.", processor.tenantId);
+        processor.stop(false);
+    }
+
+    @Override
     protected boolean doProcessCfMsg(ToCalculatedFieldSystemMsg msg) throws CalculatedFieldException {
         switch (msg.getMsgType()) {
             case CF_PARTITIONS_CHANGE_MSG:
@@ -56,17 +51,32 @@ public class CalculatedFieldEntityActor extends AbstractCalculatedFieldActor {
             case CF_STATE_RESTORE_MSG:
                 processor.process((CalculatedFieldStateRestoreMsg) msg);
                 break;
+            case CF_STATE_PARTITION_RESTORE_MSG:
+                processor.process((CalculatedFieldStatePartitionRestoreMsg) msg);
+                break;
             case CF_ENTITY_INIT_CF_MSG:
                 processor.process((EntityInitCalculatedFieldMsg) msg);
                 break;
             case CF_ENTITY_DELETE_MSG:
                 processor.process((CalculatedFieldEntityDeleteMsg) msg);
                 break;
+            case CF_RELATION_ACTION_MSG:
+                processor.process((CalculatedFieldRelationActionMsg) msg);
+                break;
             case CF_ENTITY_TELEMETRY_MSG:
                 processor.process((EntityCalculatedFieldTelemetryMsg) msg);
                 break;
             case CF_LINKED_TELEMETRY_MSG:
                 processor.process((EntityCalculatedFieldLinkedTelemetryMsg) msg);
+                break;
+            case CF_REEVALUATE_MSG:
+                processor.process((CalculatedFieldReevaluateMsg) msg);
+                break;
+            case CF_ALARM_ACTION_MSG:
+                processor.process((CalculatedFieldAlarmActionMsg) msg);
+                break;
+            case CF_ARGUMENT_RESET_MSG:
+                processor.process((CalculatedFieldArgumentResetMsg) msg);
                 break;
             default:
                 return false;
@@ -78,4 +88,5 @@ public class CalculatedFieldEntityActor extends AbstractCalculatedFieldActor {
     void logProcessingException(Exception e) {
         log.warn("[{}][{}] Processing failure", tenantId, processor.entityId, e);
     }
+
 }

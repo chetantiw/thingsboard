@@ -1,32 +1,27 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.service;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import org.thingsboard.common.util.ThingsBoardThreadFactory;
 import org.thingsboard.server.common.data.Customer;
 import org.thingsboard.server.common.data.EntitySubtype;
 import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.Tenant;
+import org.thingsboard.server.common.data.TenantProfile;
 import org.thingsboard.server.common.data.asset.Asset;
 import org.thingsboard.server.common.data.asset.AssetInfo;
 import org.thingsboard.server.common.data.asset.AssetProfile;
@@ -34,29 +29,34 @@ import org.thingsboard.server.common.data.cf.CalculatedField;
 import org.thingsboard.server.common.data.cf.CalculatedFieldType;
 import org.thingsboard.server.common.data.cf.configuration.Argument;
 import org.thingsboard.server.common.data.cf.configuration.ArgumentType;
-import org.thingsboard.server.common.data.cf.configuration.Output;
-import org.thingsboard.server.common.data.cf.configuration.OutputType;
 import org.thingsboard.server.common.data.cf.configuration.ReferencedEntityKey;
 import org.thingsboard.server.common.data.cf.configuration.SimpleCalculatedFieldConfiguration;
+import org.thingsboard.server.common.data.cf.configuration.TimeSeriesOutput;
 import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.relation.EntityRelation;
 import org.thingsboard.server.common.data.relation.RelationTypeGroup;
+import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileConfiguration;
+import org.thingsboard.server.common.data.tenant.profile.TenantProfileData;
 import org.thingsboard.server.dao.asset.AssetDao;
 import org.thingsboard.server.dao.asset.AssetProfileService;
 import org.thingsboard.server.dao.asset.AssetService;
 import org.thingsboard.server.dao.cf.CalculatedFieldService;
 import org.thingsboard.server.dao.customer.CustomerService;
-import org.thingsboard.server.dao.exception.DataValidationException;
+import org.thingsboard.server.exception.DataValidationException;
 import org.thingsboard.server.dao.relation.RelationService;
+import org.thingsboard.server.dao.tenant.TenantProfileService;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.thingsboard.server.dao.model.ModelConstants.NULL_UUID;
 
@@ -72,13 +72,28 @@ public class AssetServiceTest extends AbstractServiceTest {
     @Autowired
     RelationService relationService;
     @Autowired
+    TenantProfileService tenantProfileService;
+    @Autowired
     private AssetProfileService assetProfileService;
     @Autowired
     private CalculatedFieldService calculatedFieldService;
     @Autowired
     private PlatformTransactionManager platformTransactionManager;
 
+    private static ListeningExecutorService executor;
+
     private IdComparator<Asset> idComparator = new IdComparator<>();
+    private TenantId anotherTenantId;
+
+    @BeforeClass
+    public static void before() {
+        executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(10, ThingsBoardThreadFactory.forName("AssetServiceTestScope")));
+    }
+
+    @AfterClass
+    public static void after() {
+        executor.shutdownNow();
+    }
 
     @Test
     public void testSaveAsset() {
@@ -103,6 +118,39 @@ public class AssetServiceTest extends AbstractServiceTest {
         Assert.assertEquals(foundAsset.getName(), savedAsset.getName());
 
         assetService.deleteAsset(tenantId, savedAsset.getId());
+    }
+
+    @Test
+    public void testAssetLimitOnTenantProfileLevel() throws InterruptedException {
+        TenantProfile tenantProfile = new TenantProfile();
+        tenantProfile.setName("Test profile");
+        tenantProfile.setDescription("Test");
+        TenantProfileData profileData = new TenantProfileData();
+        profileData.setConfiguration(DefaultTenantProfileConfiguration.builder().maxAssets(5l).build());
+        tenantProfile.setProfileData(profileData);
+        tenantProfile.setDefault(false);
+        tenantProfile.setIsolatedTbRuleEngine(false);
+
+        tenantProfile = tenantProfileService.saveTenantProfile(anotherTenantId, tenantProfile);
+        anotherTenantId = createTenant(tenantProfile.getId()).getId();
+
+        for (int i = 0; i < 20; i++) {
+            executor.submit(() -> {
+                Asset asset = new Asset();
+                asset.setTenantId(anotherTenantId);
+                asset.setName(RandomStringUtils.secure().nextAlphabetic(10));
+                asset.setType("default");
+                assetService.saveAsset(asset);
+            });
+        }
+
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> {
+            long countByTenantId = assetService.countByTenantId(anotherTenantId);
+            return countByTenantId == 5;
+        });
+
+        Thread.sleep(2000);
+        assertThat(assetService.countByTenantId(anotherTenantId)).isEqualTo(5);
     }
 
     @Test
@@ -894,9 +942,8 @@ public class AssetServiceTest extends AbstractServiceTest {
 
         config.setExpression("T - (100 - H) / 5");
 
-        Output output = new Output();
+        TimeSeriesOutput output = new TimeSeriesOutput();
         output.setName("output");
-        output.setType(OutputType.TIME_SERIES);
 
         config.setOutput(output);
 

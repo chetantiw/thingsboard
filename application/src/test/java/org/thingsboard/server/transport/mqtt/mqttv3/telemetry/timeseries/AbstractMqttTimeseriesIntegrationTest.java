@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.mqtt.mqttv3.telemetry.timeseries;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,14 +8,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.id.DeviceId;
+import org.thingsboard.server.common.msg.gateway.metrics.GatewayMetadata;
 import org.thingsboard.server.transport.mqtt.AbstractMqttIntegrationTest;
 import org.thingsboard.server.transport.mqtt.MqttTestConfigProperties;
 import org.thingsboard.server.transport.mqtt.gateway.GatewayMetricsService;
-import org.thingsboard.server.common.msg.gateway.metrics.GatewayMetadata;
 import org.thingsboard.server.transport.mqtt.gateway.metrics.GatewayMetricsState;
 import org.thingsboard.server.transport.mqtt.mqttv3.MqttTestCallback;
 import org.thingsboard.server.transport.mqtt.mqttv3.MqttTestClient;
@@ -43,6 +30,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.any;
@@ -66,7 +54,7 @@ public abstract class AbstractMqttTimeseriesIntegrationTest extends AbstractMqtt
     protected static final String MALFORMED_JSON_PAYLOAD = "{\"key1\":, \"key2\":true, \"key3\": 3.0, \"key4\": 4," +
             " \"key5\": {\"someNumber\": 42, \"someArray\": [1,2,3], \"someNestedObject\": {\"key\": \"value\"}}}";
 
-    @SpyBean
+    @MockitoSpyBean
     GatewayMetricsService gatewayMetricsService;
 
     @Before
@@ -110,6 +98,42 @@ public abstract class AbstractMqttTimeseriesIntegrationTest extends AbstractMqtt
         String deviceName2 = "Device B";
         String payload = getGatewayTelemetryJsonPayload(deviceName1, deviceName2, "10000", "20000");
         processGatewayTelemetryTest(GATEWAY_TELEMETRY_TOPIC, expectedKeys, payload.getBytes(), deviceName1, deviceName2);
+    }
+
+    @Test
+    public void testAckIsReceivedOnFailedPublishMessage() throws Exception {
+        String devicePayload = "[{\"ts\": 10000, \"values\": " + PAYLOAD_VALUES_STR + "}]";
+        String payloadA = "{\"Device A\": " + devicePayload + "}";
+
+        String deviceBPayload = "[{\"ts\": 10000, \"values\": " + PAYLOAD_VALUES_STR + "}]";
+        String payloadB = "{\"Device B\": " + deviceBPayload + "}";
+
+        testAckIsReceivedOnFailedPublishMessage("Device A", payloadA.getBytes(), "Device B", payloadB.getBytes());
+    }
+
+    protected void testAckIsReceivedOnFailedPublishMessage(String deviceName1, byte[] payload1, String deviceName2, byte[] payload2) throws Exception {
+        updateDefaultTenantProfileConfig(profileConfiguration -> {
+            profileConfiguration.setMaxDevices(3);
+        });
+
+        MqttTestClient client = new MqttTestClient();
+        client.connectAndWait(gatewayAccessToken);
+        client.publishAndWait(GATEWAY_TELEMETRY_TOPIC, payload1);
+
+        // check device is created
+        await().atMost(TIMEOUT, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertNotNull(doGet("/api/tenant/devices?deviceName=" + deviceName1, Device.class));
+        });
+
+        client.publishAndWait(GATEWAY_TELEMETRY_TOPIC, payload2);
+        client.disconnectAndWait();
+
+        // check device was not created due to limit
+        doGet("/api/tenant/devices?deviceName=" + deviceName2).andExpect(status().isNotFound());
+
+        updateDefaultTenantProfileConfig(profileConfiguration -> {
+            profileConfiguration.setMaxDevices(0);
+        });
     }
 
     @Test

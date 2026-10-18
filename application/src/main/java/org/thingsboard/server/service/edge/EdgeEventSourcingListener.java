@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.edge;
 
 import com.fasterxml.jackson.databind.node.NullNode;
@@ -33,6 +20,7 @@ import org.thingsboard.server.common.data.alarm.AlarmApiCallResult;
 import org.thingsboard.server.common.data.alarm.AlarmComment;
 import org.thingsboard.server.common.data.alarm.EntityAlarm;
 import org.thingsboard.server.common.data.audit.ActionType;
+import org.thingsboard.server.common.data.cf.CalculatedField;
 import org.thingsboard.server.common.data.domain.Domain;
 import org.thingsboard.server.common.data.edge.Edge;
 import org.thingsboard.server.common.data.edge.EdgeEventActionType;
@@ -112,7 +100,7 @@ public class EdgeEventSourcingListener {
             return;
         }
         try {
-            if (EntityType.TENANT.equals(entityType) || EntityType.EDGE.equals(entityType)) {
+            if (EntityType.TENANT == entityType || EntityType.EDGE == entityType) {
                 return;
             }
             log.trace("[{}] DeleteEntityEvent called: {}", tenantId, event);
@@ -167,6 +155,11 @@ public class EdgeEventSourcingListener {
     @TransactionalEventListener(fallbackExecution = true)
     public void handleEvent(RelationActionEvent event) {
         try {
+            TenantId tenantId = event.getTenantId();
+            if (ActionType.RELATION_DELETED.equals(event.getActionType()) && !tenantService.tenantExists(tenantId)) {
+                log.debug("[{}] Ignoring RelationActionEvent because tenant does not exist: {}", tenantId, event);
+                return;
+            }
             EntityRelation relation = event.getRelation();
             if (relation == null) {
                 log.trace("[{}] skipping RelationActionEvent event in case relation is null: {}", event.getTenantId(), event);
@@ -257,6 +250,8 @@ public class EdgeEventSourcingListener {
     private String getBodyMsgForEntityEvent(Object entity) {
         if (entity instanceof AlarmComment) {
             return JacksonUtil.toString(entity);
+        } else if (entity instanceof CalculatedField calculatedField) {
+            return JacksonUtil.toString(calculatedField.getEntityId());
         }
         return null;
     }

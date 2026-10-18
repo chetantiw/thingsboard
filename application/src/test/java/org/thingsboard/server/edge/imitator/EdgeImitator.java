@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.edge.imitator;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -24,14 +11,18 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.junit.Assert;
 import org.thingsboard.edge.rpc.EdgeGrpcClient;
 import org.thingsboard.edge.rpc.EdgeRpcClient;
 import org.thingsboard.server.controller.AbstractWebTest;
 import org.thingsboard.server.gen.edge.v1.AdminSettingsUpdateMsg;
+import org.thingsboard.server.gen.edge.v1.AiModelUpdateMsg;
+import org.thingsboard.server.gen.edge.v1.ApiKeyUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.AlarmCommentUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.AlarmUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.AssetProfileUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.AssetUpdateMsg;
+import org.thingsboard.server.gen.edge.v1.CalculatedFieldUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.CustomerUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.DashboardUpdateMsg;
 import org.thingsboard.server.gen.edge.v1.DeviceCredentialsRequestMsg;
@@ -66,10 +57,12 @@ import org.thingsboard.server.gen.edge.v1.WidgetsBundleUpdateMsg;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -100,8 +93,17 @@ public class EdgeImitator {
 
     @Getter
     private EdgeConfiguration configuration;
-    @Getter
-    private final List<AbstractMessage> downlinkMsgs;
+    private final ConcurrentLinkedDeque<AbstractMessage> downlinkMsgs;
+
+    //Returns collection copy as Unmodifiable list
+    //This addressing the issue: DeviceEdgeTest>AbstractEdgeTest.setupEdgeTest:212->AbstractEdgeTest.verifyEdgeConnectionAndInitialData:306->AbstractEdgeTest.validateMsgsCnt:387 » ConcurrentModification
+    public List<AbstractMessage> getDownlinkMsgs() {
+        return downlinkMsgs.stream().toList();
+    }
+
+    public Deque<AbstractMessage> getDownlinkMsgsDeque() {
+        return downlinkMsgs;
+    }
 
     @Getter
     private UplinkResponseMsg latestResponseMsg;
@@ -110,7 +112,7 @@ public class EdgeImitator {
         edgeRpcClient = new EdgeGrpcClient();
         messagesLatch = new CountDownLatch(0);
         responsesLatch = new CountDownLatch(0);
-        downlinkMsgs = new ArrayList<>();
+        downlinkMsgs = new ConcurrentLinkedDeque<>();
         ignoredTypes = new ArrayList<>();
         this.routingKey = routingKey;
         this.routingSecret = routingSecret;
@@ -351,6 +353,21 @@ public class EdgeImitator {
                 result.add(saveDownlinkMsg(notificationTargetUpdateMsg));
             }
         }
+        if (downlinkMsg.getCalculatedFieldUpdateMsgCount() > 0) {
+            for (CalculatedFieldUpdateMsg calculatedFieldUpdateMsg : downlinkMsg.getCalculatedFieldUpdateMsgList()) {
+                result.add(saveDownlinkMsg(calculatedFieldUpdateMsg));
+            }
+        }
+        if (downlinkMsg.getAiModelUpdateMsgCount() > 0) {
+            for (AiModelUpdateMsg aiModelUpdateMsg : downlinkMsg.getAiModelUpdateMsgList()) {
+                result.add(saveDownlinkMsg(aiModelUpdateMsg));
+            }
+        }
+        if (downlinkMsg.getApiKeyUpdateMsgCount() > 0) {
+            for (ApiKeyUpdateMsg apiKeyUpdateMsg : downlinkMsg.getApiKeyUpdateMsgList()) {
+                result.add(saveDownlinkMsg(apiKeyUpdateMsg));
+            }
+        }
         if (downlinkMsg.hasEdgeConfiguration()) {
             result.add(saveDownlinkMsg(downlinkMsg.getEdgeConfiguration()));
         }
@@ -386,7 +403,19 @@ public class EdgeImitator {
     }
 
     public boolean waitForMessages() throws InterruptedException {
-        return waitForMessages(AbstractWebTest.TIMEOUT);
+        boolean success = waitForMessages(AbstractWebTest.TIMEOUT);
+
+        if (!success) {
+            List<AbstractMessage> downlinkMsgs = getDownlinkMsgs();
+            for (AbstractMessage downlinkMsg : downlinkMsgs) {
+                log.error("{}\n{}", downlinkMsg.getClass(), downlinkMsg);
+            }
+
+            log.error("message count: {}", downlinkMsgs.size());
+            Assert.fail("Await for messages was not successful!");
+        }
+
+        return true;
     }
 
     public boolean waitForMessages(int timeoutInSeconds) throws InterruptedException {
@@ -413,7 +442,7 @@ public class EdgeImitator {
         Optional<T> result;
         lock.lock();
         try {
-            result = (Optional<T>) downlinkMsgs.stream().filter(downlinkMsg -> downlinkMsg.getClass().isAssignableFrom(tClass)).findAny();
+            result = (Optional<T>) downlinkMsgs.stream().filter(downlinkMsg -> tClass.isAssignableFrom(downlinkMsg.getClass())).findAny();
         } finally {
             lock.unlock();
         }
@@ -425,7 +454,7 @@ public class EdgeImitator {
         List<T> result;
         lock.lock();
         try {
-            result = (List<T>) downlinkMsgs.stream().filter(downlinkMsg -> downlinkMsg.getClass().isAssignableFrom(tClass)).collect(Collectors.toList());
+            result = (List<T>) downlinkMsgs.stream().filter(downlinkMsg -> tClass.isAssignableFrom(downlinkMsg.getClass())).collect(Collectors.toList());
         } finally {
             lock.unlock();
         }
@@ -433,7 +462,7 @@ public class EdgeImitator {
     }
 
     public AbstractMessage getLatestMessage() {
-        return downlinkMsgs.get(downlinkMsgs.size() - 1);
+        return downlinkMsgs.peekLast();
     }
 
     public void ignoreType(Class<? extends AbstractMessage> type) {

@@ -1,73 +1,176 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 @import '../../../../../scss/constants';
 @import '../../../../../theme';
 
 :host {
   display: flex;
   flex: 1 1 0;
-  background-image: url('/assets/login_background.jpg'); // Ensure the correct path to the image
-  background-size: cover; // Ensure the image covers the entire background
-  background-position: center; // Center the image
-  background-repeat: no-repeat; // Prevent the image from repeating
-
   .tb-login-content {
-    margin-top: 36px;
-    margin-bottom: 76px;
-    background-color: rgba(182, 186, 192, 0.7); // Add transparency to the background color
-    border-radius: 8px; // Optional: Add rounded corners
+    min-height: 100%;
+    flex-wrap: wrap;
+    background-color: var(--mt-rail-header, #0F0D3A);
+    // The tint follows the theme (or brand) navigation colors; the image can be replaced by white labeling.
+    background-image:
+      linear-gradient(160deg, color-mix(in srgb, var(--mt-rail-header, #0F0D3A) 92%, transparent) 0%,
+        color-mix(in srgb, var(--mt-rail, #1B1961) 78%, transparent) 55%,
+        color-mix(in srgb, var(--mt-indicator, #13B5C9) 35%, transparent) 100%),
+      var(--mt-login-image, url('/assets/login_background.jpg'));
+    background-size: cover;
+    background-position: center;
+    overflow-y: auto;
+    --mat-card-elevated-container-elevation: none;
+
+    .mt-login-hero {
+      flex: 1 1 520px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 40px;
+      padding: 56px 64px;
+      color: #FFFFFF;
+      @media #{$mat-xs} {
+        padding: 32px 24px 8px;
+        gap: 24px;
+      }
+      .mt-login-logo {
+        align-self: flex-start;
+        height: 84px;
+        width: auto;
+      }
+      .mt-login-message {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        max-width: 540px;
+        h1 {
+          margin: 0;
+          font-size: 46px;
+          line-height: 1.1;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          @media #{$mat-lt-md} {
+            font-size: 32px;
+          }
+        }
+        p {
+          margin: 0;
+          font-size: 18px;
+          line-height: 1.6;
+          color: #D9D8F0;
+        }
+      }
+      .mt-login-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        span {
+          padding: 8px 14px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          font-size: 13px;
+          font-weight: 600;
+        }
+      }
+      .mt-login-copyright {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        font-size: 13px;
+        color: #B9B8DD;
+        .mt-legal-link {
+          color: inherit;
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+          opacity: 0.85;
+          &:hover {
+            opacity: 1;
+          }
+        }
+      }
+    }
+
+    .mt-login-panel {
+      flex: 1 1 480px;
+      padding: 40px 24px;
+    }
+
+    .mt-login-card {
+      width: 100%;
+      max-width: 460px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 24px;
+      box-shadow: 0 24px 64px rgba(8, 6, 40, 0.45);
+      background: var(--mt-surface);
+    }
+
+    .mt-login-heading {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 0 12px;
+      h2 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--mt-text);
+      }
+      p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--mt-muted);
+      }
+    }
+
     .tb-login-form {
-      @media #{$mat-gt-xs} {
-        width: 550px !important;
+      .mat-mdc-form-field {
+        margin-top: 8px;
       }
 
       .forgot-password {
-        padding: 0 0.5em 1em;
-        .tb-reset-password {
-          padding: 0 6px;
-        }
+        --mat-button-text-horizontal-padding: 0;
+        --mat-button-text-container-height: 20px;
       }
 
       .tb-action-button{
-        padding: 20px 0 16px;
+        margin: 20px 0 16px;
+        height: 48px;
+        font-size: 15px;
+        font-weight: 800;
+      }
+    }
+
+    .container-divider {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-bottom: 16px;
+
+      .mat-divider-horizontal{
+        --mat-divider-color: var(--mat-form-field-outlined-outline-color);
+      }
+
+      .text {
+        padding-right: 8px;
+        padding-left: 8px;
+        font-size: 16px;
+        line-height: 24px;
       }
     }
 
     .oauth-container{
-      padding: 0;
-
-      .container-divider {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-
-        .line {
-          flex: 1;
-        }
-
-        .mat-divider-horizontal{
-          position: relative;
-        }
-
-        .text {
-          padding-right: 10px;
-          padding-left: 10px;
-        }
+      .title {
+        font-size: 20px;
+        line-height: 24px;
+        letter-spacing: .1px;
+        text-align: center;
+        margin-bottom: 4px;
       }
 
       .material-icons{
@@ -77,15 +180,33 @@
 
       a.login-with-button {
         color: rgba(black, 0.87);
-        background-color: map-get($tb-dark-theme-background, raised-button);
+        background-color: var(--mt-surface);
+      }
 
-        &:hover {
-          border-bottom: 0;
+      .login-button-container {
+        a.login-with-button {
+          max-width: 170px;
+          min-width: 60px;
+          flex-grow: 1;
+          flex-basis: 130px;
+
+          .tb-mat-20 {
+            margin-right: 12px;
+          }
         }
 
-        .icon {
-          height: 20px;
-          width: 20px;
+        &:has(> :nth-child(1):last-child) {
+          a.login-with-button {
+            max-width: 100%;
+          }
+        }
+
+        &:has(> :nth-child(2):last-child),
+        &:has(> :nth-child(4):last-child) {
+          a.login-with-button {
+            max-width: 100%;
+            flex-basis: 180px;
+          }
         }
       }
     }

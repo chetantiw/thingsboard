@@ -1,20 +1,8 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.query;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -318,9 +307,18 @@ public class DefaultEntityQueryRepository implements EntityQueryRepository {
             .replace("$in", "from").replace("$out", "to")
             .replace("$rootIdCondition", "in (:relation_root_ids)");
 
+    private static final String NULLS_ORDER_DEFAULT = "default";
+    private static final String NULLS_ORDER_FIRST = "nulls_first";
+    private static final String NULLS_ORDER_LAST = "nulls_last";
+    private static final Set<String> ACCEPTED_NULLS_ORDER_STRATEGIES = Set.of(NULLS_ORDER_DEFAULT, NULLS_ORDER_FIRST, NULLS_ORDER_LAST);
+
     @Getter
     @Value("${sql.relations.max_level:50}")
     int maxLevelAllowed; //This value has to be reasonable small to prevent infinite recursion as early as possible
+
+    @Getter
+    @Value("${sql.entity_data_query_nulls_order_strategy:default}")
+    String nullsOrderStrategy;
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -330,6 +328,15 @@ public class DefaultEntityQueryRepository implements EntityQueryRepository {
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = transactionTemplate;
         this.queryLog = queryLog;
+    }
+
+    @PostConstruct
+    void validateNullsOrderStrategy() {
+        if (!ACCEPTED_NULLS_ORDER_STRATEGIES.contains(nullsOrderStrategy)) {
+            log.error("Invalid value '{}' for sql.entity_data_query_nulls_order_strategy. Accepted values are: {}. Falling back to '{}'.",
+                    nullsOrderStrategy, ACCEPTED_NULLS_ORDER_STRATEGIES, NULLS_ORDER_DEFAULT);
+            nullsOrderStrategy = NULLS_ORDER_DEFAULT;
+        }
     }
 
     @Override
@@ -502,11 +509,12 @@ public class DefaultEntityQueryRepository implements EntityQueryRepository {
                 if (sortOrderMappingOpt.isPresent()) {
                     EntityKeyMapping sortOrderMapping = sortOrderMappingOpt.get();
                     String direction = sortOrder.getDirection() == EntityDataSortOrder.Direction.ASC ? "asc" : "desc";
+                    String nullsOrder = resolveNullsOrder();
                     if (sortOrderMapping.getEntityKey().getType() == EntityKeyType.ENTITY_FIELD) {
-                        dataQuery = String.format("%s order by %s %s, result.id %s", dataQuery, sortOrderMapping.getValueAlias(), direction, direction);
+                        dataQuery = String.format("%s order by %s %s%s, result.id %s", dataQuery, sortOrderMapping.getValueAlias(), direction, nullsOrder, direction);
                     } else {
-                        dataQuery = String.format("%s order by %s %s, %s %s, result.id %s", dataQuery,
-                                sortOrderMapping.getSortOrderNumAlias(), direction, sortOrderMapping.getSortOrderStrAlias(), direction, direction);
+                        dataQuery = String.format("%s order by %s %s%s, %s %s, result.id %s", dataQuery,
+                                sortOrderMapping.getSortOrderNumAlias(), direction, nullsOrder, sortOrderMapping.getSortOrderStrAlias(), direction, direction);
                     }
                 }
             }
@@ -525,6 +533,14 @@ public class DefaultEntityQueryRepository implements EntityQueryRepository {
         });
     }
 
+    private String resolveNullsOrder() {
+        return switch (nullsOrderStrategy) {
+            case NULLS_ORDER_FIRST -> " NULLS FIRST";
+            case NULLS_ORDER_LAST -> " NULLS LAST";
+            default -> "";
+        };
+    }
+
     private String buildEntityWhere(SqlQueryContext ctx, EntityFilter entityFilter, List<EntityKeyMapping> entityFieldsFilters) {
         String permissionQuery = this.buildPermissionQuery(ctx, entityFilter);
         String entityFilterQuery = this.buildEntityFilterQuery(ctx, entityFilter);
@@ -540,7 +556,8 @@ public class DefaultEntityQueryRepository implements EntityQueryRepository {
     }
 
     private String buildPermissionQuery(SqlQueryContext ctx, EntityFilter entityFilter) {
-        if (ctx.isIgnorePermissionCheck()) {
+        if (ctx.isIgnorePermissionCheck() || (ctx.getTenantId().isSysTenantId() &&
+                (ctx.getEntityType() == EntityType.TENANT || ctx.getEntityType() == EntityType.TENANT_PROFILE))) {
             return "1=1";
         }
         switch (entityFilter.getType()) {

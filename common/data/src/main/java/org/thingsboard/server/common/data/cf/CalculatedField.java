@@ -1,28 +1,18 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.common.data.cf;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
 import org.thingsboard.server.common.data.BaseData;
+import org.thingsboard.server.common.data.EntityType;
+import org.thingsboard.server.common.data.HasAdditionalInfo;
 import org.thingsboard.server.common.data.HasDebugSettings;
 import org.thingsboard.server.common.data.HasName;
 import org.thingsboard.server.common.data.HasTenantId;
@@ -36,15 +26,31 @@ import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.validation.Length;
 import org.thingsboard.server.common.data.validation.NoXss;
 
-import java.io.Serial;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Set;
 
 @Schema
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class CalculatedField extends BaseData<CalculatedFieldId> implements HasName, HasTenantId, HasVersion, HasDebugSettings {
+public class CalculatedField extends BaseData<CalculatedFieldId> implements HasName, HasTenantId, HasVersion, HasDebugSettings, HasAdditionalInfo {
 
-    @Serial
-    private static final long serialVersionUID = 4491966747773381420L;
+    public static final Map<EntityType, Set<CalculatedFieldType>> SUPPORTED_ENTITIES = Map.of(
+            EntityType.DEVICE, CalculatedFieldType.all,
+            EntityType.ASSET, CalculatedFieldType.all,
+            EntityType.DEVICE_PROFILE, CalculatedFieldType.all,
+            EntityType.ASSET_PROFILE, CalculatedFieldType.all,
+            EntityType.CUSTOMER, Set.of(CalculatedFieldType.ALARM)
+    );
+
+    public static final Set<EntityType> SUPPORTED_REFERENCED_ENTITIES = Collections.unmodifiableSet(EnumSet.of(
+            EntityType.DEVICE, EntityType.ASSET, EntityType.CUSTOMER, EntityType.TENANT
+    ));
+
+    public static boolean isSupportedRefEntity(EntityId entity) {
+        return SUPPORTED_REFERENCED_ENTITIES.contains(entity.getEntityType());
+    }
 
     private TenantId tenantId;
     private EntityId entityId;
@@ -63,28 +69,19 @@ public class CalculatedField extends BaseData<CalculatedFieldId> implements HasN
     private DebugSettings debugSettings;
     @Schema(description = "Version of calculated field configuration.", example = "0")
     private int configurationVersion;
-    @Schema(implementation = SimpleCalculatedFieldConfiguration.class)
-    private transient CalculatedFieldConfiguration configuration;
-    @Getter
-    @Setter
+    @Schema(implementation = CalculatedFieldConfiguration.class)
+    @Valid
+    @NotNull
+    private CalculatedFieldConfiguration configuration;
     private Long version;
+    @NoXss
+    @Schema(description = "Additional parameters of the calculated field")
+    private JsonNode additionalInfo;
 
-    public CalculatedField() {
-        super();
-    }
+    public CalculatedField() {}
 
     public CalculatedField(CalculatedFieldId id) {
         super(id);
-    }
-
-    public CalculatedField(TenantId tenantId, EntityId entityId, CalculatedFieldType type, String name, int configurationVersion, CalculatedFieldConfiguration configuration, Long version) {
-        this.tenantId = tenantId;
-        this.entityId = entityId;
-        this.type = type;
-        this.name = name;
-        this.configurationVersion = configurationVersion;
-        this.configuration = configuration;
-        this.version = version;
     }
 
     public CalculatedField(CalculatedField calculatedField) {
@@ -98,6 +95,7 @@ public class CalculatedField extends BaseData<CalculatedFieldId> implements HasN
         this.configurationVersion = calculatedField.configurationVersion;
         this.configuration = calculatedField.configuration;
         this.version = calculatedField.version;
+        this.additionalInfo = calculatedField.additionalInfo;
     }
 
     @Schema(description = "JSON object with the Calculated Field Id. Referencing non-existing Calculated Field Id will cause error.")
@@ -112,22 +110,6 @@ public class CalculatedField extends BaseData<CalculatedFieldId> implements HasN
         return super.getCreatedTime();
     }
 
-    @Override
-    public String toString() {
-        return new StringBuilder()
-                .append("CalculatedField[")
-                .append("tenantId=").append(tenantId)
-                .append(", entityId=").append(entityId)
-                .append(", type='").append(type)
-                .append(", name='").append(name)
-                .append(", configurationVersion=").append(configurationVersion)
-                .append(", configuration=").append(configuration)
-                .append(", version=").append(version)
-                .append(", createdTime=").append(createdTime)
-                .append(", id=").append(id).append(']')
-                .toString();
-    }
-
     // Getter is ignored for serialization
     @JsonIgnore
     public boolean isDebugMode() {
@@ -138,6 +120,23 @@ public class CalculatedField extends BaseData<CalculatedFieldId> implements HasN
     @JsonSetter
     public void setDebugMode(boolean debugMode) {
         this.debugMode = debugMode;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder()
+                .append("CalculatedField[")
+                .append("tenantId=").append(tenantId)
+                .append(", entityId=").append(entityId)
+                .append(", type='").append(type)
+                .append(", name='").append(name)
+                .append(", configurationVersion=").append(configurationVersion)
+                .append(", configuration=").append(configuration)
+                .append(", additionalInfo=").append(additionalInfo)
+                .append(", version=").append(version)
+                .append(", createdTime=").append(createdTime)
+                .append(", id=").append(id).append(']')
+                .toString();
     }
 
 }

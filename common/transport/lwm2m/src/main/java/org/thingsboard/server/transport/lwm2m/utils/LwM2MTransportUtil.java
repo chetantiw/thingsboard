@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.lwm2m.utils;
 
 import com.google.gson.JsonElement;
@@ -45,10 +32,14 @@ import org.thingsboard.server.transport.lwm2m.server.ota.firmware.FirmwareUpdate
 import org.thingsboard.server.transport.lwm2m.server.ota.software.SoftwareUpdateResult;
 import org.thingsboard.server.transport.lwm2m.server.ota.software.SoftwareUpdateState;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static org.eclipse.californium.scandium.config.DtlsConfig.DTLS_CONNECTION_ID_LENGTH;
 import static org.eclipse.californium.scandium.config.DtlsConfig.DTLS_CONNECTION_ID_NODE_ID;
@@ -77,7 +68,8 @@ public class LwM2MTransportUtil {
     public static final String LOG_LWM2M_INFO = "info";
     public static final String LOG_LWM2M_ERROR = "error";
     public static final String LOG_LWM2M_WARN = "warn";
-    public static final int BOOTSTRAP_DEFAULT_SHORT_ID_0 = 0;
+    public static final String REGISTRATION_TRIGGER_PARAMS_ID = "/1/0/8";
+    public static final String BOOTSTRAP_TRIGGER_PARAMS_ID = "/1/0/9";;
 
     public static LwM2mOtaConvert convertOtaUpdateValueToString(String pathIdVer, Object value, ResourceModel.Type currentType) {
         String path = fromVersionedIdToObjectId(pathIdVer);
@@ -114,10 +106,6 @@ public class LwM2MTransportUtil {
             log.info("[{}] Received profile with invalid transport configuration: {}", deviceProfile.getId(), deviceProfile.getProfileData().getTransportConfiguration());
             throw new IllegalArgumentException("Received profile with invalid transport configuration: " + transportConfiguration.getType());
         }
-    }
-
-    public static List<LwM2MBootstrapServerCredential> getBootstrapParametersFromThingsboard(DeviceProfile deviceProfile) {
-        return toLwM2MClientProfile(deviceProfile).getBootstrap();
     }
 
     public static String fromVersionedIdToObjectId(String pathIdVer) {
@@ -202,15 +190,15 @@ public class LwM2MTransportUtil {
     }
 
     public static Object getJsonPrimitiveValue(JsonPrimitive value) {
-        if(value.isString()) {
+        if (value.isString()) {
             return value.getAsString();
-        } else if (value.isNumber()){
+        } else if (value.isNumber()) {
             try {
                 return Integer.valueOf(value.toString());
             } catch (NumberFormatException i) {
                 try {
                     return Long.valueOf(value.toString());
-                } catch (NumberFormatException l){
+                } catch (NumberFormatException l) {
                     if (value.getAsFloat() >= Float.MIN_VALUE && value.getAsFloat() <= Float.MAX_VALUE) {
                         return value.getAsFloat();
                     } else {
@@ -218,7 +206,7 @@ public class LwM2MTransportUtil {
                     }
                 }
             }
-        } else if (value.isBoolean()){
+        } else if (value.isBoolean()) {
             return value.getAsBoolean();
         } else {
             return null;
@@ -241,7 +229,7 @@ public class LwM2MTransportUtil {
         if (value instanceof JsonElement) {
             return convertMultiResourceValuesFromJson((JsonElement) value, type, versionedId);
         } else if (value instanceof Map) {
-            JsonElement valueConvert =  convertToJsonObject((Map<String, ?>) value);
+            JsonElement valueConvert = convertToJsonObject((Map<String, ?>) value);
             return convertMultiResourceValuesFromJson(valueConvert, type, versionedId);
         } else {
             return null;
@@ -394,10 +382,55 @@ public class LwM2MTransportUtil {
         }
     }
 
-    public static int calculateSzx(int size) {
-        if (size < 16 || size > 1024 || (size & (size - 1)) != 0) {
-            throw new IllegalArgumentException("Size must be a power of 2 between 16 and 1024.");
+    public static ConcurrentHashMap<Integer, String[]> groupByObjectIdVersionedIds(Set<String> targetIds) {
+        return targetIds.stream()
+                .collect(Collectors.groupingBy(
+                        id -> new LwM2mPath(fromVersionedIdToObjectId(id)).getObjectId(),
+                        ConcurrentHashMap::new,
+                        Collectors.collectingAndThen(
+                                Collectors.toList(),
+                                list -> list.toArray(new String[0])
+                        )
+                ));
+    }
+
+    public static boolean areArraysStringEqual(String[] oldValue, String[] newValue) {
+        if (oldValue == null || newValue == null) return false;
+        if (oldValue.length != newValue.length) return false;
+        String[] sorted1 = oldValue.clone();
+        String[] sorted2 = newValue.clone();
+        Arrays.sort(sorted1);
+        Arrays.sort(sorted2);
+        return Arrays.equals(sorted1, sorted2);
+    }
+
+    public static ConcurrentHashMap<Integer, String[]> deepCopyConcurrentMap(Map<Integer, String[]> original) {
+        return original.isEmpty() ? new ConcurrentHashMap<>() : original.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue() != null ? entry.getValue().clone() : null,
+                        (v1, v2) -> v1, // merge function in case of duplicate keys
+                        ConcurrentHashMap::new
+                ));
+    }
+
+    public static boolean areMapsEqual(Map<Integer, String[]> m1, Map<Integer, String[]> m2) {
+        if (m1.size() != m2.size()) return false;
+        for (Integer key : m1.keySet()) {
+            if (!m2.containsKey(key)) return false;
+
+            String[] arr1 = m1.get(key);
+            String[] arr2 = m2.get(key);
+
+            if (arr1 == null || arr2 == null) {
+                if (arr1 != arr2) return false;
+                String[] sorted1 = arr1.clone();
+                String[] sorted2 = arr2.clone();
+                Arrays.sort(sorted1);
+                Arrays.sort(sorted2);
+                if (!Arrays.equals(sorted1, sorted2)) return false;
+            }
         }
-        return (int) (Math.log(size / 16) / Math.log(2));
+        return true;
     }
 }

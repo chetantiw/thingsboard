@@ -1,30 +1,22 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.edge.rpc.processor;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.data.AttributeScope;
 import org.thingsboard.server.common.data.EdgeUtils;
 import org.thingsboard.server.common.data.EntityType;
+import org.thingsboard.server.common.data.HasCustomerId;
+import org.thingsboard.server.common.data.HasName;
+import org.thingsboard.server.common.data.HasVersion;
+import org.thingsboard.server.common.data.StringUtils;
 import org.thingsboard.server.common.data.edge.Edge;
 import org.thingsboard.server.common.data.edge.EdgeEvent;
 import org.thingsboard.server.common.data.edge.EdgeEventActionType;
@@ -37,6 +29,7 @@ import org.thingsboard.server.common.data.id.EdgeId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.EntityIdFactory;
 import org.thingsboard.server.common.data.id.EntityViewId;
+import org.thingsboard.server.common.data.id.HasId;
 import org.thingsboard.server.common.data.id.RuleChainId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.id.UserId;
@@ -61,6 +54,7 @@ import org.thingsboard.server.service.edge.EdgeContextComponent;
 import org.thingsboard.server.service.executors.DbCallbackExecutorService;
 import org.thingsboard.server.service.state.DefaultDeviceStateService;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -95,28 +89,42 @@ public abstract class BaseEdgeProcessor implements EdgeProcessor {
                                                    EdgeEventActionType action,
                                                    EntityId entityId,
                                                    JsonNode body) {
-        ListenableFuture<Optional<AttributeKvEntry>> future =
-                edgeCtx.getAttributesService().find(tenantId, edgeId, AttributeScope.SERVER_SCOPE, DefaultDeviceStateService.ACTIVITY_STATE);
-        return Futures.transformAsync(future, activeOpt -> {
-            if (activeOpt.isEmpty()) {
-                log.trace("Edge is not activated. Skipping event. tenantId [{}], edgeId [{}], type[{}], " +
-                                "action [{}], entityId [{}], body [{}]",
-                        tenantId, edgeId, type, action, entityId, body);
-                return Futures.immediateFuture(null);
-            }
-            if (activeOpt.get().getBooleanValue().isPresent() && activeOpt.get().getBooleanValue().get()) {
-                return doSaveEdgeEvent(tenantId, edgeId, type, action, entityId, body);
-            } else {
-                if (doSaveIfEdgeIsOffline(type, action)) {
-                    return doSaveEdgeEvent(tenantId, edgeId, type, action, entityId, body);
-                } else {
-                    log.trace("Edge is not active at the moment. Skipping event. tenantId [{}], edgeId [{}], type[{}], " +
+        return saveEdgeEvent(tenantId, edgeId, type, action, entityId, body, true);
+    }
+
+    protected ListenableFuture<Void> saveEdgeEvent(TenantId tenantId,
+                                                   EdgeId edgeId,
+                                                   EdgeEventType type,
+                                                   EdgeEventActionType action,
+                                                   EntityId entityId,
+                                                   JsonNode body,
+                                                   boolean doValidate) {
+        if (doValidate) {
+            ListenableFuture<Optional<AttributeKvEntry>> future =
+                    edgeCtx.getAttributesService().find(tenantId, edgeId, AttributeScope.SERVER_SCOPE, DefaultDeviceStateService.ACTIVITY_STATE);
+            return Futures.transformAsync(future, activeOpt -> {
+                if (activeOpt.isEmpty()) {
+                    log.trace("Edge is not activated. Skipping event. tenantId [{}], edgeId [{}], type[{}], " +
                                     "action [{}], entityId [{}], body [{}]",
                             tenantId, edgeId, type, action, entityId, body);
                     return Futures.immediateFuture(null);
                 }
-            }
-        }, dbCallbackExecutorService);
+                if (activeOpt.get().getBooleanValue().isPresent() && activeOpt.get().getBooleanValue().get()) {
+                    return doSaveEdgeEvent(tenantId, edgeId, type, action, entityId, body);
+                } else {
+                    if (doSaveIfEdgeIsOffline(type, action)) {
+                        return doSaveEdgeEvent(tenantId, edgeId, type, action, entityId, body);
+                    } else {
+                        log.trace("Edge is not active at the moment. Skipping event. tenantId [{}], edgeId [{}], type[{}], " +
+                                        "action [{}], entityId [{}], body [{}]",
+                                tenantId, edgeId, type, action, entityId, body);
+                        return Futures.immediateFuture(null);
+                    }
+                }
+            }, dbCallbackExecutorService);
+        } else {
+            return doSaveEdgeEvent(tenantId, edgeId, type, action, entityId, body);
+        }
     }
 
     private boolean doSaveIfEdgeIsOffline(EdgeEventType type, EdgeEventActionType action) {
@@ -125,8 +133,8 @@ public abstract class BaseEdgeProcessor implements EdgeProcessor {
                  UPDATED_COMMENT, DELETED -> true;
             default -> switch (type) {
                 case ALARM, ALARM_COMMENT, RULE_CHAIN, RULE_CHAIN_METADATA, USER, CUSTOMER, TENANT, TENANT_PROFILE,
-                     WIDGETS_BUNDLE, WIDGET_TYPE, ADMIN_SETTINGS, OTA_PACKAGE, QUEUE, RELATION, NOTIFICATION_TEMPLATE, NOTIFICATION_TARGET,
-                     NOTIFICATION_RULE -> true;
+                     WIDGETS_BUNDLE, WIDGET_TYPE, ADMIN_SETTINGS, OTA_PACKAGE, QUEUE, RELATION, CALCULATED_FIELD, AI_MODEL, API_KEY, NOTIFICATION_TEMPLATE,
+                     NOTIFICATION_TARGET, NOTIFICATION_RULE -> true;
                 default -> false;
             };
         };
@@ -145,9 +153,9 @@ public abstract class BaseEdgeProcessor implements EdgeProcessor {
                                                               JsonNode body, EdgeId sourceEdgeId) {
         List<ListenableFuture<Void>> futures = new ArrayList<>();
         if (TenantId.SYS_TENANT_ID.equals(tenantId)) {
-            PageDataIterable<TenantId> tenantIds = new PageDataIterable<>(link -> edgeCtx.getTenantService().findTenantsIds(link), 1024);
-            for (TenantId tenantId1 : tenantIds) {
-                futures.addAll(processActionForAllEdgesByTenantId(tenantId1, type, actionType, entityId, body, sourceEdgeId));
+            PageDataIterable<Edge> edges = new PageDataIterable<>(link -> edgeCtx.getEdgeService().findActiveEdges(link), 1024);
+            for (Edge edge : edges) {
+                futures.add(saveEdgeEvent(edge.getTenantId(), edge.getId(), type, actionType, entityId, body, false));
             }
         } else {
             futures = processActionForAllEdgesByTenantId(tenantId, type, actionType, entityId, null, sourceEdgeId);
@@ -205,10 +213,10 @@ public abstract class BaseEdgeProcessor implements EdgeProcessor {
                 case CREDENTIALS_UPDATED:
                 case ASSIGNED_TO_CUSTOMER:
                 case UNASSIGNED_FROM_CUSTOMER:
-                    if (edgeId != null) {
+                    if (edgeId != null && !edgeId.equals(originatorEdgeId)) {
                         return saveEdgeEvent(tenantId, edgeId, type, actionType, entityId, body);
                     } else {
-                        return processNotificationToRelatedEdges(tenantId, entityId, type, actionType, originatorEdgeId);
+                        return processNotificationToRelatedEdges(tenantId, entityId, entityId, type, actionType, originatorEdgeId);
                     }
                 case DELETED:
                     EdgeEventActionType deleted = EdgeEventActionType.DELETED;
@@ -246,11 +254,11 @@ public abstract class BaseEdgeProcessor implements EdgeProcessor {
         }
     }
 
-    private ListenableFuture<Void> processNotificationToRelatedEdges(TenantId tenantId, EntityId entityId, EdgeEventType type,
-                                                                     EdgeEventActionType actionType, EdgeId sourceEdgeId) {
+    protected ListenableFuture<Void> processNotificationToRelatedEdges(TenantId tenantId, EntityId ownerEntityId, EntityId entityId, EdgeEventType type,
+                                                                       EdgeEventActionType actionType, EdgeId sourceEdgeId) {
         List<ListenableFuture<Void>> futures = new ArrayList<>();
         PageDataIterableByTenantIdEntityId<EdgeId> edgeIds =
-                new PageDataIterableByTenantIdEntityId<>(edgeCtx.getEdgeService()::findRelatedEdgeIdsByEntityId, tenantId, entityId, RELATED_EDGES_CACHE_ITEMS);
+                new PageDataIterableByTenantIdEntityId<>(edgeCtx.getEdgeService()::findRelatedEdgeIdsByEntityId, tenantId, ownerEntityId, RELATED_EDGES_CACHE_ITEMS);
         for (EdgeId relatedEdgeId : edgeIds) {
             if (!relatedEdgeId.equals(sourceEdgeId)) {
                 futures.add(saveEdgeEvent(tenantId, relatedEdgeId, type, actionType, entityId, null));
@@ -334,6 +342,29 @@ public abstract class BaseEdgeProcessor implements EdgeProcessor {
         edgeCtx.getRelationService().saveRelation(tenantId, relation);
     }
 
+    protected <T extends HasId<? extends EntityId>> void pushEntityEventToRuleEngine(TenantId tenantId, T entity, TbMsgType msgType) {
+        pushEntityEventToRuleEngine(tenantId, null, entity, msgType);
+    }
+
+    protected <T extends HasId<? extends EntityId>> void pushEntityEventToRuleEngine(TenantId tenantId, Edge edge, T entity, TbMsgType msgType) {
+        try {
+            String entityAsString = JacksonUtil.toString(entity);
+            CustomerId customerId = getCustomerId(entity);
+            TbMsgMetaData tbMsgMetaData = edge == null ? TbMsgMetaData.EMPTY : getEdgeActionTbMsgMetaData(edge, customerId);
+
+            pushEntityEventToRuleEngine(tenantId, entity.getId(), customerId, msgType, entityAsString, tbMsgMetaData);
+        } catch (Exception e) {
+            log.warn("[{}][{}] Failed to push entity action for {} to rule engine: {}", tenantId, entity.getId(), entity.getId().getEntityType(), msgType.name(), e);
+        }
+    }
+
+    private <T extends HasId<? extends EntityId>> CustomerId getCustomerId(T entity) {
+        if (entity instanceof HasCustomerId hasCustomer) {
+            return hasCustomer.getCustomerId();
+        }
+        return null;
+    }
+
     protected TbMsgMetaData getEdgeActionTbMsgMetaData(Edge edge, CustomerId customerId) {
         TbMsgMetaData metaData = new TbMsgMetaData();
         metaData.putValue("edgeId", edge.getId().toString());
@@ -365,6 +396,31 @@ public abstract class BaseEdgeProcessor implements EdgeProcessor {
                 log.warn("[{}] Failed to send ENTITY_CREATED EVENT to rule engine [{}]", tenantId, msgData, t);
             }
         });
+    }
+
+    protected boolean isSaveRequired(HasVersion current, HasVersion updated) {
+        if (current != null) {
+            current.setVersion(null);
+        }
+        updated.setVersion(null);
+        return !updated.equals(current);
+    }
+
+    protected <I extends EntityId, E extends HasName & HasId<I>> Optional<String> generateUniqueNameIfDuplicateExists(
+            TenantId tenantId, I entityId, E entity, @Nullable E entityWithSameName) {
+
+        if (entityWithSameName == null || entityWithSameName.getId().equals(entityId)) {
+            return Optional.empty();
+        }
+        String currentName = entity.getName();
+        String newEntityName = generateRandomAlphabeticString(currentName);
+
+        log.warn("[{}] Entity with name '{}' already exists (id={}). Renaming to '{}'", tenantId, currentName, entityWithSameName.getId(), newEntityName);
+        return Optional.of(newEntityName);
+    }
+
+    protected static String generateRandomAlphabeticString(String prefix) {
+        return prefix + "_" + StringUtils.randomAlphabetic(15);
     }
 
 }

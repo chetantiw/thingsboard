@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.sync.ie.importing.impl;
 
 import lombok.RequiredArgsConstructor;
@@ -44,8 +31,8 @@ public class DeviceImportService extends BaseEntityImportService<DeviceId, Devic
     @Override
     protected Device prepare(EntitiesImportCtx ctx, Device device, Device old, DeviceExportData exportData, IdProvider idProvider) {
         device.setDeviceProfileId(idProvider.getInternalId(device.getDeviceProfileId()));
-        device.setFirmwareId(getOldEntityField(old, Device::getFirmwareId));
-        device.setSoftwareId(getOldEntityField(old, Device::getSoftwareId));
+        device.setFirmwareId(idProvider.getInternalId(device.getFirmwareId()));
+        device.setSoftwareId(idProvider.getInternalId(device.getSoftwareId()));
         return device;
     }
 
@@ -63,7 +50,7 @@ public class DeviceImportService extends BaseEntityImportService<DeviceId, Devic
     }
 
     @Override
-    protected Device saveOrUpdate(EntitiesImportCtx ctx, Device device, DeviceExportData exportData, IdProvider idProvider) {
+    protected Device saveOrUpdate(EntitiesImportCtx ctx, Device device, DeviceExportData exportData, IdProvider idProvider, CompareResult compareResult) {
         Device savedDevice;
         if (exportData.getCredentials() != null && ctx.isSaveCredentials()) {
             exportData.getCredentials().setId(null);

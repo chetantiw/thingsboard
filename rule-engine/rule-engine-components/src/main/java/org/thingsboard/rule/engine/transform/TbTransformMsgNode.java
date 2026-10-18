@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.transform;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -41,7 +28,8 @@ import java.util.List;
                 "<code>{ msg: <i style=\"color: #666;\">new payload</i>,<br/>&nbsp&nbsp&nbspmetadata: <i style=\"color: #666;\">new metadata</i>,<br/>&nbsp&nbsp&nbspmsgType: <i style=\"color: #666;\">new msgType</i> }</code><br/>" +
                 "All fields in resulting object are optional and will be taken from original message if not specified.<br><br>" +
                 "Output connections: <code>Success</code>, <code>Failure</code>.",
-        configDirective = "tbTransformationNodeScriptConfig"
+        configDirective = "tbTransformationNodeScriptConfig",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/transformation/script/"
 )
 public class TbTransformMsgNode extends TbAbstractTransformNode<TbTransformMsgNodeConfiguration> {
 
@@ -71,4 +59,5 @@ public class TbTransformMsgNode extends TbAbstractTransformNode<TbTransformMsgNo
             scriptEngine.destroy();
         }
     }
+
 }

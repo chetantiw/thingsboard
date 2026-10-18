@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import { BasicActionWidgetComponent, ValueSetter } from '@home/components/widget/lib/action/action-widget.models';
 import { ImagePipe } from '@shared/pipe/image.pipe';
@@ -26,10 +14,11 @@ import {
 } from '@home/components/widget/lib/button/command-button-widget.models';
 
 @Component({
-  selector: 'tb-command-button-widget',
-  templateUrl: './command-button-widget.component.html',
-  styleUrls: ['../action/action-widget.scss', './command-button-widget.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-command-button-widget',
+    templateUrl: './command-button-widget.component.html',
+    styleUrls: ['../action/action-widget.scss', './command-button-widget.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class CommandButtonWidgetComponent extends
   BasicActionWidgetComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -51,7 +40,7 @@ export class CommandButtonWidgetComponent extends
 
   ngOnInit(): void {
     super.ngOnInit();
-    this.settings = {...commandButtonDefaultSettings, ...this.ctx.settings};
+    this.settings = mtThemedSettings({...commandButtonDefaultSettings, ...this.ctx.settings});
 
     this.appearance = this.settings.appearance;
 

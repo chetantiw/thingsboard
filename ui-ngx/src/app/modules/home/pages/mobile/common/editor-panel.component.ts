@@ -1,29 +1,17 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, EventEmitter, Input, OnInit, Output, ViewEncapsulation } from '@angular/core';
 import { FormBuilder, FormControl } from '@angular/forms';
 import { TbPopoverComponent } from '@shared/components/popover.component';
-import { EditorOptions } from 'tinymce';
+import { EditorOptions } from 'hugerte';
+import { defaultHugeRteOptions } from '@shared/models/hugerte/hugerte.models';
 
 @Component({
-  selector: 'tb-release-notes-panel',
-  templateUrl: './editor-panel.component.html',
-  styleUrls: ['./editor-panel.component.scss'],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-release-notes-panel',
+    templateUrl: './editor-panel.component.html',
+    styleUrls: ['./editor-panel.component.scss'],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class EditorPanelComponent implements OnInit {
 
@@ -44,29 +32,15 @@ export class EditorPanelComponent implements OnInit {
 
   editorControl: FormControl<string>;
 
-  tinyMceOptions: Partial<EditorOptions> = {
-    base_url: '/assets/tinymce',
-    suffix: '.min',
-    plugins: ['lists'],
+  hugeRteOptions: Partial<EditorOptions> = defaultHugeRteOptions({
+    plugins: ['link', 'table', 'image', 'lists', 'fullscreen'],
     menubar: 'edit insert view format',
     toolbar: ['fontfamily fontsize | bold italic underline strikethrough forecolor backcolor',
-      'alignleft aligncenter alignright alignjustify | bullist'],
+      'alignleft aligncenter alignright alignjustify | bullist | link table image | fullscreen'],
     toolbar_mode: 'sliding',
     height: 400,
-    autofocus: false,
-    branding: false,
-    promotion: false,
-    resize: false,
-    setup: (editor) => {
-      editor.on('PostRender', function() {
-        const container = editor.getContainer().closest('.tb-popover-content');
-        const uiContainer = document.querySelector('.tox.tox-tinymce-aux');
-        container.parentNode.appendChild(uiContainer);
-      });
-    },
-    relative_urls: false,
-    urlconverter_callback: (url) => url
-  };
+    resize: false
+  });
 
   constructor(private fb: FormBuilder) {
   }
@@ -75,9 +49,9 @@ export class EditorPanelComponent implements OnInit {
     this.editorControl = this.fb.control(this.content);
     if (this.disabled) {
       this.editorControl.disable({emitEvent: false});
-      this.tinyMceOptions.toolbar = false;
-      this.tinyMceOptions.menubar = false;
-      this.tinyMceOptions.statusbar = false;
+      this.hugeRteOptions.toolbar = false;
+      this.hugeRteOptions.menubar = false;
+      this.hugeRteOptions.statusbar = false;
     }
   }
 

@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, Input, OnInit } from '@angular/core';
 import { select, Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
@@ -22,17 +8,26 @@ import { AlarmCommentService } from '@core/http/alarm-comment.service';
 import { AbstractControl, FormBuilder, FormGroup } from '@angular/forms';
 import { DialogService } from '@core/services/dialog.service';
 import { AuthUser } from '@shared/models/user.model';
+import { Authority } from '@shared/models/authority.enum';
 import { getCurrentAuthUser, selectUserDetails } from '@core/auth/auth.selectors';
 import { Direction, SortOrder } from '@shared/models/page/sort-order';
 import { MAX_SAFE_PAGE_SIZE, PageLink } from '@shared/models/page/page-link';
 import { DateAgoPipe } from '@shared/pipe/date-ago.pipe';
 import { map } from 'rxjs/operators';
-import { AlarmComment, AlarmCommentType, getUserDisplayName } from '@shared/models/alarm.models';
+import {
+  AlarmComment,
+  AlarmCommentInfo,
+  AlarmCommentType,
+  AlarmMessage,
+  AlarmSeverity,
+  alarmSeverityTranslations,
+  getUserDisplayName
+} from '@shared/models/alarm.models';
 import { UtilsService } from '@core/services/utils.service';
 import { EntityType } from '@shared/models/entity-type.models';
 import { DatePipe } from '@angular/common';
 import { ImportExportService } from '@shared/import-export/import-export.service';
-import { isNotEmptyStr } from '@core/utils';
+import { deepClone, isNotEmptyStr } from '@core/utils';
 
 interface AlarmCommentsDisplayData {
   commentId?: string;
@@ -44,6 +39,8 @@ interface AlarmCommentsDisplayData {
   editedTime?: string;
   editedDateAgo?: string;
   showActions?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   commentText?: string;
   isSystemComment?: boolean;
   avatarBgColor?: string;
@@ -51,9 +48,10 @@ interface AlarmCommentsDisplayData {
 }
 
 @Component({
-  selector: 'tb-alarm-comment',
-  templateUrl: './alarm-comment.component.html',
-  styleUrls: ['./alarm-comment.component.scss']
+    selector: 'tb-alarm-comment',
+    templateUrl: './alarm-comment.component.html',
+    styleUrls: ['./alarm-comment.component.scss'],
+    standalone: false
 })
 export class AlarmCommentComponent implements OnInit {
   @Input()
@@ -121,7 +119,7 @@ export class AlarmCommentComponent implements OnInit {
           const displayDataElement = {} as AlarmCommentsDisplayData;
           displayDataElement.createdTime = this.datePipe.transform(alarmComment.createdTime, 'yyyy-MM-dd HH:mm:ss');
           displayDataElement.createdDateAgo = this.dateAgoPipe.transform(alarmComment.createdTime);
-          displayDataElement.commentText = alarmComment.comment.text;
+          displayDataElement.commentText = this.parseSystemComment(alarmComment);
           displayDataElement.isSystemComment = alarmComment.type === AlarmCommentType.SYSTEM;
           if (alarmComment.type === AlarmCommentType.OTHER) {
             displayDataElement.commentId = alarmComment.id.id;
@@ -134,6 +132,11 @@ export class AlarmCommentComponent implements OnInit {
             displayDataElement.editedTime = this.datePipe.transform(alarmComment.comment.editedOn, 'yyyy-MM-dd HH:mm:ss');
             displayDataElement.editedDateAgo = this.dateAgoPipe.transform(alarmComment.comment.editedOn) + '\n';
             displayDataElement.showActions = false;
+            const isCommentAuthor = this.authUser.userId === alarmComment.userId?.id;
+            // Mirrors backend AlarmCommentController#deleteAlarmComment / checkUserPermission:
+            // author may edit and delete own comments; tenant admin may delete any comment.
+            displayDataElement.canEdit = isCommentAuthor;
+            displayDataElement.canDelete = isCommentAuthor || this.authUser.authority === Authority.TENANT_ADMIN;
             displayDataElement.isSystemComment = false;
             displayDataElement.avatarBgColor = this.utilsService.stringToHslColor(displayDataElement.displayName,
               40, 60);
@@ -142,6 +145,28 @@ export class AlarmCommentComponent implements OnInit {
         }
       }
     );
+  }
+
+  private parseSystemComment(alarm: AlarmCommentInfo): string {
+    const subTypeKey = alarm.comment?.subtype;
+    if (subTypeKey && AlarmMessage[subTypeKey]) {
+      const alarmComment = deepClone(alarm.comment);
+      const translationKey = AlarmMessage[subTypeKey];
+      if (alarmComment?.newSeverity) {
+        alarmComment.newSeverity =
+          (alarmSeverityTranslations.has(alarmComment.newSeverity)
+            ? this.translate.instant(alarmSeverityTranslations.get(alarmComment.newSeverity))
+            : alarmComment.newSeverity) as AlarmSeverity;
+      }
+      if (alarmComment?.oldSeverity) {
+        alarmComment.oldSeverity =
+          (alarmSeverityTranslations.has(alarmComment.oldSeverity)
+            ? this.translate.instant(alarmSeverityTranslations.get(alarmComment.oldSeverity))
+            : alarmComment.oldSeverity) as AlarmSeverity;
+      }
+      return this.translate.instant(translationKey, alarmComment);
+    }
+    return alarm.comment.text;
   }
 
   changeSortDirection() {
@@ -242,11 +267,11 @@ export class AlarmCommentComponent implements OnInit {
     return this.alarmCommentSortOrder.direction === Direction.ASC;
   }
 
-  onCommentMouseEnter(commentId: string, displayDataIndex: number): void {
+  onCommentMouseEnter(displayDataIndex: number): void {
     if (!this.editMode) {
-      const alarmUserId = this.getAlarmCommentById(commentId).userId.id;
-      if (this.authUser.userId === alarmUserId) {
-        this.displayData[displayDataIndex].showActions = true;
+      const displayDataElement = this.displayData[displayDataIndex];
+      if (displayDataElement.canEdit || displayDataElement.canDelete) {
+        displayDataElement.showActions = true;
       }
     }
   }

@@ -1,28 +1,37 @@
 <!--
 
-    Copyright © 2016-2025 The Thingsboard Authors
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+    SPDX-License-Identifier: Apache-2.0
+    SPDX-FileContributor: Modified by MuTech Automation
 
 -->
-<a mat-button class="tb-button-toggle" (click)="toggleSection($event)">
-  <tb-icon matButtonIcon *ngIf="section.icon !== null">{{section.icon}}</tb-icon>
-  <span>{{section.customTranslate ? (section.name | customTranslate) : (section.name | translate)}}</span>
-  <span class="pull-right fa fa-chevron-down tb-toggle-icon"
-        [class.tb-toggled]="section.opened"></span>
-</a>
-<ul id="docs-menu-{{section.name | nospace}}" class="tb-menu-toggle-list" [style.height]="sectionHeight()">
-  <li *ngFor="let page of section.pages; trackBy: trackBySectionPages">
-    <tb-menu-link [section]="page"></tb-menu-link>
-  </li>
-</ul>
+@if (compact) {
+  <a mat-button class="tb-button-toggle mt-rail-toggle"
+     [class.tb-active]="isActive()"
+     [matMenuTriggerFor]="pagesMenu"
+     [matTooltip]="section.customTranslate ? (section.name | customTranslate) : (section.name | translate)"
+     matTooltipPosition="right">
+    <tb-icon matButtonIcon *ngIf="section.icon !== null">{{section.icon}}</tb-icon>
+  </a>
+  <mat-menu #pagesMenu="matMenu" xPosition="after" class="mt-rail-menu">
+    <div class="mt-rail-menu-title">{{section.customTranslate ? (section.name | customTranslate) : (section.name | translate)}}</div>
+    <a mat-menu-item *ngFor="let page of section.pages; trackBy: trackBySectionPages"
+       routerLink="{{page.path}}" routerLinkActive="tb-active">
+      <tb-icon *ngIf="page.icon !== null">{{page.icon}}</tb-icon>
+      <span>{{page.customTranslate ? (page.name | customTranslate) : (page.name | translate)}}</span>
+    </a>
+  </mat-menu>
+} @else {
+  <a mat-button class="tb-button-toggle" (click)="toggleSection($event)"
+     [class.is-new]="section.isNew">
+    <tb-icon matButtonIcon *ngIf="section.icon !== null">{{section.icon}}</tb-icon>
+    <span>{{section.customTranslate ? (section.name | customTranslate) : (section.name | translate)}}</span>
+    <span class="pull-right fa fa-chevron-down tb-toggle-icon"
+          [class.tb-toggled]="section.opened"></span>
+  </a>
+  <ul id="docs-menu-{{section.name | nospace}}" class="tb-menu-toggle-list" [style.height]="sectionHeight()">
+    <li *ngFor="let page of section.pages; trackBy: trackBySectionPages">
+      <tb-menu-link [section]="page"></tb-menu-link>
+    </li>
+  </ul>
+}

@@ -1,24 +1,11 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Ace } from 'ace-builds';
 import { Observable } from 'rxjs/internal/Observable';
 import { forkJoin, from, of } from 'rxjs';
 import { map, mergeMap, tap } from 'rxjs/operators';
 import { unwrapModule } from '@core/utils';
+import { Renderer2 } from '@angular/core';
 
 let aceDependenciesLoaded = false;
 let aceModule: any;
@@ -96,6 +83,46 @@ export function getAceDiff(): Observable<any> {
       })
     );
   }
+}
+
+export function updateEditorSize(editorElement: any, content: string, editor: Ace.Editor, renderer: Renderer2, options?: {
+  showGutter?: boolean,
+  ignoreHeight?: boolean,
+  ignoreWidth?: boolean,
+  setMinHeight?: boolean
+}): void {
+  let newHeight = 200;
+  let newWidth = 600;
+  if (content && content.length > 0) {
+    if (editor.renderer.lineHeight <= 0) {
+      editor.renderer.updateFull(true);
+    }
+    const lines = content.split('\n');
+    newHeight = editor.renderer.lineHeight * lines.length + 16;
+    let maxLineLength = 0;
+    lines.forEach((row) => {
+      const line = row.replace(/\t/g, '  ').replace(/\n/g, '');
+      const lineLength = line.length;
+      maxLineLength = Math.max(maxLineLength, lineLength);
+    });
+    if (options?.showGutter) {
+      maxLineLength += lines.length.toString().length;
+    }
+    newWidth = 10 * maxLineLength + 16;
+    if (options?.showGutter) {
+      newWidth += 32;
+    }
+  }
+  if (!options.ignoreHeight) {
+    renderer.setStyle(editorElement, 'height', newHeight.toString() + 'px');
+  }
+  if (options.setMinHeight) {
+    renderer.setStyle(editorElement, 'minHeight', newHeight.toString() + 'px');
+  }
+  if (!options.ignoreWidth) {
+    renderer.setStyle(editorElement, 'width', newWidth.toString() + 'px');
+  }
+  editor.resize();
 }
 
 export class Range implements Ace.Range {

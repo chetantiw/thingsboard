@@ -1,20 +1,8 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.device;
 
+import com.google.common.util.concurrent.FluentFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,11 +33,11 @@ import org.thingsboard.server.common.msg.EncryptionUtil;
 import org.thingsboard.server.dao.entity.CachedVersionedEntityService;
 import org.thingsboard.server.dao.eventsourcing.DeleteEntityEvent;
 import org.thingsboard.server.dao.eventsourcing.SaveEntityEvent;
-import org.thingsboard.server.dao.exception.DataValidationException;
 import org.thingsboard.server.dao.resource.ImageService;
 import org.thingsboard.server.dao.service.PaginatedRemover;
 import org.thingsboard.server.dao.service.Validator;
 import org.thingsboard.server.dao.service.validator.DeviceProfileDataValidator;
+import org.thingsboard.server.exception.DataValidationException;
 
 import java.io.ByteArrayInputStream;
 import java.security.cert.Certificate;
@@ -64,6 +52,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.thingsboard.server.dao.DaoUtil.toUUIDs;
 import static org.thingsboard.server.dao.service.Validator.validateId;
 import static org.thingsboard.server.dao.service.Validator.validateString;
 
@@ -370,6 +360,12 @@ public class DeviceProfileServiceImpl extends CachedVersionedEntityService<Devic
     }
 
     @Override
+    public FluentFuture<Optional<HasId<?>>> findEntityAsync(TenantId tenantId, EntityId entityId) {
+        return FluentFuture.from(deviceProfileDao.findByIdAsync(tenantId, entityId.getId()))
+                .transform(Optional::ofNullable, directExecutor());
+    }
+
+    @Override
     public EntityType getEntityType() {
         return EntityType.DEVICE_PROFILE;
     }
@@ -381,6 +377,12 @@ public class DeviceProfileServiceImpl extends CachedVersionedEntityService<Devic
         return deviceProfileDao.findTenantDeviceProfileNames(tenantId.getId(), activeOnly)
                 .stream().sorted(Comparator.comparing(EntityInfo::getName))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DeviceProfileInfo> findDeviceProfilesByIds(TenantId tenantId, List<DeviceProfileId> deviceProfileIds) {
+        log.trace("Executing findDeviceProfilesByIds, tenantId [{}], deviceProfileIds [{}]", tenantId, deviceProfileIds);
+        return deviceProfileDao.findDeviceProfilesByTenantIdAndIds(tenantId.getId(), toUUIDs(deviceProfileIds));
     }
 
     private final PaginatedRemover<TenantId, DeviceProfile> tenantDeviceProfilesRemover =
@@ -432,8 +434,7 @@ public class DeviceProfileServiceImpl extends CachedVersionedEntityService<Devic
             if (certificates.length > 1) {
                 return EncryptionUtil.certTrimNewLinesForChainInDeviceProfile(certificateValue);
             }
-        } catch (CertificateException ignored) {
-        }
+        } catch (CertificateException ignored) {}
         return EncryptionUtil.certTrimNewLines(certificateValue);
     }
 

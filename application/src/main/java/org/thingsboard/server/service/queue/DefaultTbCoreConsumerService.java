@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.queue;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -55,6 +42,7 @@ import org.thingsboard.server.common.stats.StatsFactory;
 import org.thingsboard.server.common.util.KvProtoUtil;
 import org.thingsboard.server.common.util.ProtoUtils;
 import org.thingsboard.server.dao.resource.ImageCacheKey;
+import org.thingsboard.server.dao.resource.TbResourceDataCache;
 import org.thingsboard.server.dao.tenant.TbTenantProfileCache;
 import org.thingsboard.server.gen.transport.TransportProtos;
 import org.thingsboard.server.gen.transport.TransportProtos.DeviceStateServiceMsgProto;
@@ -85,7 +73,6 @@ import org.thingsboard.server.queue.discovery.event.PartitionChangeEvent;
 import org.thingsboard.server.queue.provider.TbCoreQueueFactory;
 import org.thingsboard.server.queue.util.TbCoreComponent;
 import org.thingsboard.server.service.apiusage.TbApiUsageStateService;
-import org.thingsboard.server.service.cf.CalculatedFieldCache;
 import org.thingsboard.server.service.notification.NotificationSchedulerService;
 import org.thingsboard.server.service.ota.OtaPackageStateService;
 import org.thingsboard.server.service.profile.TbAssetProfileCache;
@@ -117,8 +104,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@TbCoreComponent
 @Slf4j
+@TbCoreComponent
 public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCoreNotificationMsg> implements TbCoreConsumerService {
 
     @Value("${queue.core.poll-interval}")
@@ -176,10 +163,10 @@ public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCore
                                         NotificationSchedulerService notificationSchedulerService,
                                         NotificationRuleProcessor notificationRuleProcessor,
                                         TbImageService imageService,
+                                        TbResourceDataCache tbResourceDataCache,
                                         RuleEngineCallService ruleEngineCallService,
-                                        CalculatedFieldCache calculatedFieldCache,
                                         EdqsService edqsService) {
-        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, calculatedFieldCache, apiUsageStateService, partitionService,
+        super(actorContext, tenantProfileCache, deviceProfileCache, assetProfileCache, tbResourceDataCache, apiUsageStateService, partitionService,
                 eventPublisher, jwtSettingsService);
         this.stateService = stateService;
         this.localSubscriptionService = localSubscriptionService;
@@ -206,7 +193,7 @@ public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCore
                 .queueKey(new QueueKey(ServiceType.TB_CORE))
                 .config(QueueConfig.of(consumerPerPartition, pollInterval))
                 .msgPackProcessor(this::processMsgs)
-                .consumerCreator((config, partitionId) -> queueFactory.createToCoreMsgConsumer())
+                .consumerCreator((config, tpi) -> queueFactory.createToCoreMsgConsumer())
                 .consumerExecutor(consumersExecutor)
                 .scheduler(scheduler)
                 .taskExecutor(mgmtExecutor)
@@ -251,11 +238,11 @@ public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCore
         mainConsumer.update(event.getCorePartitions());
         usageStatsConsumer.subscribe(event.getCorePartitions()
                 .stream()
-                .map(tpi -> tpi.newByTopic(usageStatsConsumer.getConsumer().getTopic()))
+                .map(tpi -> tpi.withTopic(usageStatsConsumer.getConsumer().getTopic()))
                 .collect(Collectors.toSet()));
     }
 
-    private void processMsgs(List<TbProtoQueueMsg<ToCoreMsg>> msgs, TbQueueConsumer<TbProtoQueueMsg<ToCoreMsg>> consumer, QueueConfig config) throws Exception {
+    private void processMsgs(List<TbProtoQueueMsg<ToCoreMsg>> msgs, TbQueueConsumer<TbProtoQueueMsg<ToCoreMsg>> consumer, Object consumerKey, QueueConfig config) throws Exception {
         List<IdMsgPair<ToCoreMsg>> orderedMsgList = msgs.stream().map(msg -> new IdMsgPair<>(UUID.randomUUID(), msg)).toList();
         ConcurrentMap<UUID, TbProtoQueueMsg<ToCoreMsg>> pendingMap = orderedMsgList.stream().collect(
                 Collectors.toConcurrentMap(IdMsgPair::getUuid, IdMsgPair::getMsg));
@@ -464,10 +451,10 @@ public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCore
         return firmwareStateService.process(msg.getValue());
     }
 
-    private void forwardToCoreRpcService(FromDeviceRPCResponseProto proto, TbCallback callback) {
-        RpcError error = proto.getError() > 0 ? RpcError.values()[proto.getError()] : null;
+    void forwardToCoreRpcService(FromDeviceRPCResponseProto proto, TbCallback callback) {
+        RpcError error = RpcError.fromProtoErrorCode(proto.getError());
         FromDeviceRpcResponse response = new FromDeviceRpcResponse(new UUID(proto.getRequestIdMSB(), proto.getRequestIdLSB())
-                , proto.getResponse(), error);
+                , proto.hasResponse() ? proto.getResponse() : null, error);
         tbCoreDeviceRpcService.processRpcResponseFromRuleEngine(response);
         callback.onSuccess();
     }
@@ -552,19 +539,10 @@ public class DefaultTbCoreConsumerService extends AbstractConsumerService<ToCore
                     proto.getScope(), KvProtoUtil.toAttributeKvList(proto.getDataList()), callback);
         } else if (msg.hasAttrDelete()) {
             TbAttributeDeleteProto proto = msg.getAttrDelete();
-            if (proto.hasNotifyDevice()) {
-                // handles old messages with deprecated 'notifyDevice'
-                subscriptionManagerService.onAttributesDelete(
-                        toTenantId(proto.getTenantIdMSB(), proto.getTenantIdLSB()),
-                        TbSubscriptionUtils.toEntityId(proto.getEntityType(), proto.getEntityIdMSB(), proto.getEntityIdLSB()),
-                        proto.getScope(), proto.getKeysList(), proto.getNotifyDevice(), callback);
-            } else {
-                // handles new messages without 'notifyDevice'
-                subscriptionManagerService.onAttributesDelete(
-                        toTenantId(proto.getTenantIdMSB(), proto.getTenantIdLSB()),
-                        TbSubscriptionUtils.toEntityId(proto.getEntityType(), proto.getEntityIdMSB(), proto.getEntityIdLSB()),
-                        proto.getScope(), proto.getKeysList(), callback);
-            }
+            subscriptionManagerService.onAttributesDelete(
+                    toTenantId(proto.getTenantIdMSB(), proto.getTenantIdLSB()),
+                    TbSubscriptionUtils.toEntityId(proto.getEntityType(), proto.getEntityIdMSB(), proto.getEntityIdLSB()),
+                    proto.getScope(), proto.getKeysList(), callback);
         } else if (msg.hasTsDelete()) {
             TbTimeSeriesDeleteProto proto = msg.getTsDelete();
             subscriptionManagerService.onTimeSeriesDelete(

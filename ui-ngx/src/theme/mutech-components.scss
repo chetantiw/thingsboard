@@ -1,0 +1,327 @@
+// SPDX-FileCopyrightText: Copyright MuTech Automation
+// SPDX-License-Identifier: Apache-2.0
+//
+// MuTech-IoT component styling shared by every theme and layout.
+// Colors come from the tokens in mutech-tokens.scss.
+
+.tb-default {
+  // Shapes
+  --mat-button-filled-container-shape: var(--mt-radius);
+  --mat-button-protected-container-shape: var(--mt-radius);
+  --mat-button-outlined-container-shape: var(--mt-radius);
+  --mat-button-text-container-shape: var(--mt-radius);
+  --mat-button-tonal-container-shape: var(--mt-radius);
+  --mat-icon-button-state-layer-shape: var(--mt-radius);
+  --mat-form-field-outlined-container-shape: var(--mt-radius);
+  --mdc-outlined-text-field-container-shape: var(--mt-radius);
+  --mat-form-field-filled-container-shape: var(--mt-radius);
+  --mat-dialog-container-shape: var(--mt-radius-xl);
+  --mat-card-elevated-container-shape: var(--mt-radius-lg);
+  --mat-card-outlined-container-shape: var(--mt-radius-lg);
+  --mat-card-filled-container-shape: var(--mt-radius-lg);
+  --mat-menu-container-shape: 12px;
+  --mat-select-container-shape: 12px;
+  --mat-autocomplete-container-shape: 12px;
+  --mat-tooltip-container-shape: 8px;
+  --mat-snack-bar-container-shape: 12px;
+  --mat-chip-container-shape-radius: 999px;
+  --mat-expansion-container-shape: var(--mt-radius-lg);
+  --mat-datepicker-calendar-container-shape: var(--mt-radius-lg);
+  --mat-button-toggle-shape: var(--mt-radius);
+  --mat-standard-button-toggle-shape: var(--mt-radius);
+  --mat-outlined-card-outline-color: var(--mt-border);
+  --mat-card-outlined-outline-color: var(--mt-border);
+  --mat-divider-color: var(--mt-border);
+  --mat-table-row-item-outline-color: var(--mt-border);
+  --mat-table-header-headline-color: var(--mt-muted);
+  --tb-hover-color: color-mix(in srgb, var(--mt-primary) 5%, transparent);
+  --tb-current-entity-color: var(--mt-primary-soft);
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 6px;
+  }
+
+  a:not(.mat-mdc-button-base, .mdc-tab, .mat-mdc-menu-item) {
+    color: var(--mt-primary);
+  }
+
+  // Buttons: confident weight, no shouting.
+  .mat-mdc-button-base {
+    letter-spacing: 0.01em;
+  }
+  .mat-mdc-unelevated-button:not(:disabled) .mat-icon {
+    color: inherit;
+  }
+
+  // Tables
+  .mat-mdc-table {
+    background: transparent;
+    .mat-mdc-cell.mat-mdc-table-sticky, .mat-mdc-header-cell.mat-mdc-table-sticky {
+      background: var(--mt-surface);
+    }
+    .mat-mdc-header-cell.mat-mdc-table-sticky {
+      background: var(--mt-surface-2);
+    }
+    .mat-mdc-header-row {
+      background: var(--mt-surface-2);
+    }
+    .mat-mdc-header-cell {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--mt-muted);
+    }
+  }
+  .mat-mdc-table-toolbar {
+    background: transparent;
+    color: var(--mt-text);
+    .tb-entity-table-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+  }
+  .mt-view-toggle {
+    --mat-standard-button-toggle-height: 34px;
+    --mat-standard-button-toggle-shape: var(--mt-radius);
+    --mat-standard-button-toggle-divider-color: var(--mt-border);
+    --mat-standard-button-toggle-selected-state-background-color: var(--mt-primary-soft);
+    --mat-standard-button-toggle-selected-state-text-color: var(--mt-primary);
+    margin-right: 4px;
+    border-color: var(--mt-border);
+    .mat-button-toggle-label-content {
+      padding: 0 8px;
+      line-height: 34px;
+    }
+    .mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      vertical-align: middle;
+    }
+  }
+  .mat-mdc-paginator {
+    background: transparent;
+  }
+
+  // Dialogs: light header with a divider instead of a solid color bar.
+  .mat-mdc-dialog-container {
+    .mat-mdc-dialog-surface {
+      overflow: hidden;
+    }
+    .mat-toolbar.mat-primary {
+      background: var(--mt-surface);
+      color: var(--mt-text);
+      border-bottom: 1px solid var(--mt-border);
+      h2 {
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+    }
+    .mat-mdc-dialog-actions {
+      background: var(--mt-surface-2);
+      border-top: 1px solid var(--mt-border);
+      padding: 12px 24px;
+    }
+  }
+  .mt-dialog-header {
+    background: var(--mt-surface);
+    color: var(--mt-text);
+    border-bottom: 1px solid var(--mt-border);
+    padding: 0 12px 0 24px;
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 800;
+    }
+  }
+
+  // Cards and outlined containers
+  .mat-mdc-card {
+    border-radius: var(--mt-radius-lg);
+  }
+  .mat-mdc-card-outlined, .tb-outlined-border {
+    border-color: var(--mt-border);
+  }
+
+  // Tabs
+  .mat-mdc-tab-header {
+    --mat-tab-active-indicator-height: 3px;
+    --mat-tab-active-indicator-shape: 3px 3px 0 0;
+  }
+  .mat-mdc-tab .mdc-tab__text-label {
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  // Chips
+  .mat-mdc-chip {
+    font-weight: 600;
+  }
+
+  // Menus
+  .mat-mdc-menu-panel {
+    border: 1px solid var(--mt-border);
+    box-shadow: 0 12px 32px rgba(8, 6, 40, 0.16);
+  }
+  .mt-rail-menu {
+    min-width: 220px;
+    .mt-rail-menu-title {
+      padding: 10px 16px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--mt-muted);
+    }
+    .mat-mdc-menu-item.tb-active {
+      background: var(--mt-primary-soft);
+      color: var(--mt-primary);
+      .mat-icon {
+        color: var(--mt-primary);
+      }
+    }
+  }
+
+  // Command palette & appearance dialogs
+  .mt-command-palette-panel .mat-mdc-dialog-surface {
+    border-radius: var(--mt-radius-xl);
+    border: 1px solid var(--mt-border);
+    box-shadow: 0 24px 64px rgba(8, 6, 40, 0.35);
+  }
+
+  // Dashboard toolbar follows the active theme instead of a fixed brand bar.
+  tb-dashboard-toolbar mat-fab-toolbar.mat-primary {
+    .mat-fab-toolbar-background {
+      background: var(--mt-surface-2);
+      color: var(--mt-text);
+    }
+    mat-toolbar.mat-primary {
+      background: transparent;
+      color: var(--mt-text);
+      --mat-icon-button-icon-color: var(--mt-text);
+      --mat-icon-color: var(--mt-text);
+      --mat-button-text-label-text-color: var(--mt-text);
+      --mat-button-outlined-label-text-color: var(--mt-text);
+      --mat-button-outlined-outline-color: var(--mt-border);
+      --mat-select-enabled-trigger-text-color: var(--mt-text);
+      --mat-select-enabled-arrow-color: var(--mt-muted);
+      .mat-mdc-button-base:not(:disabled) {
+        color: var(--mt-text);
+      }
+      .mat-mdc-outlined-button:not(:disabled) {
+        border-color: var(--mt-border);
+      }
+      button.mat-mdc-icon-button:not(:disabled) .mat-icon,
+      .mat-mdc-select-value, .mat-mdc-select-arrow, .mat-mdc-select-arrow:after {
+        color: var(--mt-text);
+      }
+      .mdc-notched-outline .mdc-notched-outline__leading,
+      .mdc-notched-outline .mdc-notched-outline__notch,
+      .mdc-notched-outline .mdc-notched-outline__trailing {
+        border-color: var(--mt-border) !important;
+      }
+    }
+  }
+
+  // Status colors used by MuTech widgets/badges.
+  .mt-ok { color: var(--mt-ok); }
+  .mt-warn { color: var(--mt-warn); }
+  .mt-crit { color: var(--mt-crit); }
+
+  // Numbers read like instruments in the Control Room layout.
+  &.mt-layout-control {
+    .tb-value, .mt-mono {
+      font-family: var(--mt-font-mono);
+    }
+  }
+}
+
+// Dark themes: neutralise the most common hard-coded light surfaces.
+.tb-default.mt-dark {
+  --mat-table-background-color: var(--mt-surface);
+  // Read-only entity details are mostly shown as disabled fields; keep them legible.
+  --mat-form-field-filled-disabled-input-text-color: color-mix(in srgb, var(--mt-text) 72%, transparent);
+  --mat-form-field-outlined-disabled-input-text-color: color-mix(in srgb, var(--mt-text) 72%, transparent);
+  --mat-paginator-container-background-color: transparent;
+
+  .mat-drawer-container, .mat-drawer-content {
+    background-color: var(--mt-bg);
+    color: var(--mt-text);
+  }
+  .mat-drawer {
+    background-color: var(--mt-surface);
+    color: var(--mt-text);
+  }
+  .mat-toolbar:not(.mat-primary):not(.mat-accent):not(.mat-warn) {
+    background: transparent;
+    color: var(--mt-text);
+  }
+  .mat-mdc-form-field-hint-wrapper, .mat-mdc-form-field .mat-mdc-form-field-hint-wrapper {
+    color: var(--mt-muted);
+  }
+  .tb-form-panel, .tb-form-row, .tb-card-panel {
+    background-color: var(--mt-surface);
+    border-color: var(--mt-border);
+    color: var(--mt-text);
+  }
+  .tb-form-panel-title, .tb-form-table-header, .tb-small-label {
+    color: var(--mt-muted);
+  }
+  .tb-readonly-label, div.tb-small, label.tb-small {
+    color: var(--mt-muted);
+  }
+  .mat-mdc-table-toolbar, .mat-mdc-cell, .mat-expansion-panel-header, .mat-mdc-card-header {
+    --mat-icon-color: var(--mt-muted);
+  }
+  .mat-mdc-cell .mat-icon {
+    color: var(--mt-muted);
+  }
+  .details-toolbar.mat-primary {
+    background: var(--mt-surface-2);
+    color: var(--mt-text);
+    border-bottom: 1px solid var(--mt-border);
+  }
+  .mat-mdc-cell button:disabled .mat-icon,
+  .mat-mdc-table-toolbar button:disabled .mat-icon {
+    opacity: 0.38;
+  }
+
+  // The default (black) dashboard title color becomes the theme text color;
+  // titles given a custom color keep it.
+  .tb-dashboard-title[style*="color: rgba(0, 0, 0, 0.87"] {
+    color: var(--mt-text) !important;
+  }
+
+  // With the original widget style, widgets keep the light palette inside dark
+  // themes and render exactly as ThingsBoard designed them.
+  &.mt-widgets-original .tb-widget {
+    @include mt-indigo-tokens;
+    color-scheme: light;
+  }
+}
+
+// Progress bars and spinners use the theme accent with a soft track, whatever color the
+// component asks for (ThingsBoard uses "warn" orange for page loading).
+.tb-default {
+  .mat-mdc-progress-bar {
+    --mat-progress-bar-active-indicator-color: var(--mt-accent);
+    --mat-progress-bar-track-color: color-mix(in srgb, var(--mt-accent) 14%, transparent);
+    --mat-progress-bar-track-height: 3px;
+    --mat-progress-bar-active-indicator-height: 3px;
+    .mdc-linear-progress__bar-inner {
+      border-image: linear-gradient(90deg, var(--mt-indicator), var(--mt-accent)) 1;
+    }
+  }
+  .mat-mdc-progress-spinner {
+    --mat-progress-spinner-active-indicator-color: var(--mt-accent);
+  }
+}
+
+// Links to the ThingsBoard online documentation (help buttons, "View docs", guide buttons) are
+// hidden unless the brand shows them (BrandingService sets mt-hide-help).
+body.mt-hide-help [tb-help],
+body.mt-hide-help a[href*="thingsboard.io"] {
+  display: none !important;
+}

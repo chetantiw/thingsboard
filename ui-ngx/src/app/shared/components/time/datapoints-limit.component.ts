@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, forwardRef, Input, OnDestroy, OnInit } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -29,23 +15,25 @@ import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import { TimeService } from '@core/services/time.service';
 import { takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
+import { isDefined } from '@core/utils';
 
 @Component({
-  selector: 'tb-datapoints-limit',
-  templateUrl: './datapoints-limit.component.html',
-  styleUrls: ['./datapoints-limit.component.scss'],
-  providers: [
-    {
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => DatapointsLimitComponent),
-    multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => DatapointsLimitComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-datapoints-limit',
+    templateUrl: './datapoints-limit.component.html',
+    styleUrls: ['./datapoints-limit.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => DatapointsLimitComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => DatapointsLimitComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class DatapointsLimitComponent implements ControlValueAccessor, Validator, OnInit, OnDestroy {
 
@@ -69,7 +57,11 @@ export class DatapointsLimitComponent implements ControlValueAccessor, Validator
   @Input()
   disabled: boolean;
 
-  private propagateChange = (v: any) => { };
+  private propagateChangeValue: any;
+
+  private propagateChange = (v: any) => {
+    this.propagateChangeValue = v;
+  };
 
   private destroy$ = new Subject<void>();
 
@@ -79,6 +71,9 @@ export class DatapointsLimitComponent implements ControlValueAccessor, Validator
 
   registerOnChange(fn: any): void {
     this.propagateChange = fn;
+    if (isDefined(this.propagateChangeValue)) {
+      this.propagateChange(this.propagateChangeValue);
+    }
   }
 
   registerOnTouched(fn: any): void {
@@ -115,19 +110,20 @@ export class DatapointsLimitComponent implements ControlValueAccessor, Validator
     }
   }
 
-  private checkLimit(limit?: number): number {
-    if (!limit || limit < this.minDatapointsLimit()) {
-      return this.minDatapointsLimit();
-    } else if (limit > this.maxDatapointsLimit()) {
-      return this.maxDatapointsLimit();
-    }
-    return limit;
-  }
-
   writeValue(value: number | null): void {
-    this.modelValue = this.checkLimit(value);
+    this.modelValue = value;
+    let limit = this.modelValue;
+    if (!limit) {
+      limit = Math.ceil(this.maxDatapointsLimit() / 2);
+    } else if (limit < this.minDatapointsLimit()) {
+      limit = this.minDatapointsLimit();
+    } else if (limit > this.maxDatapointsLimit()) {
+      limit = this.maxDatapointsLimit();
+    }
+
+    this.updateView(limit);
     this.datapointsLimitFormGroup.patchValue(
-      { limit: this.modelValue }, {emitEvent: false}
+      { limit: limit }, {emitEvent: false}
     );
   }
 

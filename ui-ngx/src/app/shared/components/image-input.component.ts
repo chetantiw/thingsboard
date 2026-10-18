@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -30,7 +16,7 @@ import { AppState } from '@core/core.state';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { coerceBooleanProperty } from '@angular/cdk/coercion';
-import { FlowDirective } from '@flowjs/ngx-flow';
+import { FlowConfig } from '@flowjs/ngx-flow';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { UtilsService } from '@core/services/utils.service';
 import { DialogService } from '@core/services/dialog.service';
@@ -40,16 +26,17 @@ import { coerceBoolean } from '@shared/decorators/coercion';
 import { ImagePipe } from '@shared/pipe/image.pipe';
 
 @Component({
-  selector: 'tb-image-input',
-  templateUrl: './image-input.component.html',
-  styleUrls: ['./image-input.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ImageInputComponent),
-      multi: true
-    }
-  ]
+    selector: 'tb-image-input',
+    templateUrl: './image-input.component.html',
+    styleUrls: ['./image-input.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => ImageInputComponent),
+            multi: true
+        }
+    ],
+    standalone: false
 })
 export class ImageInputComponent extends PageComponent implements AfterViewInit, OnDestroy, ControlValueAccessor {
 
@@ -115,7 +102,7 @@ export class ImageInputComponent extends PageComponent implements AfterViewInit,
   safeImageUrl: SafeUrl;
 
   @ViewChild('flow', {static: true})
-  flow: FlowDirective;
+  flow: FlowConfig;
 
   autoUploadSubscription: Subscription;
 

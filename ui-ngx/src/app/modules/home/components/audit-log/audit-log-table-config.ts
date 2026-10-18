@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   DateEntityTableColumn,
   EntityTableColumn,
@@ -25,7 +11,8 @@ import {
   ActionType,
   actionTypeTranslations,
   AuditLog,
-  AuditLogMode
+  AuditLogMode,
+  AuditLogFilter
 } from '@shared/models/audit-log.models';
 import {
   AliasEntityType,
@@ -48,6 +35,8 @@ import {
   AuditLogDetailsDialogComponent,
   AuditLogDetailsDialogData
 } from '@home/components/audit-log/audit-log-details-dialog.component';
+import { deepClone } from '@app/core/utils';
+import { AuditLogHeaderComponent } from '@home/components/audit-log/audit-log-header.component';
 
 export class AuditLogTableConfig extends EntityTableConfig<AuditLog, TimePageLink> {
 
@@ -71,6 +60,7 @@ export class AuditLogTableConfig extends EntityTableConfig<AuditLog, TimePageLin
     this.searchEnabled = true;
     this.addEnabled = false;
     this.entitiesDeleteEnabled = false;
+    this.headerComponent = AuditLogHeaderComponent;
     this.actionsColumnTitle = 'audit-log.details';
     this.entityTranslations = {
       noEntities: 'audit-log.no-audit-logs-prompt',
@@ -78,6 +68,10 @@ export class AuditLogTableConfig extends EntityTableConfig<AuditLog, TimePageLin
     };
     this.entityResources = {
     } as EntityTypeResource<AuditLog>;
+
+    this.componentsData = {
+      auditLogFilter: []
+    };
 
     this.entitiesFetchFunction = pageLink => this.fetchAuditLogs(pageLink);
 
@@ -139,15 +133,16 @@ export class AuditLogTableConfig extends EntityTableConfig<AuditLog, TimePageLin
   }
 
   fetchAuditLogs(pageLink: TimePageLink): Observable<PageData<AuditLog>> {
+    const auditLogFilter: AuditLogFilter = deepClone(this.componentsData?.auditLogFilter) || {};
     switch (this.auditLogMode) {
       case AuditLogMode.TENANT:
-        return this.auditLogService.getAuditLogs(pageLink);
+        return this.auditLogService.getAuditLogs(pageLink, auditLogFilter);
       case AuditLogMode.ENTITY:
-        return this.auditLogService.getAuditLogsByEntityId(this.entityId, pageLink);
+        return this.auditLogService.getAuditLogsByEntityId(this.entityId, pageLink, auditLogFilter);
       case AuditLogMode.USER:
-        return this.auditLogService.getAuditLogsByUserId(this.userId.id, pageLink);
+        return this.auditLogService.getAuditLogsByUserId(this.userId.id, pageLink, auditLogFilter);
       case AuditLogMode.CUSTOMER:
-        return this.auditLogService.getAuditLogsByCustomerId(this.customerId.id, pageLink);
+        return this.auditLogService.getAuditLogsByCustomerId(this.customerId.id, pageLink, auditLogFilter);
     }
   }
 

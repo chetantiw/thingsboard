@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   AlarmAction,
   AlarmActionTranslationMap,
@@ -77,9 +63,10 @@ export interface RuleNotificationDialogData {
 }
 
 @Component({
-  selector: 'tb-rule-notification-dialog',
-  templateUrl: './rule-notification-dialog.component.html',
-  styleUrls: ['rule-notification-dialog.component.scss']
+    selector: 'tb-rule-notification-dialog',
+    templateUrl: './rule-notification-dialog.component.html',
+    styleUrls: ['rule-notification-dialog.component.scss'],
+    standalone: false
 })
 export class RuleNotificationDialogComponent extends
   DialogComponent<RuleNotificationDialogComponent, NotificationRule> implements OnDestroy {
@@ -102,6 +89,7 @@ export class RuleNotificationDialogComponent extends
   edgeCommunicationFailureTemplateForm: FormGroup;
   edgeConnectionTemplateForm: FormGroup;
   taskProcessingFailureTemplateForm: FormGroup;
+  resourceUsageShortageTemplateForm: FormGroup;
 
   triggerType = TriggerType;
   triggerTypes: TriggerType[];
@@ -315,7 +303,7 @@ export class RuleNotificationDialogComponent extends
     this.entitiesLimitTemplateForm = this.fb.group({
       triggerConfig: this.fb.group({
         entityTypes: [],
-        threshold: [.8, [Validators.min(0), Validators.max(1)]]
+        threshold: [80, [Validators.min(0), Validators.max(100)]]
       })
     });
 
@@ -344,6 +332,14 @@ export class RuleNotificationDialogComponent extends
       })
     });
 
+    this.resourceUsageShortageTemplateForm = this.fb.group({
+      triggerConfig: this.fb.group({
+        cpuThreshold: [80, [Validators.min(0), Validators.max(100)]],
+        ramThreshold: [80, [Validators.min(0), Validators.max(100)]],
+        storageThreshold: [80, [Validators.min(0), Validators.max(100)]]
+      })
+    });
+
     this.triggerTypeFormsMap = new Map<TriggerType, FormGroup>([
       [TriggerType.ALARM, this.alarmTemplateForm],
       [TriggerType.ALARM_COMMENT, this.alarmCommentTemplateForm],
@@ -357,7 +353,8 @@ export class RuleNotificationDialogComponent extends
       [TriggerType.RATE_LIMITS, this.rateLimitsTemplateForm],
       [TriggerType.EDGE_COMMUNICATION_FAILURE, this.edgeCommunicationFailureTemplateForm],
       [TriggerType.EDGE_CONNECTION, this.edgeConnectionTemplateForm],
-      [TriggerType.TASK_PROCESSING_FAILURE, this.taskProcessingFailureTemplateForm]
+      [TriggerType.TASK_PROCESSING_FAILURE, this.taskProcessingFailureTemplateForm],
+      [TriggerType.RESOURCES_SHORTAGE, this.resourceUsageShortageTemplateForm]
     ]);
 
     if (data.isAdd || data.isCopy) {
@@ -379,6 +376,14 @@ export class RuleNotificationDialogComponent extends
       if (this.ruleNotification.triggerType === TriggerType.DEVICE_ACTIVITY) {
         this.deviceInactivityTemplateForm.get('triggerConfig.filterByDevice')
           .patchValue(!!this.ruleNotification.triggerConfig.devices, {onlySelf: true});
+      }
+      if (this.ruleNotification.triggerType === TriggerType.ENTITIES_LIMIT) {
+        this.entitiesLimitTemplateForm.get('triggerConfig.threshold').patchValue(this.ruleNotification.triggerConfig.threshold * 100, {emitEvent: false});
+      }
+      if (this.ruleNotification.triggerType === TriggerType.RESOURCES_SHORTAGE) {
+        this.resourceUsageShortageTemplateForm.get('triggerConfig.cpuThreshold').patchValue(this.ruleNotification.triggerConfig.cpuThreshold * 100, {emitEvent: false});
+        this.resourceUsageShortageTemplateForm.get('triggerConfig.ramThreshold').patchValue(this.ruleNotification.triggerConfig.ramThreshold * 100, {emitEvent: false});
+        this.resourceUsageShortageTemplateForm.get('triggerConfig.storageThreshold').patchValue(this.ruleNotification.triggerConfig.storageThreshold * 100, {emitEvent: false});
       }
     }
   }
@@ -427,6 +432,14 @@ export class RuleNotificationDialogComponent extends
       Object.assign(formValue, currentForm.value);
       if (triggerType === TriggerType.DEVICE_ACTIVITY) {
         delete formValue.triggerConfig.filterByDevice;
+      }
+      if (triggerType === TriggerType.ENTITIES_LIMIT) {
+        formValue.triggerConfig.threshold = formValue.triggerConfig.threshold / 100;
+      }
+      if (triggerType === TriggerType.RESOURCES_SHORTAGE) {
+        formValue.triggerConfig.cpuThreshold = formValue.triggerConfig.cpuThreshold / 100;
+        formValue.triggerConfig.ramThreshold = formValue.triggerConfig.ramThreshold / 100;
+        formValue.triggerConfig.storageThreshold = formValue.triggerConfig.storageThreshold / 100;
       }
       formValue.recipientsConfig.triggerType = triggerType;
       formValue.triggerConfig.triggerType = triggerType;
@@ -483,8 +496,7 @@ export class RuleNotificationDialogComponent extends
   }
 
   formatLabel(value: number): string {
-    const formatValue = (value * 100).toFixed();
-    return `${formatValue}%`;
+    return `${value}%`;
   }
 
   private isSysAdmin(): boolean {
@@ -497,7 +509,8 @@ export class RuleNotificationDialogComponent extends
       TriggerType.API_USAGE_LIMIT,
       TriggerType.NEW_PLATFORM_VERSION,
       TriggerType.RATE_LIMITS,
-      TriggerType.TASK_PROCESSING_FAILURE
+      TriggerType.TASK_PROCESSING_FAILURE,
+      TriggerType.RESOURCES_SHORTAGE
     ]);
 
     if (this.isSysAdmin()) {

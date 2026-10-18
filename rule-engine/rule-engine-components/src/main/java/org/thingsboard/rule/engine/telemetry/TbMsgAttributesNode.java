@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.telemetry;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,7 +8,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gson.JsonParser;
-import lombok.extern.slf4j.Slf4j;
 import org.thingsboard.common.util.DonAsynchron;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.rule.engine.api.AttributesSaveRequest;
@@ -41,12 +27,8 @@ import org.thingsboard.server.common.data.plugin.ComponentType;
 import org.thingsboard.server.common.data.util.TbPair;
 import org.thingsboard.server.common.msg.TbMsg;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.thingsboard.rule.engine.telemetry.settings.AttributesProcessingSettings.Advanced;
@@ -56,8 +38,8 @@ import static org.thingsboard.rule.engine.telemetry.settings.AttributesProcessin
 import static org.thingsboard.server.common.data.DataConstants.NOTIFY_DEVICE_METADATA_KEY;
 import static org.thingsboard.server.common.data.DataConstants.SCOPE;
 import static org.thingsboard.server.common.data.msg.TbMsgType.POST_ATTRIBUTES_REQUEST;
+import static org.thingsboard.server.dao.util.KvUtils.filterChangedAttr;
 
-@Slf4j
 @RuleNode(
         type = ComponentType.ACTION,
         name = "save attributes",
@@ -108,7 +90,8 @@ import static org.thingsboard.server.common.data.msg.TbMsgType.POST_ATTRIBUTES_R
                 Output connections: <code>Success</code>, <code>Failure</code>.
                 """,
         configDirective = "tbActionNodeAttributesConfig",
-        icon = "file_upload"
+        icon = "file_upload",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/action/save-attributes/"
 )
 public class TbMsgAttributesNode implements TbNode {
 
@@ -133,7 +116,7 @@ public class TbMsgAttributesNode implements TbNode {
             return;
         }
         String src = msg.getData();
-        List<AttributeKvEntry> newAttributes = new ArrayList<>(JsonConverter.convertToAttributes(JsonParser.parseString(src)));
+        List<AttributeKvEntry> newAttributes = JsonConverter.convertToAttributes(JsonParser.parseString(src));
         if (newAttributes.isEmpty()) {
             ctx.tellSuccess(msg);
             return;
@@ -216,24 +199,6 @@ public class TbMsgAttributesNode implements TbNode {
                 .tbMsgType(msg.getInternalType())
                 .callback(callback)
                 .build());
-    }
-
-    private List<AttributeKvEntry> filterChangedAttr(List<AttributeKvEntry> currentAttributes, List<AttributeKvEntry> newAttributes) {
-        if (currentAttributes == null || currentAttributes.isEmpty()) {
-            return newAttributes;
-        }
-
-        Map<String, AttributeKvEntry> currentAttrMap = currentAttributes.stream()
-                .collect(Collectors.toMap(AttributeKvEntry::getKey, Function.identity(), (existing, replacement) -> existing));
-
-        return newAttributes.stream()
-                .filter(item -> {
-                    AttributeKvEntry cacheAttr = currentAttrMap.get(item.getKey());
-                    return cacheAttr == null
-                            || !Objects.equals(item.getValue(), cacheAttr.getValue()) //JSON and String can be equals by value, but different by type
-                            || !Objects.equals(item.getDataType(), cacheAttr.getDataType());
-                })
-                .collect(Collectors.toList());
     }
 
     private boolean checkSendNotification(AttributeScope scope) {

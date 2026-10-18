@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -34,11 +20,13 @@ import {
   UntypedFormGroup,
   Validators
 } from '@angular/forms';
-import { MatButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { TbPopoverService } from '@shared/components/popover.service';
 import { TranslateService } from '@ngx-translate/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
+  cartoLayerTranslationMap,
+  cartoLayerTypes,
   defaultLayerTitle,
   defaultMapLayerSettings,
   googleMapLayerTranslationMap,
@@ -49,6 +37,8 @@ import {
   MapProvider,
   mapProviders,
   mapProviderTranslationMap,
+  mapProviderHasApiKey,
+  mapProviderRequiresApiKey,
   openStreetLayerTypes,
   openStreetMapLayerTranslationMap,
   tencentLayerTranslationMap,
@@ -60,17 +50,18 @@ import {
 } from '@home/components/widget/lib/settings/common/map/map-layer-settings-panel.component';
 
 @Component({
-  selector: 'tb-map-layer-row',
-  templateUrl: './map-layer-row.component.html',
-  styleUrls: ['./map-layer-row.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => MapLayerRowComponent),
-      multi: true
-    }
-  ],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-map-layer-row',
+    templateUrl: './map-layer-row.component.html',
+    styleUrls: ['./map-layer-row.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => MapLayerRowComponent),
+            multi: true
+        }
+    ],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class MapLayerRowComponent implements ControlValueAccessor, OnInit {
 
@@ -83,6 +74,10 @@ export class MapLayerRowComponent implements ControlValueAccessor, OnInit {
   openStreetLayerTypes = openStreetLayerTypes;
 
   openStreetMapLayerTranslationMap = openStreetMapLayerTranslationMap;
+
+  cartoLayerTypes = cartoLayerTypes;
+
+  cartoLayerTranslationMap = cartoLayerTranslationMap;
 
   googleMapLayerTypes = googleMapLayerTypes;
 
@@ -123,6 +118,7 @@ export class MapLayerRowComponent implements ControlValueAccessor, OnInit {
       provider: [null, [Validators.required]],
       layerType: [null, [Validators.required]],
       tileUrl: [null, [Validators.required]],
+      customAttribution: [null, []],
       apiKey: [null, [Validators.required]],
       referenceLayer: [null, []]
     });
@@ -172,7 +168,7 @@ export class MapLayerRowComponent implements ControlValueAccessor, OnInit {
     return this.translate.instant(translationKey);
   }
 
-  editLayer($event: Event, matButton: MatButton) {
+  editLayer($event: Event, matButton: MatIconButton) {
     if ($event) {
       $event.stopPropagation();
     }
@@ -180,14 +176,17 @@ export class MapLayerRowComponent implements ControlValueAccessor, OnInit {
     if (this.popoverService.hasPopover(trigger)) {
       this.popoverService.hidePopover(trigger);
     } else {
-      const ctx: any = {
-        mapLayerSettings: deepClone(this.modelValue)
-      };
-      const mapLayerSettingsPanelPopover = this.popoverService.displayPopover(trigger, this.renderer,
-        this.viewContainerRef, MapLayerSettingsPanelComponent, ['leftOnly', 'leftTopOnly', 'leftBottomOnly'], true, null,
-        ctx,
-        {},
-        {}, {}, true);
+      const mapLayerSettingsPanelPopover = this.popoverService.displayPopover({
+        trigger,
+        renderer: this.renderer,
+        componentType: MapLayerSettingsPanelComponent,
+        hostView: this.viewContainerRef,
+        preferredPlacement: ['leftOnly', 'leftTopOnly', 'leftBottomOnly'],
+        context: {
+          mapLayerSettings: deepClone(this.modelValue)
+        },
+        isModal: true
+      });
       mapLayerSettingsPanelPopover.tbComponentRef.instance.popover = mapLayerSettingsPanelPopover;
       mapLayerSettingsPanelPopover.tbComponentRef.instance.mapLayerSettingsApplied.subscribe((layer) => {
         mapLayerSettingsPanelPopover.hide();
@@ -212,12 +211,15 @@ export class MapLayerRowComponent implements ControlValueAccessor, OnInit {
     const provider: MapProvider = this.layerFormGroup.get('provider').value;
     if (provider === MapProvider.custom) {
       this.layerFormGroup.get('tileUrl').enable({emitEvent: false});
+      this.layerFormGroup.get('customAttribution').enable({emitEvent: false});
       this.layerFormGroup.get('layerType').disable({emitEvent: false});
     } else {
       this.layerFormGroup.get('tileUrl').disable({emitEvent: false});
+      this.layerFormGroup.get('customAttribution').disable({emitEvent: false});
       this.layerFormGroup.get('layerType').enable({emitEvent: false});
     }
-    if ([MapProvider.google, MapProvider.here].includes(provider)) {
+    if (mapProviderHasApiKey(provider)) {
+      this.layerFormGroup.get('apiKey').setValidators(mapProviderRequiresApiKey(provider) ? [Validators.required] : []);
       this.layerFormGroup.get('apiKey').enable({emitEvent: false});
     } else {
       this.layerFormGroup.get('apiKey').disable({emitEvent: false});

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.notification.channels;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -29,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.thingsboard.common.util.JacksonUtil;
+import org.thingsboard.common.util.SsrfProtectionValidator;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.notification.NotificationDeliveryMethod;
 import org.thingsboard.server.common.data.notification.info.NotificationInfo;
@@ -53,8 +41,8 @@ public class MicrosoftTeamsNotificationChannel implements NotificationChannel<Mi
 
     @Setter
     private RestTemplate restTemplate = new RestTemplateBuilder()
-            .setConnectTimeout(Duration.of(15, ChronoUnit.SECONDS))
-            .setReadTimeout(Duration.of(15, ChronoUnit.SECONDS))
+            .connectTimeout(Duration.of(15, ChronoUnit.SECONDS))
+            .readTimeout(Duration.of(15, ChronoUnit.SECONDS))
             .build();
 
     @Override
@@ -109,10 +97,13 @@ public class MicrosoftTeamsNotificationChannel implements NotificationChannel<Mi
             adaptiveCard.getActions().add(actionOpenUrl);
         }
 
+        URI webhookUri = new URI(targetConfig.getWebhookUrl());
+        SsrfProtectionValidator.validateUri(webhookUri);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> request = new HttpEntity<>(JacksonUtil.toString(teamsAdaptiveCard), headers);
-        restTemplate.postForEntity(new URI(targetConfig.getWebhookUrl()), request, String.class);
+        restTemplate.postForEntity(webhookUri, request, String.class);
     }
 
     private void sendTeamsMessageCard(MicrosoftTeamsNotificationTargetConfig targetConfig, MicrosoftTeamsDeliveryMethodNotificationTemplate processedTemplate, NotificationProcessingContext ctx) throws JsonProcessingException, URISyntaxException {
@@ -139,10 +130,13 @@ public class MicrosoftTeamsNotificationChannel implements NotificationChannel<Mi
             teamsMessageCard.setPotentialAction(List.of(actionCard));
         }
 
+        URI webhookUri = new URI(targetConfig.getWebhookUrl());
+        SsrfProtectionValidator.validateUri(webhookUri);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> request = new HttpEntity<>(JacksonUtil.toString(teamsMessageCard), headers);
-        restTemplate.postForEntity(new URI(targetConfig.getWebhookUrl()), request, String.class);
+        restTemplate.postForEntity(webhookUri, request, String.class);
     }
 
     private String getButtonUri(MicrosoftTeamsDeliveryMethodNotificationTemplate processedTemplate, NotificationProcessingContext ctx) throws JsonProcessingException {

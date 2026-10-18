@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.edge;
 
 import com.datastax.oss.driver.api.core.uuid.Uuids;
@@ -22,10 +9,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.JsonObject;
 import com.google.protobuf.AbstractMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.server.common.adaptor.JsonConverter;
@@ -49,8 +39,6 @@ import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.EdgeId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.ota.OtaPackageType;
-import org.thingsboard.server.common.data.page.PageData;
-import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.security.DeviceCredentials;
 import org.thingsboard.server.common.data.security.DeviceCredentialsType;
 import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileConfiguration;
@@ -79,18 +67,26 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.thingsboard.server.gen.edge.v1.UpdateMsgType.ENTITY_DELETED_RPC_MESSAGE;
+import static org.thingsboard.server.transport.mqtt.AbstractMqttIntegrationTest.MQTT_PORT;
 
 @TestPropertySource(properties = {
         "transport.mqtt.enabled=true"
 })
+@Slf4j
 @DaoSqlTest
 public class DeviceEdgeTest extends AbstractEdgeTest {
+    @DynamicPropertySource
+    static void props(DynamicPropertyRegistry registry) {
+        log.warn("transport.mqtt.bind_port = {}", MQTT_PORT);
+        registry.add("transport.mqtt.bind_port", () -> MQTT_PORT);
+    }
 
     private static final String DEFAULT_DEVICE_TYPE = "default";
 
@@ -132,7 +128,7 @@ public class DeviceEdgeTest extends AbstractEdgeTest {
         Device deviceFromMsg = JacksonUtil.fromString(deviceUpdateMsg.getEntity(), Device.class, true);
         Assert.assertNotNull(deviceFromMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_CREATED_RPC_MESSAGE, deviceUpdateMsg.getMsgType());
-        Assert.assertEquals(savedDevice, deviceFromMsg);
+        compareHasVersionEntities(savedDevice, deviceFromMsg);
         Assert.assertEquals(savedDevice.getId(), deviceFromMsg.getId());
         Assert.assertEquals(savedDevice.getName(), deviceFromMsg.getName());
         Assert.assertEquals(savedDevice.getType(), deviceFromMsg.getType());
@@ -213,7 +209,7 @@ public class DeviceEdgeTest extends AbstractEdgeTest {
         Assert.assertTrue(latestMessage instanceof DeviceCredentialsUpdateMsg);
         DeviceCredentialsUpdateMsg deviceCredentialsUpdateMsg = (DeviceCredentialsUpdateMsg) latestMessage;
         DeviceCredentials deviceCredentialsMsg = JacksonUtil.fromString(deviceCredentialsUpdateMsg.getEntity(), DeviceCredentials.class, true);
-        Assert.assertEquals(deviceCredentials, deviceCredentialsMsg);
+        compareHasVersionEntities(deviceCredentials, deviceCredentialsMsg);
 
         // update device credentials - X509_CERTIFICATE
         edgeImitator.expectMessageAmount(1);
@@ -263,7 +259,7 @@ public class DeviceEdgeTest extends AbstractEdgeTest {
         Device deviceMsg = JacksonUtil.fromString(deviceUpdateMsg.getEntity(), Device.class, true);
         Assert.assertNotNull(deviceMsg);
         Assert.assertEquals(UpdateMsgType.ENTITY_UPDATED_RPC_MESSAGE, deviceUpdateMsg.getMsgType());
-        Assert.assertEquals(savedDevice, deviceMsg);
+        compareHasVersionEntities(savedDevice, deviceMsg);
         Assert.assertEquals(firmwareOtaPackageInfo.getId(), deviceMsg.getFirmwareId());
         Assert.assertEquals(softwareOtaPackageInfo.getId(), deviceMsg.getSoftwareId());
         deviceData = deviceMsg.getDeviceData();
@@ -378,7 +374,7 @@ public class DeviceEdgeTest extends AbstractEdgeTest {
         DeviceCredentials deviceCredentialsMsg = JacksonUtil.fromString(deviceCredentialsUpdateMsg.getEntity(), DeviceCredentials.class, true);
         Assert.assertNotNull(deviceCredentialsMsg);
         Assert.assertEquals(device.getId(), deviceCredentialsMsg.getDeviceId());
-        Assert.assertEquals(deviceCredentials, deviceCredentialsMsg);
+        compareHasVersionEntities(deviceCredentials, deviceCredentialsMsg);
     }
 
     @Test
@@ -413,12 +409,10 @@ public class DeviceEdgeTest extends AbstractEdgeTest {
         edgeImitator.expectResponsesAmount(1);
         edgeImitator.sendUplinkMsg(upLinkMsgBuilder.build());
         Assert.assertTrue(edgeImitator.waitForResponses());
-        DeviceInfo deviceInfo = doGet("/api/device/info/" + savedDevice.getUuidId(), DeviceInfo.class);
-        Assert.assertNotNull(deviceInfo);
-        List<DeviceInfo> edgeDevices = doGetTypedWithPageLink("/api/edge/" + edge.getUuidId() + "/devices?",
-                new TypeReference<PageData<DeviceInfo>>() {
-                }, new PageLink(100)).getData();
-        Assert.assertFalse(edgeDevices.contains(deviceInfo));
+
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() ->
+                doGet("/api/device/info/" + savedDevice.getUuidId(), DeviceInfo.class, status().isNotFound())
+        );
     }
 
     @Test
@@ -672,8 +666,7 @@ public class DeviceEdgeTest extends AbstractEdgeTest {
                 .atMost(10, TimeUnit.SECONDS)
                 .until(() -> {
                     String urlTemplate = "/api/plugins/telemetry/DEVICE/" + device.getId() + "/keys/attributes/" + scope;
-                    List<String> actualKeys = doGetAsyncTyped(urlTemplate, new TypeReference<>() {
-                    });
+                    List<String> actualKeys = doGetAsyncTyped(urlTemplate, new TypeReference<>() {});
                     return actualKeys != null && !actualKeys.isEmpty() && actualKeys.contains(expectedKey);
                 });
 
@@ -894,18 +887,7 @@ public class DeviceEdgeTest extends AbstractEdgeTest {
         ObjectNode attributes = JacksonUtil.newObjectNode();
         attributes.put("active", true);
         doPost("/api/plugins/telemetry/EDGE/" + edge.getId() + "/attributes/" + DataConstants.SERVER_SCOPE, attributes);
-        Awaitility.await()
-                .atMost(TIMEOUT, TimeUnit.SECONDS)
-                .until(() -> {
-                    List<Map<String, Object>> values = doGetAsyncTyped("/api/plugins/telemetry/EDGE/" + edge.getId() +
-                            "/values/attributes/SERVER_SCOPE", new TypeReference<>() {});
-                    Optional<Map<String, Object>> activeAttrOpt = values.stream().filter(att -> att.get("key").equals("active")).findFirst();
-                    if (activeAttrOpt.isEmpty()) {
-                        return false;
-                    }
-                    Map<String, Object> activeAttr = activeAttrOpt.get();
-                    return "true".equals(activeAttr.get("value").toString());
-                });
+        verifyEdgeConnected();
     }
 
 }

@@ -1,19 +1,7 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import { mtThemedSettings } from '@shared/models/mutech-widget-theme';
 import { Component, Input, OnInit, TemplateRef, ViewChild, ViewEncapsulation } from '@angular/core';
 import {
   doughnutDefaultSettings,
@@ -31,10 +19,11 @@ import {
 } from '@home/components/widget/lib/chart/latest-chart.component';
 
 @Component({
-  selector: 'tb-doughnut-widget',
-  templateUrl: './latest-chart-widget.component.html',
-  styleUrls: [],
-  encapsulation: ViewEncapsulation.None
+    selector: 'tb-doughnut-widget',
+    templateUrl: './latest-chart-widget.component.html',
+    styleUrls: [],
+    encapsulation: ViewEncapsulation.None,
+    standalone: false
 })
 export class DoughnutWidgetComponent implements OnInit {
 
@@ -59,7 +48,7 @@ export class DoughnutWidgetComponent implements OnInit {
     const params = this.widgetComponent.typeParameters as any;
     const horizontal  = isDefinedAndNotNull(params.horizontal) ? params.horizontal : false;
     this.ctx.$scope.doughnutWidget = this;
-    this.settings = {...doughnutDefaultSettings(horizontal), ...this.ctx.settings};
+    this.settings = mtThemedSettings({...doughnutDefaultSettings(horizontal), ...this.ctx.settings});
     this.callbacks = {
       createChart: (chartShape, renderer) => {
         const settings = doughnutPieChartSettings(this.settings);

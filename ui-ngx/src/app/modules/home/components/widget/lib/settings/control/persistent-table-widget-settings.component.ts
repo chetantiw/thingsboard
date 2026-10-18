@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { WidgetSettings, WidgetSettingsComponent } from '@shared/models/widget.models';
 import { UntypedFormBuilder, UntypedFormGroup, Validators } from '@angular/forms';
@@ -35,9 +21,10 @@ interface DisplayColumn {
 }
 
 @Component({
-  selector: 'tb-persistent-table-widget-settings',
-  templateUrl: './persistent-table-widget-settings.component.html',
-  styleUrls: ['./../widget-settings.scss']
+    selector: 'tb-persistent-table-widget-settings',
+    templateUrl: './persistent-table-widget-settings.component.html',
+    styleUrls: ['./../widget-settings.scss'],
+    standalone: false
 })
 export class PersistentTableWidgetSettingsComponent extends WidgetSettingsComponent {
 
@@ -105,6 +92,12 @@ export class PersistentTableWidgetSettingsComponent extends WidgetSettingsCompon
     };
   }
 
+  protected prepareInputSettings(settings: WidgetSettings): WidgetSettings {
+    settings.pageStepIncrement = settings.pageStepIncrement ?? settings.defaultPageSize;
+    this.pageStepSizeValues = buildPageStepSizeValues(settings.pageStepCount, settings.pageStepIncrement);
+    return settings;
+  }
+
   protected onSettingsSet(settings: WidgetSettings) {
     this.persistentTableWidgetSettingsForm = this.fb.group({
       enableFilter: [settings.enableFilter, []],
@@ -117,13 +110,10 @@ export class PersistentTableWidgetSettingsComponent extends WidgetSettingsCompon
       defaultPageSize: [settings.defaultPageSize, [Validators.min(1)]],
       pageStepCount: [settings.pageStepCount ?? 3, [Validators.min(1), Validators.max(100),
         Validators.required, Validators.pattern(/^\d*$/)]],
-      pageStepIncrement: [settings.pageStepIncrement ?? settings.defaultPageSize,
-        [Validators.min(1), Validators.required, Validators.pattern(/^\d*$/)]],
+      pageStepIncrement: [settings.pageStepIncrement, [Validators.min(1), Validators.required, Validators.pattern(/^\d*$/)]],
       defaultSortOrder: [settings.defaultSortOrder, []],
       displayColumns: [settings.displayColumns, [Validators.required]]
     });
-    this.pageStepSizeValues = buildPageStepSizeValues(this.persistentTableWidgetSettingsForm.get('pageStepCount').value,
-      this.persistentTableWidgetSettingsForm.get('pageStepIncrement').value);
   }
 
   public validateSettings(): boolean {

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.lwm2m.client;
 
 import lombok.extern.slf4j.Slf4j;
@@ -85,18 +72,22 @@ public class SimpleLwM2MDevice extends BaseInstanceEnabler implements Destroyabl
      */
     private static Map<Integer, Long> errorCode =
             Map.of(0, 0L);    // 0-32
+    private Integer value3_0_9;
 
     public SimpleLwM2MDevice() {
     }
 
-    public SimpleLwM2MDevice(ScheduledExecutorService executorService) {
+    public SimpleLwM2MDevice(ScheduledExecutorService executorService, Integer value3_0_9) {
+        this.value3_0_9 = value3_0_9;
         try {
-            executorService.scheduleWithFixedDelay(() -> {
-                        fireResourceChange(9);
-                        fireResourceChange(20);
-                    }
-                    , 1, 1, TimeUnit.SECONDS); // 2 sec
+            if ( this.value3_0_9 == null) {
+                executorService.scheduleWithFixedDelay(() -> {
+                            fireResourceChange(9);
+                            fireResourceChange(20);
+                        }
+                        , 1, 1, TimeUnit.SECONDS); // 2 sec
 //                    , 1800000, 1800000, TimeUnit.MILLISECONDS); // 30 MIN
+            }
         } catch (Throwable e) {
             log.error("[{}]Throwable", e.toString());
             e.printStackTrace();
@@ -211,8 +202,14 @@ public class SimpleLwM2MDevice extends BaseInstanceEnabler implements Destroyabl
     }
 
     private int getBatteryLevel() {
-        int valBattery = randomIterator.nextInt();
-        log.trace("Send from client [3/0/9] val: [{}]", valBattery);
+        int valBattery;
+        if (this.value3_0_9 == null) {
+            valBattery = randomIterator.nextInt();
+            log.trace("Send from client [3/0/9] val: [{}]", valBattery);
+        } else {
+            valBattery = this.value3_0_9;
+            log.warn("Send from client [3/0/9] constant value: [{}]", valBattery);
+        }
         return valBattery;
     }
 
@@ -257,7 +254,9 @@ public class SimpleLwM2MDevice extends BaseInstanceEnabler implements Destroyabl
     }
 
     private int getBatteryStatus() {
-        return RANDOM.nextInt(7);
+        int status = RANDOM.nextInt(7);
+        log.error("getBatteryStatus:  [{}]", status);
+        return status;
     }
 
     private long getMemoryTotal() {

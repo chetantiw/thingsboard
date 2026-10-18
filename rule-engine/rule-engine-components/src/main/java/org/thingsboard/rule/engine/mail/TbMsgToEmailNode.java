@@ -1,22 +1,8 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.rule.engine.mail;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import lombok.extern.slf4j.Slf4j;
 import org.thingsboard.common.util.JacksonUtil;
 import org.thingsboard.rule.engine.api.RuleNode;
 import org.thingsboard.rule.engine.api.TbContext;
@@ -34,7 +20,6 @@ import org.thingsboard.server.common.msg.TbMsg;
 import java.util.HashMap;
 import java.util.Map;
 
-@Slf4j
 @RuleNode(
         type = ComponentType.TRANSFORMATION,
         name = "to email",
@@ -43,7 +28,8 @@ import java.util.Map;
         nodeDetails = "Transforms message to email message. If transformation completed successfully output message type will be set to <code>SEND_EMAIL</code>.<br><br>" +
                 "Output connections: <code>Success</code>, <code>Failure</code>.",
         configDirective = "tbTransformationNodeToEmailConfig",
-        icon = "email"
+        icon = "email",
+        docUrl = "https://thingsboard.io/docs/user-guide/rule-engine-2-0/nodes/transformation/to-email/"
 )
 public class TbMsgToEmailNode implements TbNode {
 
@@ -55,20 +41,15 @@ public class TbMsgToEmailNode implements TbNode {
 
     @Override
     public void init(TbContext ctx, TbNodeConfiguration configuration) throws TbNodeException {
-        this.config = TbNodeUtils.convert(configuration, TbMsgToEmailNodeConfiguration.class);
-        this.dynamicMailBodyType = DYNAMIC.equals(this.config.getMailBodyType());
-     }
+        config = TbNodeUtils.convert(configuration, TbMsgToEmailNodeConfiguration.class);
+        dynamicMailBodyType = DYNAMIC.equals(config.getMailBodyType());
+    }
 
     @Override
     public void onMsg(TbContext ctx, TbMsg msg) {
-        try {
-            TbEmail email = convert(msg);
-            TbMsg emailMsg = buildEmailMsg(ctx, msg, email);
-            ctx.tellNext(emailMsg, TbNodeConnectionType.SUCCESS);
-        } catch (Exception ex) {
-            log.warn("Can not convert message to email " + ex.getMessage());
-            ctx.tellFailure(msg, ex);
-        }
+        TbEmail email = convert(msg);
+        TbMsg emailMsg = buildEmailMsg(ctx, msg, email);
+        ctx.tellNext(emailMsg, TbNodeConnectionType.SUCCESS);
     }
 
     private TbMsg buildEmailMsg(TbContext ctx, TbMsg msg, TbEmail email) {

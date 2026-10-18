@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.event;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -46,11 +33,6 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class BaseEventService implements EventService {
-
-    @Value("${sql.ttl.events.events_ttl:0}")
-    private long ttlInSec;
-    @Value("${sql.ttl.events.debug_events_ttl:604800}")
-    private long debugTtlInSec;
 
     @Value("${event.debug.max-symbols:4096}")
     private int maxDebugEventSymbols;
@@ -125,7 +107,12 @@ public class BaseEventService implements EventService {
 
     @Override
     public void removeEvents(TenantId tenantId, EntityId entityId) {
-        removeEvents(tenantId, entityId, null, null, null);
+        removeEvents(tenantId, entityId, null, null);
+    }
+
+    @Override
+    public void removeEvents(TenantId tenantId, EntityId entityId, Long startTime, Long endTime, EventType... types) {
+        eventDao.removeEvents(tenantId.getId(), entityId.getId(), startTime, endTime, types);
     }
 
     @Override

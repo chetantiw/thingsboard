@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { PageComponent } from '@shared/components/page.component';
 import { Directive, inject, Injector, OnDestroy, OnInit } from '@angular/core';
 import {
@@ -52,6 +38,7 @@ import { MillisecondsToTimeStringPipe } from '@shared/pipe/milliseconds-to-time-
 import { UserSettingsService } from '@core/http/user-settings.service';
 import { ImagePipe } from '@shared/pipe/image.pipe';
 import { UtilsService } from '@core/services/utils.service';
+import { UnitService } from '@core/services/unit.service';
 
 @Directive()
 // eslint-disable-next-line @angular-eslint/directive-class-suffix
@@ -92,6 +79,7 @@ export class DynamicWidgetComponent extends PageComponent implements IDynamicWid
     this.ctx.userSettingsService = this.$injector.get(UserSettingsService);
     this.ctx.utilsService = this.$injector.get(UtilsService);
     this.ctx.telemetryWsService = this.$injector.get(TelemetryWebsocketService);
+    this.ctx.unitService = this.$injector.get(UnitService);
     this.ctx.date = this.$injector.get(DatePipe);
     this.ctx.imagePipe = this.$injector.get(ImagePipe);
     this.ctx.milliSecondsToTimeString = this.$injector.get(MillisecondsToTimeStringPipe);

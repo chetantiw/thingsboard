@@ -1,0 +1,176 @@
+<!--
+
+    SPDX-FileCopyrightText: Copyright MuTech Automation
+    SPDX-License-Identifier: Apache-2.0
+
+-->
+<div class="mt-wl">
+  <header class="mt-wl-header">
+    <div>
+      <h1>{{ 'mutech.white-labeling' | translate }}</h1>
+      <p>{{ (isSysAdmin ? 'mutech.white-labeling-hint-sysadmin' : 'mutech.white-labeling-hint-tenant') | translate }}</p>
+    </div>
+    <div class="mt-wl-scope">
+      <mat-button-toggle-group [value]="scopeType" (change)="onScopeTypeChange($event.value)">
+        <mat-button-toggle value="own">
+          {{ (isSysAdmin ? 'mutech.scope-platform' : 'mutech.scope-organization') | translate }}
+        </mat-button-toggle>
+        <mat-button-toggle value="child">
+          {{ (isSysAdmin ? 'mutech.scope-tenant' : 'mutech.scope-customer') | translate }}
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+      @if (scopeType === 'child') {
+        <tb-entity-autocomplete class="mt-wl-target"
+                                appearance="outline"
+                                subscriptSizing="dynamic"
+                                [entityType]="childEntityType"
+                                [ngModel]="childId"
+                                (ngModelChange)="onChildChange($event)"
+                                [placeholder]="(isSysAdmin ? 'mutech.select-tenant' : 'mutech.select-customer') | translate">
+        </tb-entity-autocomplete>
+      }
+    </div>
+  </header>
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading$ | async"></mat-progress-bar>
+
+  @if (!ready) {
+    <div class="mt-wl-empty">
+      <mat-icon class="material-icons">format_paint</mat-icon>
+      <span>{{ (isSysAdmin ? 'mutech.select-tenant-hint' : 'mutech.select-customer-hint') | translate }}</span>
+    </div>
+  } @else {
+    <form class="mt-wl-body" [formGroup]="form" (ngSubmit)="save()">
+      <div class="mt-wl-form">
+        <div class="tb-form-hint tb-primary-fill">{{ inheritsFrom() | translate }}</div>
+
+        <section class="tb-form-panel">
+          <div class="tb-form-panel-title">{{ 'mutech.wl-identity' | translate }}</div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'mutech.wl-app-title' | translate }}</mat-label>
+            <input matInput formControlName="appTitle" [placeholder]="inheritedHint('appTitle')">
+          </mat-form-field>
+          <div class="mt-wl-images">
+            <tb-image-input [label]="'mutech.wl-logo' | translate" formControlName="logoUrl" [maxSizeByte]="imageMaxBytes"></tb-image-input>
+            <tb-image-input [label]="'mutech.wl-emblem' | translate" formControlName="emblemUrl" [maxSizeByte]="imageMaxBytes"></tb-image-input>
+            <tb-image-input [label]="'mutech.wl-favicon' | translate" formControlName="faviconUrl" [maxSizeByte]="imageMaxBytes"></tb-image-input>
+          </div>
+          <div class="tb-form-hint">{{ 'mutech.wl-images-hint' | translate }}</div>
+        </section>
+
+        <section class="tb-form-panel">
+          <div class="tb-form-panel-title">{{ 'mutech.wl-colors' | translate }}</div>
+          @for (field of colorFields; track field) {
+            <div class="tb-form-row">
+              <div class="fixed-title-width">{{ (field === 'primaryColor' ? 'mutech.wl-primary-color' : 'mutech.wl-accent-color') | translate }}</div>
+              <input class="mt-wl-swatch" type="color" [value]="effective(field)" (input)="setColor(field, $any($event.target).value)"
+                     [attr.aria-label]="(field === 'primaryColor' ? 'mutech.wl-primary-color' : 'mutech.wl-accent-color') | translate">
+              <mat-form-field class="flex-1" appearance="outline" subscriptSizing="dynamic">
+                <input matInput [formControlName]="field" [placeholder]="inheritedHint(field)">
+              </mat-form-field>
+            </div>
+          }
+          <div class="tb-form-hint">{{ 'mutech.wl-colors-hint' | translate }}</div>
+        </section>
+
+        <section class="tb-form-panel">
+          <div class="tb-form-panel-title">{{ 'mutech.wl-login' | translate }}</div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'mutech.wl-login-headline' | translate }}</mat-label>
+            <input matInput formControlName="loginHeadline" [placeholder]="inheritedHint('loginHeadline')">
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'mutech.wl-login-subtitle' | translate }}</mat-label>
+            <textarea matInput rows="2" formControlName="loginSubtitle" [placeholder]="inheritedHint('loginSubtitle')"></textarea>
+          </mat-form-field>
+          <div class="mt-wl-images">
+            <tb-image-input [label]="'mutech.wl-login-logo' | translate" formControlName="loginLogoUrl" [maxSizeByte]="imageMaxBytes"></tb-image-input>
+            <tb-image-input [label]="'mutech.wl-login-background' | translate" formControlName="loginBackgroundUrl" [maxSizeByte]="imageMaxBytes"></tb-image-input>
+          </div>
+          @if (domainsSupported) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ 'mutech.wl-domains' | translate }}</mat-label>
+              <mat-chip-grid #domainChips>
+                @for (domain of domains; track domain) {
+                  <mat-chip-row (removed)="removeDomain(domain)">
+                    {{ domain }}
+                    <button matChipRemove type="button"><mat-icon>close</mat-icon></button>
+                  </mat-chip-row>
+                }
+                <input [placeholder]="'mutech.wl-domains-placeholder' | translate"
+                       [matChipInputFor]="domainChips"
+                       [matChipInputSeparatorKeyCodes]="chipSeparators"
+                       (matChipInputTokenEnd)="addDomain($event)">
+              </mat-chip-grid>
+            </mat-form-field>
+            <div class="tb-form-hint">{{ 'mutech.wl-domains-hint' | translate }}</div>
+          }
+        </section>
+
+        <section class="tb-form-panel">
+          <div class="tb-form-panel-title">{{ 'mutech.wl-footer' | translate }}</div>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'mutech.wl-footer-text' | translate }}</mat-label>
+            <input matInput formControlName="footerText" [placeholder]="inheritedHint('footerText')">
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'mutech.wl-powered-by' | translate }}</mat-label>
+            <input matInput formControlName="poweredByText" [placeholder]="inheritedHint('poweredByText')">
+          </mat-form-field>
+          <mat-slide-toggle formControlName="hidePoweredBy">{{ 'mutech.wl-hide-powered-by' | translate }}</mat-slide-toggle>
+          <mat-slide-toggle formControlName="showHelpLinks">{{ 'mutech.wl-show-help' | translate }}</mat-slide-toggle>
+          <div class="tb-form-hint">{{ 'mutech.wl-legal-hint' | translate }}</div>
+        </section>
+
+        <div class="mt-wl-actions">
+          <button mat-stroked-button type="button" (click)="resetToInherited()" [disabled]="isLoading$ | async">
+            {{ 'mutech.wl-reset' | translate }}
+          </button>
+          <button mat-flat-button color="primary" type="submit"
+                  [disabled]="(isLoading$ | async) || form.invalid || !form.dirty">
+            {{ 'action.save' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <aside class="mt-wl-preview" [style.--wl-primary]="palette.primary" [style.--wl-on-primary]="palette.onPrimary"
+             [style.--wl-rail]="palette.rail" [style.--wl-accent]="palette.accent">
+        <div class="mt-wl-preview-title">{{ 'mutech.wl-preview' | translate }}</div>
+        <div class="mt-wl-app">
+          <div class="mt-wl-app-rail">
+            <img [src]="effective('logoUrl')" alt="">
+            <span class="mt-wl-app-nav active"></span>
+            <span class="mt-wl-app-nav"></span>
+            <span class="mt-wl-app-nav"></span>
+            <span class="mt-wl-app-nav"></span>
+          </div>
+          <div class="mt-wl-app-main">
+            <div class="mt-wl-app-header">
+              <img class="mt-wl-favicon" [src]="effective('faviconUrl')" alt="">
+              <span>{{ effective('appTitle') }}</span>
+            </div>
+            <div class="mt-wl-app-cards">
+              <span class="mt-wl-app-card"><i></i></span>
+              <span class="mt-wl-app-card"><i></i></span>
+            </div>
+            <span class="mt-wl-app-button">{{ 'action.save' | translate }}</span>
+            @if (!form.value.hidePoweredBy) {
+              <small class="mt-wl-app-powered">{{ effective('poweredByText') }}</small>
+            }
+          </div>
+        </div>
+        <div class="mt-wl-login" [style.background-image]="previewBackground()">
+          <div class="mt-wl-login-hero">
+            <img [src]="loginLogo()" alt="">
+            <strong>{{ effective('loginHeadline') }}</strong>
+            <span>{{ effective('loginSubtitle') }}</span>
+            <small>{{ effective('footerText') }}</small>
+          </div>
+          <div class="mt-wl-login-card">
+            <i></i><i></i>
+            <span class="mt-wl-app-button">{{ 'login.login' | translate }}</span>
+          </div>
+        </div>
+      </aside>
+    </form>
+  }
+</div>

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
-import org.springframework.security.config.annotation.ObjectPostProcessor;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -40,6 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.CrossOriginOpenerPolicyHeaderWriter.CrossOriginOpenerPolicy;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -47,21 +33,24 @@ import org.springframework.web.filter.ShallowEtagHeaderFilter;
 import org.thingsboard.server.dao.oauth2.OAuth2Configuration;
 import org.thingsboard.server.exception.ThingsboardErrorResponseHandler;
 import org.thingsboard.server.queue.util.TbCoreComponent;
+import org.thingsboard.server.service.security.auth.AuthExceptionHandler;
+import org.thingsboard.server.service.security.auth.extractor.TokenExtractor;
 import org.thingsboard.server.service.security.auth.jwt.JwtAuthenticationProvider;
 import org.thingsboard.server.service.security.auth.jwt.JwtTokenAuthenticationProcessingFilter;
 import org.thingsboard.server.service.security.auth.jwt.RefreshTokenAuthenticationProvider;
 import org.thingsboard.server.service.security.auth.jwt.RefreshTokenProcessingFilter;
 import org.thingsboard.server.service.security.auth.jwt.SkipPathRequestMatcher;
-import org.thingsboard.server.service.security.auth.jwt.extractor.TokenExtractor;
 import org.thingsboard.server.service.security.auth.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
+import org.thingsboard.server.service.security.auth.pat.ApiKeyAuthenticationProvider;
+import org.thingsboard.server.service.security.auth.pat.ApiKeyTokenAuthenticationProcessingFilter;
 import org.thingsboard.server.service.security.auth.rest.RestAuthenticationProvider;
 import org.thingsboard.server.service.security.auth.rest.RestLoginProcessingFilter;
 import org.thingsboard.server.service.security.auth.rest.RestPublicLoginProcessingFilter;
 import org.thingsboard.server.transport.http.config.PayloadSizeFilter;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Configuration
 @EnableWebSecurity
@@ -70,9 +59,12 @@ import java.util.List;
 @TbCoreComponent
 public class ThingsboardSecurityConfiguration {
 
-    public static final String JWT_TOKEN_HEADER_PARAM = "X-Authorization";
-    public static final String JWT_TOKEN_HEADER_PARAM_V2 = "Authorization";
+    public static final String AUTHORIZATION_HEADER = "X-Authorization";
+    public static final String AUTHORIZATION_HEADER_V2 = "Authorization";
     public static final String JWT_TOKEN_QUERY_PARAM = "token";
+
+    public static final String API_KEY_HEADER_PREFIX = "ApiKey ";
+    public static final String BEARER_HEADER_PREFIX = "Bearer ";
 
     public static final String DEVICE_API_ENTRY_POINT = "/api/v1/**";
     public static final String FORM_BASED_LOGIN_ENTRY_POINT = "/api/auth/login";
@@ -82,9 +74,12 @@ public class ThingsboardSecurityConfiguration {
     public static final String TOKEN_BASED_AUTH_ENTRY_POINT = "/api/**";
     public static final String WS_ENTRY_POINT = "/api/ws/**";
     public static final String MAIL_OAUTH2_PROCESSING_ENTRY_POINT = "/api/admin/mail/oauth2/code";
-    public static final String DEVICE_CONNECTIVITY_CERTIFICATE_DOWNLOAD_ENTRY_POINT = "/api/device-connectivity/mqtts/certificate/download";
+    public static final String DEVICE_CONNECTIVITY_CERTIFICATE_DOWNLOAD_ENTRY_POINT = "/api/device-connectivity/*/certificate/download";
+    public static final String COMMUNITY_GRANT_OFFLINE_RUN_ENTRY_POINT = "/api/communityGrant/offline/run";
+    public static final String COMMUNITY_GRANT_OFFLINE_RUN_PAYLOAD_LIMIT = COMMUNITY_GRANT_OFFLINE_RUN_ENTRY_POINT + "=35651584";
 
-    @Value("${server.http.max_payload_size:/api/image*/**=52428800;/api/resource/**=52428800;/api/**=16777216}")
+    // First match wins, so the community grant entry must stay ahead of /api/**.
+    @Value("${server.http.max_payload_size:/api/communityGrant/offline/run=35651584;/api/image*/**=52428800;/api/resource/**=52428800;/api/**=16777216}")
     private String maxPayloadSizeConfig;
 
     @Autowired
@@ -115,6 +110,8 @@ public class ThingsboardSecurityConfiguration {
     private JwtAuthenticationProvider jwtAuthenticationProvider;
     @Autowired
     private RefreshTokenAuthenticationProvider refreshTokenAuthenticationProvider;
+    @Autowired
+    private ApiKeyAuthenticationProvider apiKeyAuthenticationProvider;
 
     @Autowired(required = false)
     OAuth2Configuration oauth2Configuration;
@@ -124,18 +121,32 @@ public class ThingsboardSecurityConfiguration {
     private TokenExtractor jwtHeaderTokenExtractor;
 
     @Autowired
+    @Qualifier("apiKeyHeaderTokenExtractor")
+    private TokenExtractor apiKeyHeaderTokenExtractor;
+
+    @Autowired
     private AuthenticationManager authenticationManager;
 
     @Autowired
     private RateLimitProcessingFilter rateLimitProcessingFilter;
 
+    @Autowired
+    private AuthExceptionHandler authExceptionHandler;
+
+    @Autowired
+    private HttpSecurityHeadersCustomizer httpSecurityHeadersCustomizer;
+
+    // An override replaces the whole list, so the offline upload's entry is re-added unless it names that path.
     @Bean
     protected PayloadSizeFilter payloadSizeFilter() {
-        return new PayloadSizeFilter(maxPayloadSizeConfig);
+        String config = maxPayloadSizeConfig.contains(COMMUNITY_GRANT_OFFLINE_RUN_ENTRY_POINT + "=")
+                ? maxPayloadSizeConfig
+                : COMMUNITY_GRANT_OFFLINE_RUN_PAYLOAD_LIMIT + ";" + maxPayloadSizeConfig;
+        return new PayloadSizeFilter(config);
     }
 
     @Bean
-    protected FilterRegistrationBean<ShallowEtagHeaderFilter> buildEtagFilter() throws Exception {
+    protected FilterRegistrationBean<ShallowEtagHeaderFilter> buildEtagFilter() {
         ShallowEtagHeaderFilter etagFilter = new ShallowEtagHeaderFilter();
         etagFilter.setWriteWeakETag(true);
         FilterRegistrationBean<ShallowEtagHeaderFilter> filterRegistrationBean
@@ -146,25 +157,22 @@ public class ThingsboardSecurityConfiguration {
     }
 
     @Bean
-    protected RestLoginProcessingFilter buildRestLoginProcessingFilter() throws Exception {
+    protected RestLoginProcessingFilter buildRestLoginProcessingFilter() {
         RestLoginProcessingFilter filter = new RestLoginProcessingFilter(FORM_BASED_LOGIN_ENTRY_POINT, successHandler, failureHandler);
         filter.setAuthenticationManager(this.authenticationManager);
         return filter;
     }
 
     @Bean
-    protected RestPublicLoginProcessingFilter buildRestPublicLoginProcessingFilter() throws Exception {
+    protected RestPublicLoginProcessingFilter buildRestPublicLoginProcessingFilter() {
         RestPublicLoginProcessingFilter filter = new RestPublicLoginProcessingFilter(PUBLIC_LOGIN_ENTRY_POINT, successHandler, failureHandler);
         filter.setAuthenticationManager(this.authenticationManager);
         return filter;
     }
 
-    protected JwtTokenAuthenticationProcessingFilter buildJwtTokenAuthenticationProcessingFilter() throws Exception {
-        List<String> pathsToSkip = new ArrayList<>(Arrays.asList(NON_TOKEN_BASED_AUTH_ENTRY_POINTS));
-        pathsToSkip.addAll(Arrays.asList(WS_ENTRY_POINT, TOKEN_REFRESH_ENTRY_POINT, FORM_BASED_LOGIN_ENTRY_POINT,
-                PUBLIC_LOGIN_ENTRY_POINT, DEVICE_API_ENTRY_POINT, MAIL_OAUTH2_PROCESSING_ENTRY_POINT,
-                DEVICE_CONNECTIVITY_CERTIFICATE_DOWNLOAD_ENTRY_POINT));
-        SkipPathRequestMatcher matcher = new SkipPathRequestMatcher(pathsToSkip, TOKEN_BASED_AUTH_ENTRY_POINT);
+    @Bean
+    protected JwtTokenAuthenticationProcessingFilter buildJwtTokenAuthenticationProcessingFilter() {
+        SkipPathRequestMatcher matcher = buildSkipPathRequestMatcher();
         JwtTokenAuthenticationProcessingFilter filter
                 = new JwtTokenAuthenticationProcessingFilter(failureHandler, jwtHeaderTokenExtractor, matcher);
         filter.setAuthenticationManager(this.authenticationManager);
@@ -172,22 +180,43 @@ public class ThingsboardSecurityConfiguration {
     }
 
     @Bean
-    protected RefreshTokenProcessingFilter buildRefreshTokenProcessingFilter() throws Exception {
+    protected ApiKeyTokenAuthenticationProcessingFilter buildApiKeyTokenAuthenticationProcessingFilter() {
+        SkipPathRequestMatcher matcher = buildSkipPathRequestMatcher();
+        ApiKeyTokenAuthenticationProcessingFilter filter =
+                new ApiKeyTokenAuthenticationProcessingFilter(failureHandler, apiKeyHeaderTokenExtractor, matcher);
+        filter.setAuthenticationManager(this.authenticationManager);
+        return filter;
+    }
+
+    private SkipPathRequestMatcher buildSkipPathRequestMatcher() {
+        List<String> pathsToSkip = Stream.concat(
+                Arrays.stream(NON_TOKEN_BASED_AUTH_ENTRY_POINTS),
+                Stream.of(
+                        WS_ENTRY_POINT,
+                        TOKEN_REFRESH_ENTRY_POINT,
+                        FORM_BASED_LOGIN_ENTRY_POINT,
+                        PUBLIC_LOGIN_ENTRY_POINT,
+                        DEVICE_API_ENTRY_POINT,
+                        MAIL_OAUTH2_PROCESSING_ENTRY_POINT,
+                        DEVICE_CONNECTIVITY_CERTIFICATE_DOWNLOAD_ENTRY_POINT)).toList();
+        return new SkipPathRequestMatcher(pathsToSkip, TOKEN_BASED_AUTH_ENTRY_POINT);
+    }
+
+    @Bean
+    protected RefreshTokenProcessingFilter buildRefreshTokenProcessingFilter() {
         RefreshTokenProcessingFilter filter = new RefreshTokenProcessingFilter(TOKEN_REFRESH_ENTRY_POINT, successHandler, failureHandler);
         filter.setAuthenticationManager(this.authenticationManager);
         return filter;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(ObjectPostProcessor<Object> objectPostProcessor) throws Exception {
-        DefaultAuthenticationEventPublisher eventPublisher = objectPostProcessor
-                .postProcess(new DefaultAuthenticationEventPublisher());
-        var auth = new AuthenticationManagerBuilder(objectPostProcessor);
-        auth.authenticationEventPublisher(eventPublisher);
-        auth.authenticationProvider(restAuthenticationProvider);
-        auth.authenticationProvider(jwtAuthenticationProvider);
-        auth.authenticationProvider(refreshTokenAuthenticationProvider);
-        return auth.build();
+    public AuthenticationManager authenticationManager() {
+        return new ProviderManager(List.of(
+                restAuthenticationProvider,
+                jwtAuthenticationProvider,
+                apiKeyAuthenticationProvider,
+                refreshTokenAuthenticationProvider
+        ));
     }
 
     @Autowired
@@ -199,9 +228,11 @@ public class ThingsboardSecurityConfiguration {
         http
                 .securityMatchers(matchers -> matchers
                         .requestMatchers("/*.js", "/*.css", "/*.ico", "/assets/**", "/static/**"))
-                .headers(header -> header
-                        .defaultsDisabled()
-                        .addHeaderWriter(new StaticHeadersWriter(HttpHeaders.CACHE_CONTROL, "max-age=0, public")))
+                .headers(headers -> {
+                    headers.defaultsDisabled();
+                    headers.addHeaderWriter(new StaticHeadersWriter(HttpHeaders.CACHE_CONTROL, "max-age=0, public"));
+                    httpSecurityHeadersCustomizer.customize(headers);
+                })
                 .authorizeHttpRequests((authorize) -> authorize.anyRequest().permitAll())
                 .requestCache(RequestCacheConfigurer::disable)
                 .securityContext(AbstractHttpConfigurer::disable)
@@ -211,9 +242,12 @@ public class ThingsboardSecurityConfiguration {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.headers(headers -> headers
-                        .cacheControl(config -> {})
-                        .frameOptions(config -> {}).disable())
+        http.headers(headers -> {
+                    headers.defaultsDisabled();
+                    headers.cacheControl(config -> {});
+                    headers.crossOriginOpenerPolicy(coop -> coop.policy(CrossOriginOpenerPolicy.SAME_ORIGIN));
+                    httpSecurityHeadersCustomizer.customize(headers);
+                })
                 .cors(cors -> {})
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(config -> {})
@@ -233,9 +267,11 @@ public class ThingsboardSecurityConfiguration {
                 .addFilterBefore(buildRestLoginProcessingFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(buildRestPublicLoginProcessingFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(buildJwtTokenAuthenticationProcessingFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(buildApiKeyTokenAuthenticationProcessingFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(buildRefreshTokenProcessingFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(payloadSizeFilter(), UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(rateLimitProcessingFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterAfter(rateLimitProcessingFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(authExceptionHandler, buildRestLoginProcessingFilter().getClass());
         if (oauth2Configuration != null) {
             http.oauth2Login(login -> login
                     .authorizationEndpoint(config -> config
@@ -260,4 +296,5 @@ public class ThingsboardSecurityConfiguration {
             return new CorsFilter(source);
         }
     }
+
 }

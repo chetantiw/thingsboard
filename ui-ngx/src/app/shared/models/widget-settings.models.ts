@@ -1,20 +1,15 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
-import { isDefinedAndNotNull, isNumber, isNumeric, isUndefinedOrNull, mergeDeep, parseFunction } from '@core/utils';
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
+import {
+  isDefinedAndNotNull,
+  isNotEmptyStr,
+  isNumber,
+  isNumeric,
+  isUndefinedOrNull,
+  mergeDeep,
+  parseFunction
+} from '@core/utils';
 import {
   DataEntry,
   DataKey,
@@ -38,6 +33,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { AVG_MONTH, DAY, HOUR, Interval, IntervalMath, MINUTE, SECOND, YEAR } from '@shared/models/time/time.models';
 import moment from 'moment';
 import tinycolor from 'tinycolor2';
+import { mtColor, mtFontFamily } from '@shared/models/mutech-widget-theme';
 import { WidgetContext } from '@home/models/widget-component.models';
 import { DataKeyType } from '@shared/models/telemetry/telemetry.models';
 import {
@@ -45,6 +41,8 @@ import {
   WidgetSubscriptionCallbacks,
   WidgetSubscriptionOptions
 } from '@core/api/widget-api.models';
+import { UnitService } from '@core/services/unit.service';
+import { TbUnit, TbUnitConverter } from '@shared/models/unit.models';
 
 export type ComponentStyle = {[klass: string]: any};
 
@@ -393,7 +391,7 @@ export abstract class ColorProcessor {
   colorUpdated?: EventEmitter<void>;
 
   protected constructor(protected settings: ColorSettings) {
-    this.color = settings.color;
+    this.color = mtColor(settings.color);
   }
 
   abstract update(value: any): void;
@@ -419,7 +417,7 @@ class FunctionColorProcessor extends ColorProcessor {
 
   update(value: any): void {
     if (this.colorFunction) {
-      this.color = this.colorFunction(value) || this.settings.color;
+      this.color = mtColor(this.colorFunction(value) || this.settings.color);
     }
   }
 }
@@ -484,7 +482,7 @@ class RangeColorProcessor extends AdvancedModeColorProcessor {
 
   update(value: any): void {
     super.update(value);
-    this.color = this.computeFromRange(value);
+    this.color = mtColor(this.computeFromRange(value));
   }
 
   updatedAdvancedData(data: Array<DatasourceData>) {
@@ -852,6 +850,104 @@ export class AutoDateFormatProcessor extends DateFormatProcessor {
   }
 }
 
+export interface ValueFormatSettings {
+  decimals?: number;
+  units?: TbUnit;
+  showZeroDecimals?: boolean;
+  ignoreUnitSymbol?: boolean;
+}
+
+export abstract class ValueFormatProcessor {
+
+  protected isDefinedDecimals: boolean;
+  protected hideZeroDecimals: boolean;
+  protected unitSymbol: string;
+
+  static fromSettings($injector: Injector, settings: ValueFormatSettings): ValueFormatProcessor;
+  static fromSettings(unitService: UnitService, settings: ValueFormatSettings): ValueFormatProcessor;
+  static fromSettings(unitServiceOrInjector: Injector | UnitService, settings: ValueFormatSettings): ValueFormatProcessor {
+    if (settings.units !== null && typeof settings.units === 'object') {
+      return new UnitConverterValueFormatProcessor(unitServiceOrInjector, settings)
+    }
+    return new SimpleValueFormatProcessor(settings);
+  }
+
+  protected constructor(protected settings: ValueFormatSettings) {
+  }
+
+  abstract format(value: any): string;
+
+  protected formatValue(value: number): string {
+    let formatted: number | string = value;
+    if (this.isDefinedDecimals) {
+      formatted = formatted.toFixed(this.settings.decimals);
+    }
+    if (this.hideZeroDecimals) {
+      formatted = Number(formatted);
+    }
+    formatted = formatted.toString();
+    if (this.unitSymbol) {
+      formatted += ` ${this.unitSymbol}`;
+    }
+    return formatted;
+  }
+}
+
+export class SimpleValueFormatProcessor extends ValueFormatProcessor {
+
+  constructor(protected settings: ValueFormatSettings) {
+    super(settings);
+    this.unitSymbol = !settings.ignoreUnitSymbol && isNotEmptyStr(settings.units) ? (settings.units as string) : null;
+    this.isDefinedDecimals = isDefinedAndNotNull(settings.decimals);
+    this.hideZeroDecimals = !settings.showZeroDecimals;
+  }
+
+  format(value: any): string {
+    if (isDefinedAndNotNull(value) && isNumeric(value) && (this.isDefinedDecimals || this.unitSymbol || Number(value).toString() === value)) {
+      return this.formatValue(Number(value));
+    }
+    return value ?? '';
+  }
+}
+
+export class UnitConverterValueFormatProcessor extends ValueFormatProcessor {
+
+  private readonly unitConverter: TbUnitConverter;
+
+  constructor(protected unitServiceOrInjector: Injector | UnitService,
+              protected settings: ValueFormatSettings) {
+    super(settings);
+    const unitService = this.unitServiceOrInjector instanceof UnitService ? this.unitServiceOrInjector : this.unitServiceOrInjector.get(UnitService);
+    const unit = settings.units;
+    this.unitSymbol = settings.ignoreUnitSymbol ? null : unitService.getTargetUnitSymbol(unit);
+    this.unitConverter = unitService.geUnitConverter(unit);
+
+    this.isDefinedDecimals = isDefinedAndNotNull(settings.decimals);
+    this.hideZeroDecimals = !settings.showZeroDecimals;
+  }
+
+  format(value: any): string {
+    if (isDefinedAndNotNull(value) && isNumeric(value)) {
+      const formatted = this.unitConverter(Number(value));
+      return this.formatValue(formatted);
+    }
+    return value ?? '';
+  }
+}
+
+export const createValueFormatterFromSettings = (ctx: WidgetContext): ValueFormatProcessor => {
+  let decimals = ctx.decimals;
+  let units = ctx.units;
+  const dataKey = getDataKey(ctx.datasources);
+  if (isDefinedAndNotNull(dataKey?.decimals)) {
+    decimals = dataKey.decimals;
+  }
+  if (dataKey?.units) {
+    units = dataKey.units;
+  }
+  return ValueFormatProcessor.fromSettings(ctx.$injector, {units: units, decimals: decimals});
+}
+
 const intervalToFormatTimeUnit = (interval: Interval): FormatTimeUnit => {
   const intervalValue = IntervalMath.numberValue(interval);
   if (intervalValue < SECOND) {
@@ -979,8 +1075,9 @@ export const textStyle = (font?: Font, letterSpacing = 'normal'): ComponentStyle
     style.fontSize = (font.size + (font.sizeUnit || 'px'));
   }
   if (font?.family) {
-    style.fontFamily = font.family +
-      (font.family !== 'Roboto' ? ', Roboto' : '');
+    const family = mtFontFamily(font.family);
+    style.fontFamily = family +
+      (family !== 'Roboto' ? ', Roboto' : '');
   }
   return style;
 };
@@ -1002,8 +1099,9 @@ export const inlineTextStyle = (font?: Font, letterSpacing = 'normal'): Componen
     style['font-size'] = (font.size + (font.sizeUnit || 'px'));
   }
   if (font?.family) {
-    style['font-family'] = font.family +
-      (font.family !== 'Roboto' ? ', Roboto' : '');
+    const family = mtFontFamily(font.family);
+    style['font-family'] = family +
+      (family !== 'Roboto' ? ', Roboto' : '');
   }
   return style;
 };
@@ -1034,7 +1132,7 @@ export const backgroundStyle = (background: BackgroundSettings, imagePipe: Image
   background = validateAndUpdateBackgroundSettings(background);
   if (background.type === BackgroundType.color) {
     return of({
-      background: background.color
+      background: mtColor(background.color)
     });
   } else {
     const imageUrl = background.imageUrl;
@@ -1053,7 +1151,7 @@ export const backgroundStyle = (background: BackgroundSettings, imagePipe: Image
 export const overlayStyle = (overlay: OverlaySettings): ComponentStyle => (
   {
     display: overlay.enabled ? 'block' : 'none',
-    background: overlay.color,
+    background: mtColor(overlay.color),
     backdropFilter: `blur(${overlay.blur}px)`
   }
 );

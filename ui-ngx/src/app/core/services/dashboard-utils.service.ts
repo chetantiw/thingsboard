@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Injectable } from '@angular/core';
 import { UtilsService } from '@core/services/utils.service';
 import { TimeService } from '@core/services/time.service';
@@ -31,12 +17,22 @@ import {
   DashboardLayoutsInfo,
   DashboardState,
   DashboardStateLayouts,
-  GridSettings, LayoutType,
+  GridSettings,
+  LayoutType,
   WidgetLayout
 } from '@shared/models/dashboard.models';
-import { deepClone, isDefined, isDefinedAndNotNull, isNotEmptyStr, isString, isUndefined } from '@core/utils';
+import {
+  deepClean,
+  deepClone,
+  isDefined,
+  isDefinedAndNotNull,
+  isNotEmptyStr,
+  isString,
+  isUndefined
+} from '@core/utils';
 import {
   Datasource,
+  datasourcesHasAggregation,
   datasourcesHasOnlyComparisonAggregation,
   DatasourceType,
   defaultLegendConfig,
@@ -61,6 +57,11 @@ import { MediaBreakpoints } from '@shared/models/constants';
 import { TranslateService } from '@ngx-translate/core';
 import { DashboardPageLayout } from '@home/components/dashboard-page/dashboard-page.models';
 import { maxGridsterCol, maxGridsterRow } from '@home/models/dashboard-component.models';
+import {
+  findWidgetModelDefinition,
+  widgetHasTimewindow,
+  WidgetModelDefinition
+} from '@shared/models/widget/widget-model.definition';
 
 @Injectable({
   providedIn: 'root'
@@ -76,7 +77,10 @@ export class DashboardUtilsService {
 
   public validateAndUpdateDashboard(dashboard: Dashboard): Dashboard {
     if (!dashboard.configuration) {
-      dashboard.configuration = {};
+      dashboard.configuration = {
+        entityAliases: {},
+        filters: {},
+      };
     }
     if (isUndefined(dashboard.configuration.widgets)) {
       dashboard.configuration.widgets = {};
@@ -164,9 +168,8 @@ export class DashboardUtilsService {
       dashboard.configuration.filters = {};
     }
 
-    if (isUndefined(dashboard.configuration.timewindow)) {
-      dashboard.configuration.timewindow = this.timeService.defaultTimewindow();
-    }
+    dashboard.configuration.timewindow = initModelFromDefaultTimewindow(dashboard.configuration.timewindow,
+      false, false, this.timeService, true, true);
     if (isUndefined(dashboard.configuration.settings)) {
       dashboard.configuration.settings = {};
       dashboard.configuration.settings.stateControllerId = 'entity';
@@ -226,12 +229,19 @@ export class DashboardUtilsService {
       row: widget.row,
       col: widget.col,
     };
+    dashboard.configuration.timewindow = initModelFromDefaultTimewindow(null, false, false, this.timeService, true, false);
     return dashboard;
   }
 
   public validateAndUpdateWidget(widget: Widget): Widget {
-    widget.config = this.validateAndUpdateWidgetConfig(widget.config, widget.type);
+    const widgetDefinition = widget.config ? findWidgetModelDefinition(widget) : null;
+    if (widgetDefinition) {
+      widget.config = this.validateAndUpdateWidgetConfigWithModelDefinition(widget, widgetDefinition);
+    } else {
+      widget.config = this.validateAndUpdateWidgetConfig(widget.config, widget.type);
+    }
     widget = this.validateAndUpdateWidgetTypeFqn(widget);
+    this.removeTimewindowConfigIfUnused(widget);
     if (isDefined((widget as any).title)) {
       delete (widget as any).title;
     }
@@ -292,8 +302,11 @@ export class DashboardUtilsService {
     }
     widgetConfig.datasources = this.validateAndUpdateDatasources(widgetConfig.datasources);
     if (type === widgetType.latest) {
-      const onlyHistoryTimewindow = datasourcesHasOnlyComparisonAggregation(widgetConfig.datasources);
-      widgetConfig.timewindow = initModelFromDefaultTimewindow(widgetConfig.timewindow, true, onlyHistoryTimewindow, this.timeService);
+      if (datasourcesHasAggregation(widgetConfig.datasources)) {
+        const onlyHistoryTimewindow = datasourcesHasOnlyComparisonAggregation(widgetConfig.datasources);
+        widgetConfig.timewindow = initModelFromDefaultTimewindow(widgetConfig.timewindow, true,
+          onlyHistoryTimewindow, this.timeService, false);
+      }
     } else if (type === widgetType.rpc) {
       if (widgetConfig.targetDeviceAliasIds && widgetConfig.targetDeviceAliasIds.length) {
         widgetConfig.targetDevice = {
@@ -343,7 +356,34 @@ export class DashboardUtilsService {
         }
       }
     }
-    return widgetConfig;
+    return deepClean(widgetConfig, {cleanKeys: ['_hash'], cleanOnlyKey: true});
+  }
+
+  public validateAndUpdateWidgetConfigWithModelDefinition(widget: Widget, widgetDefinition: WidgetModelDefinition): WidgetConfig {
+    const widgetConfig = widget.config;
+    if (widget.type === widgetType.latest && widgetDefinition.hasTimewindow(widget)) {
+      widgetConfig.timewindow = initModelFromDefaultTimewindow(widgetConfig.timewindow, true,
+        widgetDefinition.datasourcesHasOnlyComparisonAggregation(widget), this.timeService, false);
+    }
+    return deepClean(widgetConfig, {cleanKeys: ['_hash'], cleanOnlyKey: true});
+  }
+
+  private removeTimewindowConfigIfUnused(widget: Widget) {
+    const hasTimewindow = widgetHasTimewindow(widget);
+    if (!hasTimewindow || widget.config.useDashboardTimewindow) {
+      delete widget.config.displayTimewindow;
+      delete widget.config.timewindow;
+
+      if (!hasTimewindow) {
+        delete widget.config.useDashboardTimewindow;
+      }
+    }
+  }
+
+  public prepareWidgetForSaving(widget: Widget): Widget {
+    this.removeTimewindowConfigIfUnused(widget);
+    widget = deepClean(widget, {cleanKeys: ['_hash'], cleanOnlyKey: true});
+    return widget;
   }
 
   public prepareWidgetForScadaLayout(widget: Widget, isScada: boolean): Widget {
@@ -396,6 +436,14 @@ export class DashboardUtilsService {
       });
     });
     return datasources;
+  }
+
+  public getWidgetDatasources(widget: Widget): Datasource[] {
+    const widgetDefinition = findWidgetModelDefinition(widget);
+    if (widgetDefinition) {
+      return widgetDefinition.datasources(widget);
+    }
+    return this.validateAndUpdateDatasources(widget.config.datasources);
   }
 
   public createDefaultLayoutData(): DashboardLayout {

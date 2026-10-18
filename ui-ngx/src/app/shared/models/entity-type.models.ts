@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { TenantId } from './id/tenant-id';
 import { BaseData, HasId } from '@shared/models/base-data';
 import { getProviderHelpLink, OAuth2Client } from '@shared/models/oauth2.models';
@@ -51,6 +37,8 @@ export enum EntityType {
   MOBILE_APP_BUNDLE = 'MOBILE_APP_BUNDLE',
   MOBILE_APP = 'MOBILE_APP',
   CALCULATED_FIELD = 'CALCULATED_FIELD',
+  AI_MODEL = 'AI_MODEL',
+  API_KEY = 'API_KEY',
 }
 
 export enum AliasEntityType {
@@ -346,6 +334,8 @@ export const entityTypeTranslations = new Map<EntityType | AliasEntityType, Enti
       EntityType.OTA_PACKAGE,
       {
         type: 'entity.type-ota-package',
+        typePlural: 'entity.type-ota-packages',
+        list: 'entity.list-of-ota-packages',
         details: 'ota-update.ota-update-details',
         add: 'ota-update.add',
         noEntities: 'ota-update.no-packages-text',
@@ -486,12 +476,37 @@ export const entityTypeTranslations = new Map<EntityType | AliasEntityType, Enti
         type: 'entity.type-calculated-field',
         typePlural: 'entity.type-calculated-fields',
         list: 'calculated-fields.list',
-        add: 'action.add',
+        add: 'calculated-fields.add',
+        details: 'calculated-fields.calculated-field-details',
         noEntities: 'calculated-fields.no-found',
         search: 'action.search',
         selectedEntities: 'calculated-fields.selected-fields'
       }
-    ]
+    ],
+    [
+      EntityType.AI_MODEL,
+      {
+        type: 'entity.type-ai-model',
+        typePlural: 'entity.type-ai-models',
+        list: 'ai-models.list',
+        add: 'ai-models.add',
+        noEntities: 'ai-models.no-found',
+        search: 'action.search',
+        selectedEntities: 'ai-models.selected-fields'
+      }
+    ],
+    [
+      EntityType.API_KEY,
+      {
+        type: 'entity.type-api-key',
+        typePlural: 'entity.type-api-keys',
+        list: 'api-key.list',
+        add: 'api-key.generate',
+        noEntities: 'api-key.no-found',
+        search: 'api-key.search',
+        selectedEntities: 'api-key.selected-api-keys'
+      }
+    ],
   ]
 );
 
@@ -623,7 +638,25 @@ export const entityTypeResources = new Map<EntityType, EntityTypeResource<BaseDa
       {
         helpLinkId: 'mobileBundle'
       }
-    ]
+    ],
+    [
+      EntityType.AI_MODEL,
+      {
+        helpLinkId: 'aiModels'
+      }
+    ],
+    [
+      EntityType.CALCULATED_FIELD,
+      {
+        helpLinkId: 'calculatedField'
+      }
+    ],
+    [
+      EntityType.API_KEY,
+      {
+        helpLinkId: 'apiKeys'
+      }
+    ],
   ]
 );
 
@@ -647,7 +680,8 @@ export const baseDetailsPageByEntityType = new Map<EntityType, string>([
   [EntityType.WIDGET_TYPE, '/resources/widgets-library/widget-types/details'],
   [EntityType.OAUTH2_CLIENT, '/security-settings/oauth2/clients/details'],
   [EntityType.DOMAIN, '/security-settings/oauth2/clients/details'],
-  [EntityType.MOBILE_APP, '/mobile-center/applications']
+  [EntityType.MOBILE_APP, '/mobile-center/applications'],
+  [EntityType.CALCULATED_FIELD, '/calculatedFields']
 ]);
 
 export interface EntitySubtype {

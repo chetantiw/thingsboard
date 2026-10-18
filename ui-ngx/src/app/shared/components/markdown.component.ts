@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   ChangeDetectorRef,
   Component,
@@ -32,21 +18,20 @@ import {
   ViewChild,
   ViewContainerRef
 } from '@angular/core';
-import { HelpService } from '@core/services/help.service';
 import { MarkdownService, PrismPlugin } from 'ngx-markdown';
 import { DynamicComponentFactoryService } from '@core/services/dynamic-component-factory.service';
-import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import { SHARED_MODULE_TOKEN } from '@shared/components/tokens';
-import { deepClone, guid, isDefinedAndNotNull } from '@core/utils';
+import { guid, isDefinedAndNotNull } from '@core/utils';
 import { Observable, of, ReplaySubject } from 'rxjs';
 import { coerceBoolean } from '@shared/decorators/coercion';
 
-let defaultMarkdownStyle;
+let defaultMarkdownStyle: string;
 
 @Component({
-  selector: 'tb-markdown',
-  templateUrl: './markdown.component.html',
-  styleUrls: ['./markdown.component.scss']
+    selector: 'tb-markdown',
+    templateUrl: './markdown.component.html',
+    styleUrls: ['./markdown.component.scss'],
+    standalone: false
 })
 export class TbMarkdownComponent implements OnChanges {
 
@@ -70,21 +55,18 @@ export class TbMarkdownComponent implements OnChanges {
   @Input() additionalStyles: string[];
 
   @Input()
-  get lineNumbers(): boolean { return this.lineNumbersValue; }
-  set lineNumbers(value: boolean) { this.lineNumbersValue = coerceBooleanProperty(value); }
+  @coerceBoolean()
+  lineNumbers = false;
 
   @Input()
-  get fallbackToPlainMarkdown(): boolean { return this.fallbackToPlainMarkdownValue; }
-  set fallbackToPlainMarkdown(value: boolean) { this.fallbackToPlainMarkdownValue = coerceBooleanProperty(value); }
+  @coerceBoolean()
+  fallbackToPlainMarkdown = false;
 
   @Input()
   @coerceBoolean()
   usePlainMarkdown = false;
 
   @Output() ready = new EventEmitter<void>();
-
-  private lineNumbersValue = false;
-  private fallbackToPlainMarkdownValue = false;
 
   isMarkdownReady = false;
 
@@ -93,8 +75,7 @@ export class TbMarkdownComponent implements OnChanges {
   private tbMarkdownInstanceComponentRef: ComponentRef<any>;
   private tbMarkdownInstanceComponentType: Type<any>;
 
-  constructor(private help: HelpService,
-              private cd: ChangeDetectorRef,
+  constructor(private cd: ChangeDetectorRef,
               private zone: NgZone,
               public markdownService: MarkdownService,
               @Inject(SHARED_MODULE_TOKEN) private sharedModule: Type<any>,
@@ -102,13 +83,24 @@ export class TbMarkdownComponent implements OnChanges {
               private renderer: Renderer2) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (isDefinedAndNotNull(this.data)) {
-      this.zone.run(() => this.render(this.data));
+    for (const propName of Object.keys(changes)) {
+      const change = changes[propName];
+      if (propName === 'data' && change.currentValue !== change.previousValue) {
+        if (isDefinedAndNotNull(this.data)) {
+          this.zone.run(() => this.render(this.data));
+        }
+      } else if (propName === 'context' && !change.firstChange) {
+        if (this.context && this.tbMarkdownInstanceComponentRef) {
+          for (const propName of Object.keys(this.context)) {
+            this.tbMarkdownInstanceComponentRef.instance[propName] = this.context[propName];
+          }
+        }
+      }
     }
   }
 
   private render(markdown: string) {
-    const compiled = this.markdownService.parse(markdown, { decodeHtml: false });
+    const compiled = this.markdownService.parse(markdown, { decodeHtml: false, disableSanitizer: true });
     let markdownClass = 'tb-markdown-view';
     if (this.markdownClass) {
       markdownClass += ` ${this.markdownClass}`;
@@ -134,8 +126,8 @@ export class TbMarkdownComponent implements OnChanges {
     if (this.applyDefaultMarkdownStyle) {
       if (!defaultMarkdownStyle) {
         const compDef = this.dynamicComponentFactoryService.getComponentDef(TbMarkdownComponent);
-        defaultMarkdownStyle = deepClone(compDef.styles[0]).replace(/\[_nghost\-%COMP%\]/g, '')
-          .replace(/\[_ngcontent\-%COMP%\]/g, '');
+        defaultMarkdownStyle = compDef.styles[0].replace(/\[_nghost-%COMP%]/g, '')
+          .replace(/\[_ngcontent-%COMP%]/g, '');
       }
       styles.push(defaultMarkdownStyle);
     }
@@ -149,7 +141,7 @@ export class TbMarkdownComponent implements OnChanges {
         this.ready.emit();
       });
     } else {
-      const parent = this;
+      const destroyMarkdownInstanceResources = this.destroyMarkdownInstanceResources.bind(this);
       let compileModules = [this.sharedModule];
       if (this.additionalCompileModules) {
         compileModules = compileModules.concat(this.additionalCompileModules);
@@ -157,13 +149,14 @@ export class TbMarkdownComponent implements OnChanges {
       this.dynamicComponentFactoryService.createDynamicComponent(
         class TbMarkdownInstance {
           ngOnDestroy(): void {
-            parent.destroyMarkdownInstanceResources();
+            destroyMarkdownInstanceResources();
           }
         },
         template,
         compileModules,
         true, styles
-      ).subscribe((componentType) => {
+      ).subscribe({
+        next: (componentType) => {
           this.tbMarkdownInstanceComponentType = componentType;
           const injector: Injector = Injector.create({providers: [], parent: this.markdownContainer.injector});
           try {
@@ -187,20 +180,21 @@ export class TbMarkdownComponent implements OnChanges {
             this.ready.emit();
           });
         },
-        (error) => {
+        error: (error) => {
           readyObservable = this.handleError(template, error, styles);
           this.cd.detectChanges();
           readyObservable.subscribe(() => {
             this.ready.emit();
           });
-        });
+        }
+      });
     }
   }
 
-  private handleError(template: string, error, styles?: string[]): Observable<void> {
+  private handleError(template: string, error: any, styles?: string[]): Observable<void> {
     this.error = (error ? error + '' : 'Failed to render markdown!').replace(/\n/g, '<br>');
     this.markdownContainer.clear();
-    if (this.fallbackToPlainMarkdownValue) {
+    if (this.fallbackToPlainMarkdown) {
       return this.plainMarkdown(template, styles);
     } else {
       return of(null);
@@ -209,7 +203,7 @@ export class TbMarkdownComponent implements OnChanges {
 
   private plainMarkdown(template: string, styles?: string[]): Observable<void> {
     const element = this.fallbackElement.nativeElement;
-    let styleElement;
+    let styleElement: any;
     if (styles?.length) {
       const markdownClass = 'tb-markdown-view-' + guid();
       let innerStyle = styles.join('\n');
@@ -244,7 +238,7 @@ export class TbMarkdownComponent implements OnChanges {
     if (imgs.length) {
       let totalImages = imgs.length;
       const imagesLoadedSubject = new ReplaySubject<void>();
-      imgs.each((index, img) => {
+      imgs.each((_index, img) => {
         $(img).one('load error', () => {
           totalImages--;
           if (totalImages === 0) {

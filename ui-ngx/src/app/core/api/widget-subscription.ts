@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import {
   IWidgetSubscription,
   SubscriptionEntityInfo,
@@ -23,13 +9,15 @@ import {
   WidgetSubscriptionOptions
 } from '@core/api/widget-api.models';
 import {
-  DataKey, DataKeySettingsWithComparison,
+  DataKey,
+  DataKeySettingsWithComparison,
   DataSet,
   DataSetHolder,
   Datasource,
   DatasourceData,
   datasourcesHasAggregation,
-  DatasourceType, isDataKeySettingsWithComparison,
+  DatasourceType,
+  isDataKeySettingsWithComparison,
   LegendConfig,
   LegendData,
   LegendKey,
@@ -62,7 +50,8 @@ import {
   flatFormattedData,
   formattedDataFormDatasourceData,
   isDefinedAndNotNull,
-  isEqual, isUndefined,
+  isEqual,
+  isUndefined,
   parseHttpErrorMessage
 } from '@core/utils';
 import { EntityId } from '@app/shared/models/id/entity-id';
@@ -84,6 +73,8 @@ import { AlarmDataListener } from '@core/api/alarm-data.service';
 import { RpcStatus } from '@shared/models/rpc.models';
 import { EventEmitter } from '@angular/core';
 import { NOT_SUPPORTED } from '@shared/models/telemetry/telemetry.models';
+import { isNotEmptyTbUnits, TbUnit } from '@shared/models/unit.models';
+import { ValueFormatProcessor } from '@shared/models/widget-settings.models';
 
 const moment = moment_;
 
@@ -189,7 +180,7 @@ export class WidgetSubscription implements IWidgetSubscription {
   stateData: boolean;
   datasourcesOptional: boolean;
   decimals: number;
-  units: string;
+  units: TbUnit;
   comparisonEnabled: boolean;
   timeForComparison: ComparisonDuration;
   comparisonCustomIntervalValue: number;
@@ -619,7 +610,7 @@ export class WidgetSubscription implements IWidgetSubscription {
                 if (additionalInfoJson && additionalInfoJson.description) {
                   entityDescription = additionalInfoJson.description;
                 }
-              } catch (e) {}
+              } catch (e) {/**/}
             }
           }
         }
@@ -866,7 +857,8 @@ export class WidgetSubscription implements IWidgetSubscription {
                 return timer(initialTimeout, pollingInterval).pipe(
                   switchMap(() => this.ctx.deviceService.getPersistedRpc(response.rpcId, true)),
                   filter(persistentRespons =>
-                    persistentRespons.status !== RpcStatus.DELIVERED && persistentRespons.status !== RpcStatus.QUEUED),
+                    (oneWayElseTwoWay && persistentRespons.status === RpcStatus.DELIVERED) ||
+                    (persistentRespons.status !== RpcStatus.DELIVERED && persistentRespons.status !== RpcStatus.QUEUED)),
                   switchMap(persistentResponse => {
                     if ([RpcStatus.TIMEOUT, RpcStatus.EXPIRED].includes(persistentResponse.status)) {
                       return throwError(() => ({status: 504}));
@@ -1412,9 +1404,13 @@ export class WidgetSubscription implements IWidgetSubscription {
               this.data.push(datasourceData);
               this.hiddenData.push({data: []});
               if (this.displayLegend) {
+                const decimals = isDefinedAndNotNull(dataKey.decimals) ? dataKey.decimals : this.decimals;
+                const units = isNotEmptyTbUnits(dataKey.units) ? dataKey.units : this.units;
+                const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.unitService, {decimals, units})
                 const legendKey: LegendKey = {
                   dataKey,
-                  dataIndex: dataKeyIndex
+                  dataIndex: dataKeyIndex,
+                  valueFormat
                 };
                 this.legendData.keys.push(legendKey);
                 const legendKeyData: LegendKeyData = {
@@ -1447,20 +1443,18 @@ export class WidgetSubscription implements IWidgetSubscription {
     this.datasources.forEach((datasource) => {
       datasource.dataKeys.forEach((dataKey) => {
         if (datasource.generated || datasource.isAdditional) {
-          dataKey._hash = Math.random();
           dataKey.color = this.ctx.utils.getMaterialColor(index);
         }
         index++;
       });
-      if (datasource.latestDataKeys) {
-        datasource.latestDataKeys.forEach((dataKey) => {
-          if (datasource.generated || datasource.isAdditional) {
-            dataKey._hash = Math.random();
-            // dataKey.color = this.ctx.utils.getMaterialColor(index);
-          }
-          // index++;
-        });
-      }
+      // if (datasource.latestDataKeys) {
+      //   datasource.latestDataKeys.forEach((dataKey) => {
+      //     if (datasource.generated || datasource.isAdditional) {
+      //       // dataKey.color = this.ctx.utils.getMaterialColor(index);
+      //     }
+      //     // index++;
+      //   });
+      // }
     });
     if (this.comparisonEnabled) {
       this.datasourcePages.forEach(datasourcePage => {
@@ -1490,9 +1484,9 @@ export class WidgetSubscription implements IWidgetSubscription {
   private entityDataToDatasourceData(datasource: Datasource, data: Array<DataSetHolder>): Array<DatasourceData> {
     let datasourceDataArray: Array<DatasourceData> = [];
     datasourceDataArray = datasourceDataArray.concat(datasource.dataKeys.map((dataKey, keyIndex) => {
-      dataKey.hidden = !!dataKey.settings.hideDataByDefault;
-      dataKey.inLegend = dataKey.settings.showInLegend ||
-        (isUndefined(dataKey.settings.showInLegend) && !dataKey.settings.removeFromLegend);
+      dataKey.hidden = !!dataKey.settings?.hideDataByDefault;
+      dataKey.inLegend = dataKey.settings?.showInLegend ||
+        (isUndefined(dataKey.settings?.showInLegend) && !dataKey.settings?.removeFromLegend);
       dataKey.label = this.ctx.utils.customTranslation(dataKey.label, dataKey.label);
       const datasourceData: DatasourceData = {
         datasource,
@@ -1644,24 +1638,22 @@ export class WidgetSubscription implements IWidgetSubscription {
   }
 
   private updateLegend(dataIndex: number, data: DataSet, detectChanges: boolean) {
-    const dataKey = this.legendData.keys.find(key => key.dataIndex === dataIndex).dataKey;
-    const decimals = isDefinedAndNotNull(dataKey.decimals) ? dataKey.decimals : this.decimals;
-    const units = dataKey.units && dataKey.units.length ? dataKey.units : this.units;
+    const valueFormat = this.legendData.keys.find(key => key.dataIndex === dataIndex).valueFormat;
     const legendKeyData = this.legendData.data[dataIndex];
     if (this.legendConfig.showMin) {
-      legendKeyData.min = this.ctx.widgetUtils.formatValue(calculateMin(data), decimals, units);
+      legendKeyData.min = valueFormat.format(calculateMin(data));
     }
     if (this.legendConfig.showMax) {
-      legendKeyData.max = this.ctx.widgetUtils.formatValue(calculateMax(data), decimals, units);
+      legendKeyData.max = valueFormat.format(calculateMax(data));
     }
     if (this.legendConfig.showAvg) {
-      legendKeyData.avg = this.ctx.widgetUtils.formatValue(calculateAvg(data), decimals, units);
+      legendKeyData.avg = valueFormat.format(calculateAvg(data));
     }
     if (this.legendConfig.showTotal) {
-      legendKeyData.total = this.ctx.widgetUtils.formatValue(calculateTotal(data), decimals, units);
+      legendKeyData.total = valueFormat.format(calculateTotal(data));
     }
     if (this.legendConfig.showLatest) {
-      legendKeyData.latest = this.ctx.widgetUtils.formatValue(calculateLatest(data), decimals, units);
+      legendKeyData.latest = valueFormat.format(calculateLatest(data));
     }
     this.callbacks.legendDataUpdated(this, detectChanges !== false);
   }

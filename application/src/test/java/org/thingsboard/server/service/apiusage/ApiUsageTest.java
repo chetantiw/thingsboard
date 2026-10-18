@@ -1,24 +1,13 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.service.apiusage;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
+import org.thingsboard.server.common.data.ApiUsageRecordKey;
+import org.thingsboard.server.common.data.ApiUsageState;
 import org.thingsboard.server.common.data.ApiUsageStateValue;
 import org.thingsboard.server.common.data.Device;
 import org.thingsboard.server.common.data.SaveDeviceWithCredentialsRequest;
@@ -30,6 +19,7 @@ import org.thingsboard.server.common.data.security.DeviceCredentials;
 import org.thingsboard.server.common.data.security.DeviceCredentialsType;
 import org.thingsboard.server.common.data.tenant.profile.DefaultTenantProfileConfiguration;
 import org.thingsboard.server.common.data.tenant.profile.TenantProfileData;
+import org.thingsboard.server.common.stats.TbApiUsageReportClient;
 import org.thingsboard.server.controller.AbstractControllerTest;
 import org.thingsboard.server.controller.TbUrlConstants;
 import org.thingsboard.server.dao.service.DaoSqlTest;
@@ -46,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
         "usage.stats.report.enabled=true",
         "usage.stats.report.interval=2",
+        "usage.stats.report.urgent_interval=1",
         "usage.stats.gauge_report_interval=1",
 })
 public class ApiUsageTest extends AbstractControllerTest {
@@ -54,9 +45,12 @@ public class ApiUsageTest extends AbstractControllerTest {
     private User tenantAdmin;
 
     private static final int MAX_DP_ENABLE_VALUE = 12;
+    private static final int MAX_SMS_ENABLE_VALUE = 10;
     private static final double WARN_THRESHOLD_VALUE = 0.5;
     @Autowired
     private ApiUsageStateService apiUsageStateService;
+    @Autowired
+    private TbApiUsageReportClient apiUsageReportClient;
 
     @Before
     public void beforeTest() throws Exception {
@@ -82,7 +76,7 @@ public class ApiUsageTest extends AbstractControllerTest {
     }
 
     @Test
-    public void testTelemetryApiCall() throws Exception {
+    public void testDbStorageApiUsage() throws Exception {
         Device device = createDevice();
         assertNotNull(device);
         String telemetryPayload = "{\"temperature\":25, \"humidity\":60}";
@@ -94,7 +88,8 @@ public class ApiUsageTest extends AbstractControllerTest {
             doPostAsync(url, telemetryPayload, String.class, status().isOk());
         }
 
-        await().atMost(TIMEOUT, TimeUnit.SECONDS).untilAsserted(() -> assertEquals(ApiUsageStateValue.WARNING, apiUsageStateService.findTenantApiUsageState(tenantId).getDbStorageState()));
+        await().atMost(TIMEOUT, TimeUnit.SECONDS).untilAsserted(() ->
+                assertEquals(ApiUsageStateValue.WARNING, getUsageState().getDbStorageState()));
 
         long VALUE_DISABLE = (long) (MAX_DP_ENABLE_VALUE - (MAX_DP_ENABLE_VALUE * WARN_THRESHOLD_VALUE)) / 2;
 
@@ -104,8 +99,33 @@ public class ApiUsageTest extends AbstractControllerTest {
 
         await().atMost(TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertEquals(ApiUsageStateValue.DISABLED, apiUsageStateService.findTenantApiUsageState(tenantId).getDbStorageState());
+                    assertEquals(ApiUsageStateValue.DISABLED, getUsageState().getDbStorageState());
                 });
+    }
+
+    @Test
+    public void testSmsApiUsage() {
+        long smsWarnThreshold = (long) (MAX_SMS_ENABLE_VALUE * WARN_THRESHOLD_VALUE);
+
+        for (int i = 0; i < smsWarnThreshold; i++) {
+            apiUsageReportClient.report(tenantId, null, ApiUsageRecordKey.SMS_EXEC_COUNT);
+        }
+
+        await().atMost(TIMEOUT, TimeUnit.SECONDS).untilAsserted(() ->
+                assertEquals(ApiUsageStateValue.WARNING, getUsageState().getSmsExecState()));
+
+        long smsDisableCount = MAX_SMS_ENABLE_VALUE - smsWarnThreshold;
+
+        for (int i = 0; i < smsDisableCount; i++) {
+            apiUsageReportClient.report(tenantId, null, ApiUsageRecordKey.SMS_EXEC_COUNT);
+        }
+
+        await().atMost(TIMEOUT, TimeUnit.SECONDS).untilAsserted(() ->
+                assertEquals(ApiUsageStateValue.DISABLED, getUsageState().getSmsExecState()));
+    }
+
+    private ApiUsageState getUsageState() {
+        return apiUsageStateService.findTenantApiUsageState(tenantId);
     }
 
     private TenantProfile createTenantProfile() {
@@ -116,6 +136,8 @@ public class ApiUsageTest extends AbstractControllerTest {
         TenantProfileData tenantProfileData = new TenantProfileData();
         DefaultTenantProfileConfiguration config = DefaultTenantProfileConfiguration.builder()
                 .maxDPStorageDays(MAX_DP_ENABLE_VALUE)
+                .maxSms(MAX_SMS_ENABLE_VALUE)
+                .smsEnabled(true)
                 .warnThreshold(WARN_THRESHOLD_VALUE)
                 .build();
 

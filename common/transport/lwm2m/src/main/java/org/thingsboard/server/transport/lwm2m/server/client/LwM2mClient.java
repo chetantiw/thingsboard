@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.transport.lwm2m.server.client;
 
 import lombok.EqualsAndHashCode;
@@ -66,7 +53,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.thingsboard.server.common.data.lwm2m.LwM2mConstants.LWM2M_SEPARATOR_PATH;
+import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.BOOTSTRAP_TRIGGER_PARAMS_ID;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.LWM2M_OBJECT_VERSION_DEFAULT;
+import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.REGISTRATION_TRIGGER_PARAMS_ID;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.convertMultiResourceValuesFromRpcBody;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.equalsResourceTypeGetSimpleName;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.fromVersionedIdToObjectId;
@@ -294,22 +283,6 @@ public class LwM2mClient {
     }
 
 
-    public Collection<LwM2mResource> getNewResourceForInstance(String pathRezIdVer, Object params, LwM2mModelProvider modelProvider,
-                                                               LwM2mValueConverter converter) {
-        LwM2mPath pathIds = getLwM2mPathFromString(pathRezIdVer);
-        Collection<LwM2mResource> resources = ConcurrentHashMap.newKeySet();
-        Map<Integer, ResourceModel> resourceModels = modelProvider.getObjectModel(registration)
-                .getObjectModel(pathIds.getObjectId()).resources;
-        resourceModels.forEach((resId, resourceModel) -> {
-            if (resId.equals(pathIds.getResourceId())) {
-                resources.add(LwM2mSingleResource.newResource(resId, converter.convertValue(params,
-                        equalsResourceTypeGetSimpleName(params), resourceModel.type, pathIds), resourceModel.type));
-
-            }
-        });
-        return resources;
-    }
-
     /**
      * The instance must have all the resources that have the property
      * <Mandatory>Mandatory</Mandatory>
@@ -358,6 +331,10 @@ public class LwM2mClient {
 
     public String isValidObjectVersion(String path) {
         LwM2mPath pathIds = getLwM2mPathFromString(path);
+        if (pathIds.isResource() && (pathIds.toString().equals(REGISTRATION_TRIGGER_PARAMS_ID ) ||
+                pathIds.toString().equals(BOOTSTRAP_TRIGGER_PARAMS_ID))) {
+            return "";
+        }
         LwM2m.Version verSupportedObject = this.getSupportedObjectVersion(pathIds.getObjectId());
         if (verSupportedObject == null) {
             return String.format("Specified object id %s absent in the list supported objects of the client or is security object!", pathIds.getObjectId());

@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -123,7 +110,7 @@ public class MobileAppController extends BaseController {
         return tbMobileAppService.save(mobileApp, getCurrentUser());
     }
 
-    @ApiOperation(value = "Get mobile app infos (getTenantMobileAppInfos)", notes = SYSTEM_OR_TENANT_AUTHORITY_PARAGRAPH)
+    @ApiOperation(value = "Get mobile app infos (getTenantMobileApps)", notes = SYSTEM_OR_TENANT_AUTHORITY_PARAGRAPH)
     @PreAuthorize("hasAnyAuthority('SYS_ADMIN', 'TENANT_ADMIN')")
     @GetMapping(value = "/mobile/app")
     public PageData<MobileApp> getTenantMobileApps(@Parameter(description = "Platform type: ANDROID or IOS")
@@ -142,7 +129,7 @@ public class MobileAppController extends BaseController {
         return mobileAppService.findMobileAppsByTenantId(getTenantId(), platformType, pageLink);
     }
 
-    @ApiOperation(value = "Get mobile info by id (getMobileAppInfoById)", notes = SYSTEM_OR_TENANT_AUTHORITY_PARAGRAPH)
+    @ApiOperation(value = "Get mobile info by id (getMobileAppById)", notes = SYSTEM_OR_TENANT_AUTHORITY_PARAGRAPH)
     @PreAuthorize("hasAnyAuthority('SYS_ADMIN', 'TENANT_ADMIN')")
     @GetMapping(value = "/mobile/app/{id}")
     public MobileApp getMobileAppById(@PathVariable UUID id) throws ThingsboardException {

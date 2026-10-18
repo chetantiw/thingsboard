@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.customer;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +7,7 @@ import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
 import org.thingsboard.server.common.data.Customer;
+import org.thingsboard.server.common.data.EntityInfo;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.edqs.fields.CustomerFields;
 import org.thingsboard.server.common.data.id.CustomerId;
@@ -108,6 +96,11 @@ public class JpaCustomerDao extends JpaAbstractDao<CustomerEntity, Customer> imp
     }
 
     @Override
+    public List<Customer> findCustomersByTenantIdAndIds(UUID tenantId, List<UUID> customerIds) {
+        return DaoUtil.convertDataList(customerRepository.findCustomersByTenantIdAndIdIn(tenantId, customerIds));
+    }
+
+    @Override
     public PageData<Customer> findAllByTenantId(TenantId tenantId, PageLink pageLink) {
         return findByTenantId(tenantId.getId(), pageLink);
     }
@@ -115,6 +108,11 @@ public class JpaCustomerDao extends JpaAbstractDao<CustomerEntity, Customer> imp
     @Override
     public List<CustomerFields> findNextBatch(UUID id, int batchSize) {
         return customerRepository.findNextBatch(id, Limit.of(batchSize));
+    }
+
+    @Override
+    public List<EntityInfo> findEntityInfosByNamePrefix(TenantId tenantId, String name) {
+        return customerRepository.findEntityInfosByNamePrefix(tenantId.getId(), name);
     }
 
     @Override

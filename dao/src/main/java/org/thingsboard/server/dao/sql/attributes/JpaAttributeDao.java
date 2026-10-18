@@ -1,18 +1,5 @@
-/**
- * Copyright © 2016-2025 The Thingsboard Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 package org.thingsboard.server.dao.sql.attributes;
 
 import com.google.common.collect.Lists;
@@ -20,6 +7,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +34,7 @@ import org.thingsboard.server.dao.util.SqlDao;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -177,10 +166,34 @@ public class JpaAttributeDao extends JpaAbstractDaoListeningExecutorService impl
     }
 
     @Override
-    public List<String> findAllKeysByEntityIdsAndAttributeType(TenantId tenantId, List<EntityId> entityIds, String attributeType) {
+    public List<String> findAllKeysByEntityIdsAndScope(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
         return attributeKvRepository
-                .findAllKeysByEntityIdsAndAttributeType(entityIds.stream().map(EntityId::getId).collect(Collectors.toList()), AttributeScope.valueOf(attributeType).getId())
-                .stream().map(id -> keyDictionaryDao.getKey(id)).collect(Collectors.toList());
+                .findAllKeysByEntityIdsAndAttributeType(entityIds.stream().map(EntityId::getId).toList(), scope.getId())
+                .stream()
+                .map(keyDictionaryDao::getKey)
+                .toList();
+    }
+
+    @Override
+    public ListenableFuture<List<String>> findAllKeysByEntityIdsAndScopeAsync(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
+        return service.submit(() -> findAllKeysByEntityIdsAndScope(tenantId, entityIds, scope));
+    }
+
+    @Override
+    public List<AttributeKvEntry> findLatestByEntityIdsAndScope(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
+        if (CollectionUtils.isEmpty(entityIds)) {
+            return Collections.emptyList();
+        }
+        var uniqueIds = entityIds.stream().map(EntityId::getId).distinct().toList();
+        return attributeKvRepository.findLatestByEntityIdsAndAttributeType(uniqueIds, scope.getId())
+                .stream()
+                .map(AttributeKvRepository.AttributeKvProjection::toAttributeKvEntry)
+                .toList();
+    }
+
+    @Override
+    public ListenableFuture<List<AttributeKvEntry>> findLatestByEntityIdsAndScopeAsync(TenantId tenantId, List<EntityId> entityIds, AttributeScope scope) {
+        return service.submit(() -> findLatestByEntityIdsAndScope(tenantId, entityIds, scope));
     }
 
     @Override

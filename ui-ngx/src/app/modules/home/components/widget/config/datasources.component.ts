@@ -1,19 +1,5 @@
-///
-/// Copyright © 2016-2025 The Thingsboard Authors
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-
+// SPDX-FileCopyrightText: Copyright The Thingsboard Authors
+// SPDX-License-Identifier: Apache-2.0
 import { Component, DestroyRef, forwardRef, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import {
   AbstractControl,
@@ -46,21 +32,22 @@ import { FormProperty } from '@shared/models/dynamic-form.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
-  selector: 'tb-datasources',
-  templateUrl: './datasources.component.html',
-  styleUrls: ['./datasources.component.scss'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => DatasourcesComponent),
-      multi: true
-    },
-    {
-      provide: NG_VALIDATORS,
-      useExisting: forwardRef(() => DatasourcesComponent),
-      multi: true,
-    }
-  ]
+    selector: 'tb-datasources',
+    templateUrl: './datasources.component.html',
+    styleUrls: ['./datasources.component.scss'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => DatasourcesComponent),
+            multi: true
+        },
+        {
+            provide: NG_VALIDATORS,
+            useExisting: forwardRef(() => DatasourcesComponent),
+            multi: true,
+        }
+    ],
+    standalone: false
 })
 export class DatasourcesComponent implements ControlValueAccessor, OnInit, Validator, OnChanges {
 
@@ -150,7 +137,8 @@ export class DatasourcesComponent implements ControlValueAccessor, OnInit, Valid
 
   datasourcesMode: DatasourceType;
 
-  private propagateChange = (_val: any) => {};
+  private propagateChange: (value: any) => void;
+  private propagateChangePending = false;
 
   constructor(private fb: UntypedFormBuilder,
               private utils: UtilsService,
@@ -161,7 +149,7 @@ export class DatasourcesComponent implements ControlValueAccessor, OnInit, Valid
 
   registerOnChange(fn: any): void {
     this.propagateChange = fn;
-    if (this.validate(null)) {
+    if (this.propagateChangePending) {
       setTimeout(() => {
         this.datasourcesUpdated(this.datasourcesFormGroup.get('datasources').value);
       }, 0);
@@ -227,7 +215,7 @@ export class DatasourcesComponent implements ControlValueAccessor, OnInit, Valid
     if (this.singleDatasource && !this.datasourcesFormArray.length) {
       this.addDatasource(false);
     }
-    if (changed) {
+    if (changed || this.validate(null)) {
       setTimeout(() => {
         this.datasourcesUpdated(this.datasourcesFormGroup.get('datasources').value);
       }, 0);
@@ -329,7 +317,12 @@ export class DatasourcesComponent implements ControlValueAccessor, OnInit, Valid
     if (this.datasourcesOptional) {
       datasources = datasources ? datasources.filter(d => datasourceValid(d)) : [];
     }
-    this.propagateChange(datasources);
+    if (this.propagateChange) {
+      this.propagateChange(datasources);
+      this.propagateChangePending = false;
+    } else {
+      this.propagateChangePending = true;
+    }
   }
 
   public onDatasourceDrop(event: CdkDragDrop<string[]>) {
