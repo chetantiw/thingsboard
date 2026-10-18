@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { MatDialog } from '@angular/material/dialog';
 import { BrandingService } from '@core/services/branding.service';
 import { Branding } from '@shared/models/branding.models';

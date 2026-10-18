@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { mtColor, mtThemedSettings, mtToken, mtWidgetThemeEnabled } from '@shared/models/mutech-widget-theme';
 import { GridsterComponent, GridsterConfig, GridsterItem, GridsterItemComponentInterface } from 'angular-gridster2';
 import { FormattedData, Widget, WidgetPosition, widgetType } from '@app/shared/models/widget.models';

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { inject, NgModule } from '@angular/core';
 import { CanActivateFn, Router, RouterModule, Routes } from '@angular/router';
 import { select, Store } from '@ngrx/store';

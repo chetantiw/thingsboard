@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { BrandingService } from '@core/services/branding.service';
 import { mtDarkTheme, mtThemedCss, mtWidgetThemeChanged$ } from '@shared/models/mutech-widget-theme';
 import {

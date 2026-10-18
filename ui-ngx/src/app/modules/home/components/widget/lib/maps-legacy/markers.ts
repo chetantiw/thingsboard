@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { mtColor } from '@shared/models/mutech-widget-theme';
 import L, { LeafletMouseEvent } from 'leaflet';
 import { MarkerIconInfo, MarkerIconReadyFunction, MarkerImageInfo, WidgetMarkersSettings, } from './map-models';
