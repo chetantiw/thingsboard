@@ -2,6 +2,7 @@
 
     SPDX-FileCopyrightText: Copyright The Thingsboard Authors
     SPDX-License-Identifier: Apache-2.0
+    SPDX-FileContributor: Modified by MuTech Automation
 
 -->
 <div style="min-width: 400px; position: relative;">
@@ -34,8 +35,8 @@
     </div>
     <div class="tb-notice" innerHTML="{{'dashboard.public-dashboard-notice' | translate}}"></div>
     <tb-social-share-panel style="padding-top: 15px;"
-                           shareTitle="{{ 'dashboard.socialshare-title' | translate:{dashboardTitle: dashboard.title} }}"
-                           shareText="{{ 'dashboard.socialshare-text' | translate:{dashboardTitle: dashboard.title} }}"
+                           shareTitle="{{ 'dashboard.socialshare-title' | translate:{dashboardTitle: dashboard.title, appTitle: appTitle} }}"
+                           shareText="{{ 'dashboard.socialshare-text' | translate:{dashboardTitle: dashboard.title, appTitle: appTitle} }}"
                            shareLink="{{ publicLink }}"
                            shareHashTags="thingsboard, iot">
     </tb-social-share-panel>

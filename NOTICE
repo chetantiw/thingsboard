@@ -15,6 +15,9 @@ every change; files changed from the original carry the line
   - White labeling: a brand (title, logos, colors, login page, footer) per
     platform, tenant and customer, with login branding by domain
     (MutechBrandingController and the White labeling settings page).
+  - Removed from the user interface: the ThingsBoard IoT Hub marketplace entry points,
+    the home page mobile-app card and documentation card; links to the ThingsBoard online
+    documentation are hidden unless a brand shows them.
   - Packaging scripts for Debian/Ubuntu servers (packaging/mutech).
 
 New files written by MuTech Automation are marked

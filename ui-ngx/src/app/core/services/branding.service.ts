@@ -162,7 +162,7 @@ export class BrandingService {
     const current = this.title.getTitle();
     const separator = current.indexOf(' | ');
     this.title.setTitle((branding.appTitle || DEFAULT_APP_TITLE) + (separator >= 0 ? current.substring(separator) : ''));
-    this.document.body.classList.toggle('mt-hide-help', !!branding.hideHelpLinks);
+    this.document.body.classList.toggle('mt-hide-help', !branding.showHelpLinks);
   }
 
   private applyColors(branding: Branding) {

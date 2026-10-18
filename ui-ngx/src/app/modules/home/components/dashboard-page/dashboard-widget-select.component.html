@@ -2,31 +2,15 @@
 
     SPDX-FileCopyrightText: Copyright The Thingsboard Authors
     SPDX-License-Identifier: Apache-2.0
+    SPDX-FileContributor: Modified by MuTech Automation
 
 -->
 <div class="tb-dashboard-widget-select">
   <mat-toolbar color="primary" class="tb-widget-select-header flex flex-col">
     <div class="tb-widget-select-title-row flex flex-row items-center">
       @if (showTopLevelWidgetModeToggle()) {
-        <tb-toggle-select class="tb-top-level-widget-mode-toggle"
-                          appearance="fill-invert"
-                          [disablePagination]="true"
-                          [(ngModel)]="selectWidgetMode">
-          <tb-toggle-option value="installed" [template]="installedWidgetsOption"></tb-toggle-option>
-          <tb-toggle-option value="iotHub" [template]="iotHubWidgetsOption"></tb-toggle-option>
-        </tb-toggle-select>
-        <ng-template #installedWidgetsOption>
-          <div class="flex items-center gap-2">
-            <tb-icon>now_widgets</tb-icon>
-            <div>{{ 'widget.installed' | translate }}</div>
-          </div>
-        </ng-template>
-        <ng-template #iotHubWidgetsOption>
-          <div class="flex items-center gap-2">
-            <tb-icon>hub</tb-icon>
-            <div>{{ 'iot-hub.iot-hub' | translate }}</div>
-          </div>
-        </ng-template>
+        <!-- MuTech-IoT: the IoT Hub marketplace is not offered, so there is no Installed / IoT Hub switch. -->
+        <span class="tb-widget-select-title">{{ 'dashboard.select-widget-title' | translate }}</span>
       } @else if (showBackButton()) {
         <button mat-icon-button type="button" (click)="onBackClick()">
           <mat-icon>arrow_back</mat-icon>
@@ -344,17 +328,6 @@
           </button>
         }
       </div>
-      @if (selectWidgetMode === 'installed' && installedSubMode === 'allWidgets') {
-        <div class="tb-widget-select-browse-tip" role="button" tabindex="0"
-             (click)="navigateToIotHubAllWidgets()"
-             (keyup.enter)="navigateToIotHubAllWidgets()">
-          <mat-icon class="tb-widget-select-browse-tip-icon">storefront</mat-icon>
-          <p class="tb-widget-select-browse-tip-text">
-            <span>{{ 'iot-hub.browse-tip-prefix' | translate }} </span><span class="tb-widget-select-browse-tip-link">{{ 'iot-hub.browse-tip-link' | translate }}</span><span> {{ 'iot-hub.browse-tip-suffix' | translate }}</span>
-          </p>
-          <mat-icon class="tb-widget-select-browse-tip-arrow">arrow_forward</mat-icon>
-        </div>
-      }
     </div>
   </ng-template>
 

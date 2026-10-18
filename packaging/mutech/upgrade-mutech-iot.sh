@@ -6,7 +6,7 @@
 # Upgrades a ThingsBoard 4.x .deb installation (PostgreSQL) to the MuTech-IoT build,
 # with a database + configuration backup and a rollback mode.
 #
-#   Upgrade:   sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech3.deb
+#   Upgrade:   sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech4.deb
 #   Rollback:  sudo ./upgrade-mutech-iot.sh --rollback /var/backups/mutech-iot/<timestamp> --old-deb ./thingsboard-<old>.deb
 #
 # Options:   -y / --yes          do not ask for confirmation

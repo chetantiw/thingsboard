@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "Weet u zeker dat u het dashboard '{{dashboardTitle}}' privé wilt maken?",
     "make-private-dashboard-text": "Na bevestiging wordt het dashboard privé en niet langer toegankelijk voor anderen.",
     "make-private-dashboard": "Dashboard privé maken",
-    "socialshare-text": "'{{dashboardTitle}}' aangedreven door ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' aangedreven door ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' aangedreven door {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' aangedreven door {{appTitle}}",
     "select-dashboard": "Selecteer dashboard",
     "no-dashboards-matching": "Geen dashboards gevonden voor '{{entity}}'.",
     "dashboard-required": "Dashboard is verplicht.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Tenant is verplicht",
     "search": "Zoek tenants",
     "selected-tenants": "{ count, plural, =1 {1 tenant} other {# tenants} } geselecteerd",
-    "isolated-tb-rule-engine": "Gebruik geïsoleerde ThingsBoard Rule Engine-wachtrijen",
+    "isolated-tb-rule-engine": "Gebruik geïsoleerde Rule Engine-wachtrijen",
     "isolated-tb-rule-engine-details": "Elke tenant krijgt toegewezen Rule Engine-wachtrijen"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Copyrightregel",
     "wl-powered-by": "Tekst onderaan dashboards",
     "wl-hide-powered-by": "Tekst onderaan dashboards verbergen",
-    "wl-hide-help": "Links naar de online documentatie verbergen",
+    "wl-show-help": "Koppelingen naar de ThingsBoard-documentatie tonen",
     "wl-legal-hint": "De link Opensourcevermeldingen blijft altijd beschikbaar.",
     "wl-reset": "Terugzetten naar overgenomen waarden",
     "white-labeling-reset-title": "Dit merk resetten?",

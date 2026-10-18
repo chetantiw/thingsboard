@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "Sei sicuro di voler rendere privata la dashboard '{{dashboardTitle}}'?",
     "make-private-dashboard-text": "Dopo la conferma la dashboard sarà resa privata e non sarà accessibile da altri.",
     "make-private-dashboard": "Rendi dashboard privata",
-    "socialshare-text": "'{{dashboardTitle}}' powered by ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' powered by ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' powered by {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' powered by {{appTitle}}",
     "select-dashboard": "Seleziona dashboard",
     "no-dashboards-matching": "Nessuna dashboard corrispondente a '{{entity}}' trovata.",
     "dashboard-required": "La dashboard è obbligatoria.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Tenant richiesto",
     "search": "Cerca tenant",
     "selected-tenants": "{ count, plural, =1 {1 tenant} other {# tenant} } selezionato/i",
-    "isolated-tb-rule-engine": "Usa code isolate per il Rule Engine di ThingsBoard",
+    "isolated-tb-rule-engine": "Usa code isolate per il Rule Engine di",
     "isolated-tb-rule-engine-details": "Ogni tenant avrà code dedicate del Rule Engine"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Riga del copyright",
     "wl-powered-by": "Testo in fondo alle dashboard",
     "wl-hide-powered-by": "Nascondi il testo in fondo alle dashboard",
-    "wl-hide-help": "Nascondi i link alla documentazione online",
+    "wl-show-help": "Mostra i link alla documentazione di ThingsBoard",
     "wl-legal-hint": "Il link Note sull'open source resta sempre disponibile.",
     "wl-reset": "Ripristina i valori ereditati",
     "white-labeling-reset-title": "Ripristinare questo marchio?",

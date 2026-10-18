@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "Ви впевнені, що хочете зробити дашборд '{{dashboardTitle}}' приватним?",
     "make-private-dashboard-text": "Після підтвердження дашборд стане приватним і більше не буде доступний іншим.",
     "make-private-dashboard": "Зробити дашборд приватним",
-    "socialshare-text": "'{{dashboardTitle}}' за підтримки ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' за підтримки ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' за підтримки {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' за підтримки {{appTitle}}",
     "select-dashboard": "Вибрати дашборд",
     "no-dashboards-matching": "Дашбордів, що відповідають '{{entity}}', не знайдено.",
     "dashboard-required": "Дашборд є обов'язковим.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Тенант обов'язковий",
     "search": "Пошук тенантів",
     "selected-tenants": "{ count, plural, =1 {1 тенант} other {# тенантів} } вибрано",
-    "isolated-tb-rule-engine": "Використовувати ізольовані черги Rule Engine ThingsBoard",
+    "isolated-tb-rule-engine": "Використовувати ізольовані черги Rule Engine",
     "isolated-tb-rule-engine-details": "Кожен тенант матиме окремі черги Rule Engine"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Рядок про авторські права",
     "wl-powered-by": "Текст унизу дашбордів",
     "wl-hide-powered-by": "Приховати текст унизу дашбордів",
-    "wl-hide-help": "Приховати посилання на онлайн-документацію",
+    "wl-show-help": "Показувати посилання на документацію ThingsBoard",
     "wl-legal-hint": "Посилання «Повідомлення про відкрите ПЗ» завжди залишається доступним.",
     "wl-reset": "Скинути до успадкованих",
     "white-labeling-reset-title": "Скинути цей бренд?",

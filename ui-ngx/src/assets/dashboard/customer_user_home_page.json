@@ -6,33 +6,6 @@
   "configuration": {
     "description": "",
     "widgets": {
-      "867f82cf-ecf2-2d5c-35cb-08c6f2edc3a4": {
-        "type": "static",
-        "sizeX": 7.5,
-        "sizeY": 3,
-        "config": {
-          "datasources": [],
-          "showTitle": false,
-          "backgroundColor": "rgb(255, 255, 255)",
-          "color": "rgba(0, 0, 0, 0.87)",
-          "padding": "16px",
-          "settings": {
-            "columns": 2
-          },
-          "title": "Documentation",
-          "dropShadow": false,
-          "enableFullscreen": false,
-          "widgetStyle": {},
-          "widgetCss": "",
-          "pageSize": 1024,
-          "noDataDisplayMessage": "",
-          "showLegend": false
-        },
-        "row": 0,
-        "col": 0,
-        "id": "867f82cf-ecf2-2d5c-35cb-08c6f2edc3a4",
-        "typeFullFqn": "system.home_page_widgets.documentation_links"
-      },
       "9e3ef045-d8bc-1640-a3f4-2dd10b19d50e": {
         "type": "static",
         "sizeX": 7.5,
@@ -316,18 +289,9 @@
         "layouts": {
           "main": {
             "widgets": {
-              "867f82cf-ecf2-2d5c-35cb-08c6f2edc3a4": {
-                "sizeX": 42,
-                "sizeY": 16,
-                "row": 42,
-                "col": 78,
-                "mobileHide": false,
-                "mobileOrder": 4,
-                "mobileHeight": 7
-              },
               "9e3ef045-d8bc-1640-a3f4-2dd10b19d50e": {
                 "sizeX": 42,
-                "sizeY": 16,
+                "sizeY": 32,
                 "row": 26,
                 "col": 78,
                 "mobileHide": false,

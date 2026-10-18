@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "Είστε σίγουροι ότι θέλετε να κάνετε ιδιωτικό τον πίνακα ελέγχου '{{dashboardTitle}}';",
     "make-private-dashboard-text": "Μετά την επιβεβαίωση ο πίνακας ελέγχου θα γίνει ιδιωτικός και δεν θα είναι πλέον προσβάσιμος από άλλους.",
     "make-private-dashboard": "Ιδιωτικοποίηση πίνακα ελέγχου",
-    "socialshare-text": "'{{dashboardTitle}}' με την υποστήριξη του ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' με την υποστήριξη του ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' με την υποστήριξη του {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' με την υποστήριξη του {{appTitle}}",
     "select-dashboard": "Επιλογή πίνακα ελέγχου",
     "no-dashboards-matching": "Δεν βρέθηκαν πίνακες ελέγχου που να ταιριάζουν με '{{entity}}'.",
     "dashboard-required": "Απαιτείται πίνακας ελέγχου.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Απαιτείται ενοικιαστής",
     "search": "Αναζήτηση ενοικιαστών",
     "selected-tenants": "{ count, plural, =1 {1 ενοικιαστής} other {# ενοικιαστές} } επιλέχθηκαν",
-    "isolated-tb-rule-engine": "Χρήση απομονωμένων ουρών Rule Engine του ThingsBoard",
+    "isolated-tb-rule-engine": "Χρήση απομονωμένων ουρών Rule Engine του",
     "isolated-tb-rule-engine-details": "Κάθε ενοικιαστής θα έχει αφιερωμένες ουρές Rule Engine"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Γραμμή πνευματικών δικαιωμάτων",
     "wl-powered-by": "Κείμενο στο κάτω μέρος των πινάκων ελέγχου",
     "wl-hide-powered-by": "Απόκρυψη του κειμένου στο κάτω μέρος των πινάκων ελέγχου",
-    "wl-hide-help": "Απόκρυψη συνδέσμων προς την ηλεκτρονική τεκμηρίωση",
+    "wl-show-help": "Εμφάνιση συνδέσμων προς την τεκμηρίωση του ThingsBoard",
     "wl-legal-hint": "Ο σύνδεσμος Ανακοινώσεις λογισμικού ανοιχτού κώδικα παραμένει πάντα διαθέσιμος.",
     "wl-reset": "Επαναφορά στις κληρονομημένες τιμές",
     "white-labeling-reset-title": "Επαναφορά αυτής της επωνυμίας;",

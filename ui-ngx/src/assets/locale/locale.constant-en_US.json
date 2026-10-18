@@ -2001,8 +2001,8 @@
         "make-private-dashboard-title": "Are you sure you want to make the dashboard '{{dashboardTitle}}' private?",
         "make-private-dashboard-text": "After the confirmation the dashboard will be made private and won't be accessible by others.",
         "make-private-dashboard": "Make dashboard private",
-        "socialshare-text": "'{{dashboardTitle}}' powered by ThingsBoard",
-        "socialshare-title": "'{{dashboardTitle}}' powered by ThingsBoard",
+        "socialshare-text": "'{{dashboardTitle}}' powered by {{appTitle}}",
+        "socialshare-title": "'{{dashboardTitle}}' powered by {{appTitle}}",
         "select-dashboard": "Select dashboard",
         "no-dashboards-matching": "No dashboards matching '{{entity}}' were found.",
         "dashboard-required": "Dashboard is required.",
@@ -4038,7 +4038,7 @@
         "wl-footer-text": "Copyright line",
         "wl-powered-by": "Text at the bottom of dashboards",
         "wl-hide-powered-by": "Hide the text at the bottom of dashboards",
-        "wl-hide-help": "Hide links to the online documentation",
+        "wl-show-help": "Show links to the ThingsBoard documentation",
         "wl-legal-hint": "The Open-source notices link always stays available.",
         "wl-reset": "Reset to inherited",
         "white-labeling-reset-title": "Reset this brand?",
@@ -6708,7 +6708,7 @@
         "tenant-required": "Tenant is required",
         "search": "Search tenants",
         "selected-tenants": "{ count, plural, =1 {1 tenant} other {# tenants} } selected",
-        "isolated-tb-rule-engine": "Use isolated ThingsBoard Rule Engine queues",
+        "isolated-tb-rule-engine": "Use isolated Rule Engine queues",
         "isolated-tb-rule-engine-details": "Each tenant will have dedicated Rule Engine queues"
     },
     "tenant-profile": {

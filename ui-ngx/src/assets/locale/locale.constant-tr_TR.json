@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "'{{dashboardTitle}}' panosunu gizli yapmak istediğinize emin misiniz?",
     "make-private-dashboard-text": "Onaydan sonra pano gizli olacak ve başkaları tarafından erişilemeyecek.",
     "make-private-dashboard": "Panoyu gizli yap",
-    "socialshare-text": "'{{dashboardTitle}}' ThingsBoard tarafından desteklenmektedir",
-    "socialshare-title": "'{{dashboardTitle}}' ThingsBoard tarafından desteklenmektedir",
+    "socialshare-text": "'{{dashboardTitle}}' {{appTitle}} tarafından desteklenmektedir",
+    "socialshare-title": "'{{dashboardTitle}}' {{appTitle}} tarafından desteklenmektedir",
     "select-dashboard": "Pano seç",
     "no-dashboards-matching": "'{{entity}}' ile eşleşen pano bulunamadı.",
     "dashboard-required": "Pano gereklidir.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Kiracı gereklidir",
     "search": "Kiracı ara",
     "selected-tenants": "{ count, plural, =1 {1 kiracı} other {# kiracı} } seçildi",
-    "isolated-tb-rule-engine": "Ayrı ThingsBoard Kural Motoru kuyrukları kullan",
+    "isolated-tb-rule-engine": "Ayrı Kural Motoru kuyrukları kullan",
     "isolated-tb-rule-engine-details": "Her kiracı için özel Kural Motoru kuyrukları oluşturulacaktır"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Telif hakkı satırı",
     "wl-powered-by": "Panoların altındaki metin",
     "wl-hide-powered-by": "Panoların altındaki metni gizle",
-    "wl-hide-help": "Çevrimiçi belgelere giden bağlantıları gizle",
+    "wl-show-help": "ThingsBoard belgelerine bağlantıları göster",
     "wl-legal-hint": "Açık kaynak bildirimleri bağlantısı her zaman kullanılabilir kalır.",
     "wl-reset": "Devralınan değerlere sıfırla",
     "white-labeling-reset-title": "Bu marka sıfırlansın mı?",

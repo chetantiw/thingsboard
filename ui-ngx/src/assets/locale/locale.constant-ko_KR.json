@@ -668,8 +668,8 @@
         "make-private-dashboard-title": "대시보드 '{{dashboardTitle}}'를 비공개로 전환하시겠습니까?",
         "make-private-dashboard-text": "대시보드는 비공개로 전환되어 다른 이들이 접근할 수 없게 됩니다.",
         "make-private-dashboard": "대시보드 비공개 전환",
-        "socialshare-text": "'{{dashboardTitle}}' powered by ThingsBoard",
-        "socialshare-title": "'{{dashboardTitle}}' powered by ThingsBoard",
+        "socialshare-text": "'{{dashboardTitle}}' powered by {{appTitle}}",
+        "socialshare-title": "'{{dashboardTitle}}' powered by {{appTitle}}",
         "select-dashboard": "대시보드 선택",
         "no-dashboards-matching": "'{{entity}}'와 일치하는 대시보드가 없습니다.",
         "dashboard-required": "대시보드를 입력하세요.",
@@ -1917,7 +1917,7 @@
         "tenant-required": "테넌트가 필요합니다.",
         "search": "테넌트 검색",
         "selected-tenants": "{ count, plural, =1 {1 개 테넌트} other {# 개 테넌트} } 선택됨",
-        "isolated-tb-rule-engine": "Processing in isolated ThingsBoard Rule Engine container",
+        "isolated-tb-rule-engine": "Processing in isolated Rule Engine container",
         "isolated-tb-rule-engine-details": "Requires separate microservice(s) per isolated Tenant"
 	},
     "tenant-profile": {
@@ -2471,7 +2471,7 @@
         "wl-footer-text": "저작권 문구",
         "wl-powered-by": "대시보드 하단 텍스트",
         "wl-hide-powered-by": "대시보드 하단 텍스트 숨기기",
-        "wl-hide-help": "온라인 문서 링크 숨기기",
+        "wl-show-help": "ThingsBoard 문서 링크 표시",
         "wl-legal-hint": "오픈 소스 고지 링크는 항상 표시됩니다.",
         "wl-reset": "상속된 값으로 재설정",
         "white-labeling-reset-title": "이 브랜드를 재설정하시겠습니까?",

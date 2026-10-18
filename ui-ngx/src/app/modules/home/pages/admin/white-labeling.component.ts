@@ -85,7 +85,7 @@ export class WhiteLabelingComponent extends PageComponent implements OnInit, Has
       footerText: ['', Validators.maxLength(500)],
       poweredByText: ['', Validators.maxLength(500)],
       hidePoweredBy: [false],
-      hideHelpLinks: [false]
+      showHelpLinks: [false]
     });
     this.defaults.loginHeadline = this.translate.instant('mutech.hero-title');
     this.defaults.loginSubtitle = this.translate.instant('mutech.hero-subtitle');
@@ -198,11 +198,11 @@ export class WhiteLabelingComponent extends PageComponent implements OnInit, Has
         branding[field] = fieldValue;
       }
     }
-    if (value.hidePoweredBy) {
-      branding.hidePoweredBy = true;
-    }
-    if (value.hideHelpLinks) {
-      branding.hideHelpLinks = true;
+    // Switches are stored only where they differ from the inherited value, so either way can be overridden.
+    for (const flag of ['hidePoweredBy', 'showHelpLinks']) {
+      if (!!value[flag] !== !!this.inherited[flag]) {
+        branding[flag] = !!value[flag];
+      }
     }
     if (this.domainsSupported && this.domains.length) {
       branding.domains = this.domains;
@@ -257,8 +257,8 @@ export class WhiteLabelingComponent extends PageComponent implements OnInit, Has
       loginSubtitle: branding.loginSubtitle || '',
       footerText: branding.footerText || '',
       poweredByText: branding.poweredByText || '',
-      hidePoweredBy: !!branding.hidePoweredBy,
-      hideHelpLinks: !!branding.hideHelpLinks
+      hidePoweredBy: branding.hidePoweredBy ?? !!this.inherited.hidePoweredBy,
+      showHelpLinks: branding.showHelpLinks ?? !!this.inherited.showHelpLinks
     });
     this.domains = branding.domains || [];
   }

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import {
   checkBoxCell,
   DateEntityTableColumn,
@@ -139,12 +140,6 @@ export class AlarmRulesTableConfig extends EntityTableConfig<AlarmRuleTableEntit
         icon: 'file_upload',
         isEnabled: () => true,
         onAction: () => this.importCalculatedField()
-      },
-      {
-        name: this.translate.instant('iot-hub.add-from-iot-hub'),
-        icon: 'hub',
-        isEnabled: () => true,
-        onAction: () => this.addAlarmRuleFromIotHub()
       }
     ];
 

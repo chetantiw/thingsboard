@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
-import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
+// SPDX-FileContributor: Modified by MuTech Automation
+import { inject, NgModule } from '@angular/core';
+import { Router, RouterModule, Routes } from '@angular/router';
 
 import { Authority } from '@shared/models/authority.enum';
 import { TbIotHubHomeComponent } from './iot-hub-home.component';
@@ -14,6 +15,8 @@ import { TbIotHubItemResolverComponent } from './iot-hub-item-resolver.component
 const routes: Routes = [
   {
     path: 'iot-hub',
+    // MuTech-IoT does not offer the ThingsBoard IoT Hub marketplace: its pages open Home instead.
+    canActivate: [() => inject(Router).parseUrl('/home')],
     data: {
       auth: [Authority.TENANT_ADMIN],
       breadcrumb: {

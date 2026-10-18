@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "Er du sikker på, at du vil gøre dashboardet '{{dashboardTitle}}' privat?",
     "make-private-dashboard-text": "Efter bekræftelse vil dashboardet blive gjort privat og ikke længere være tilgængeligt for andre.",
     "make-private-dashboard": "Gør dashboard privat",
-    "socialshare-text": "'{{dashboardTitle}}' drevet af ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' drevet af ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' drevet af {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' drevet af {{appTitle}}",
     "select-dashboard": "Vælg dashboard",
     "no-dashboards-matching": "Ingen dashboards matcher '{{entity}}'.",
     "dashboard-required": "Dashboard er påkrævet.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Lejer er påkrævet",
     "search": "Søg lejere",
     "selected-tenants": "{ count, plural, =1 {1 lejer} other {# lejere} } valgt",
-    "isolated-tb-rule-engine": "Brug isolerede ThingsBoard Rule Engine-køer",
+    "isolated-tb-rule-engine": "Brug isolerede Rule Engine-køer",
     "isolated-tb-rule-engine-details": "Hver lejer vil have dedikerede Rule Engine-køer"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Copyrightlinje",
     "wl-powered-by": "Tekst nederst på dashboards",
     "wl-hide-powered-by": "Skjul teksten nederst på dashboards",
-    "wl-hide-help": "Skjul links til onlinedokumentationen",
+    "wl-show-help": "Vis links til ThingsBoard-dokumentationen",
     "wl-legal-hint": "Linket til open source-meddelelser er altid tilgængeligt.",
     "wl-reset": "Nulstil til nedarvet",
     "white-labeling-reset-title": "Nulstil dette brand?",

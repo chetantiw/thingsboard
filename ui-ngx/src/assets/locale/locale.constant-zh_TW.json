@@ -809,8 +809,8 @@
         "make-private-dashboard-title": "您確定要將儀表板 '{{dashboardTitle}}' 設為私有嗎？",
         "make-private-dashboard-text": "確認後，儀表板將被設為私有，不能被其他人存取。",
         "make-private-dashboard": "儀表板設為私有",
-        "socialshare-text": "'{{dashboardTitle}}' 由Thingsboard提供支持",
-        "socialshare-title": "'{{dashboardTitle}}' 由Thingsboard提供支持",
+        "socialshare-text": "'{{dashboardTitle}}' 由 {{appTitle}} 提供支援",
+        "socialshare-title": "'{{dashboardTitle}}' 由 {{appTitle}} 提供支援",
         "select-dashboard": "選擇儀表板",
         "no-dashboards-matching": "找不到符合 '{{entity}}' 的儀表板。",
         "dashboard-required": "儀表板必填。",
@@ -2907,7 +2907,7 @@
         "tenant-required": "租戶必填",
         "search": "搜尋租戶",
         "selected-tenants": "{ count, plural, =1 {1 租戶} other {# 租戶} } 已選中",
-        "isolated-tb-rule-engine": "在隔離的ThingsBoard Rule規則引擎容器中處理",
+        "isolated-tb-rule-engine": "在隔離的 Rule規則引擎容器中處理",
         "isolated-tb-rule-engine-details": "每個獨立租戶需要單獨的微服務"
     },
     "tenant-profile": {
@@ -4583,7 +4583,7 @@
         "wl-footer-text": "版權資訊",
         "wl-powered-by": "儀表板底部文字",
         "wl-hide-powered-by": "隱藏儀表板底部文字",
-        "wl-hide-help": "隱藏線上文件連結",
+        "wl-show-help": "顯示 ThingsBoard 文件連結",
         "wl-legal-hint": "「開放原始碼聲明」連結一律可用。",
         "wl-reset": "重設為繼承值",
         "white-labeling-reset-title": "要重設此品牌嗎？",

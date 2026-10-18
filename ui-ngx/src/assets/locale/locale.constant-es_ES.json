@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "¿Estás seguro de que deseas hacer privado el tablero '{{dashboardTitle}}'?",
     "make-private-dashboard-text": "Después de la confirmación, el tablero será privado y no será accesible por otros.",
     "make-private-dashboard": "Hacer privado el tablero",
-    "socialshare-text": "'{{dashboardTitle}}' impulsado por ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' impulsado por ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' impulsado por {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' impulsado por {{appTitle}}",
     "select-dashboard": "Seleccionar tablero",
     "no-dashboards-matching": "No se encontraron tableros que coincidan con '{{entity}}'.",
     "dashboard-required": "Se requiere un tablero.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "El tenant es obligatorio",
     "search": "Buscar tenants",
     "selected-tenants": "{ count, plural, =1 {1 tenant} other {# tenants} } seleccionado(s)",
-    "isolated-tb-rule-engine": "Usar colas aisladas del motor de reglas de ThingsBoard",
+    "isolated-tb-rule-engine": "Usar colas aisladas del motor de reglas de",
     "isolated-tb-rule-engine-details": "Cada tenant tendrá colas del motor de reglas dedicadas"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Línea de copyright",
     "wl-powered-by": "Texto en la parte inferior de los tableros",
     "wl-hide-powered-by": "Ocultar el texto en la parte inferior de los tableros",
-    "wl-hide-help": "Ocultar los enlaces a la documentación en línea",
+    "wl-show-help": "Mostrar enlaces a la documentación de ThingsBoard",
     "wl-legal-hint": "El enlace Avisos de código abierto siempre permanece disponible.",
     "wl-reset": "Restablecer a lo heredado",
     "white-labeling-reset-title": "¿Restablecer esta marca?",

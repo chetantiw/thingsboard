@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "ダッシュボード'{{dashboardTitle}}'を非公開にしてもよろしいですか？",
     "make-private-dashboard-text": "確認後、ダッシュボードは非公開になり、他の人はアクセスできなくなります。",
     "make-private-dashboard": "ダッシュボードを非公開にする",
-    "socialshare-text": "'{{dashboardTitle}}' powered by ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' powered by ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' powered by {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' powered by {{appTitle}}",
     "select-dashboard": "ダッシュボードを選択",
     "no-dashboards-matching": "'{{entity}}'に一致するダッシュボードが見つかりません。",
     "dashboard-required": "ダッシュボードは必須です。",
@@ -6178,7 +6178,7 @@
     "tenant-required": "テナントは必須です",
     "search": "テナントを検索",
     "selected-tenants": "{ count, plural, =1 {テナント 1 件} other {テナント # 件} } を選択",
-    "isolated-tb-rule-engine": "分離された ThingsBoard ルールエンジン キューを使用",
+    "isolated-tb-rule-engine": "分離された ルールエンジン キューを使用",
     "isolated-tb-rule-engine-details": "各テナントに専用のルールエンジンキューが割り当てられます"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "著作権表示",
     "wl-powered-by": "ダッシュボード下部のテキスト",
     "wl-hide-powered-by": "ダッシュボード下部のテキストを非表示にする",
-    "wl-hide-help": "オンライン ドキュメントへのリンクを非表示にする",
+    "wl-show-help": "ThingsBoard ドキュメントへのリンクを表示",
     "wl-legal-hint": "「オープンソースに関する通知」リンクは常に表示されます。",
     "wl-reset": "継承値にリセット",
     "white-labeling-reset-title": "このブランドをリセットしますか？",

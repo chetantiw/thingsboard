@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { Injectable } from '@angular/core';
 
 import { Router } from '@angular/router';
@@ -139,16 +140,6 @@ export class WidgetTypesTableConfigResolver  {
         onAction: ($event) => this.importWidgetType($event)
       }
     ];
-    if (authUser.authority === Authority.TENANT_ADMIN) {
-      this.config.addActionDescriptors.push(
-        {
-          name: this.translate.instant('iot-hub.add-from-iot-hub'),
-          icon: 'hub',
-          isEnabled: () => true,
-          onAction: (_$event) => this.addWidgetFromIotHub()
-        }
-      );
-    }
     this.config.deleteEnabled = (widgetType) => this.isWidgetTypeEditable(widgetType, authUser.authority);
     this.config.entitySelectionEnabled = (widgetType) => this.isWidgetTypeEditable(widgetType, authUser.authority);
     this.config.detailsReadonly = (widgetType) => !this.isWidgetTypeEditable(widgetType, authUser.authority);

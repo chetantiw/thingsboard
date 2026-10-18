@@ -3,12 +3,12 @@
 # SPDX-FileCopyrightText: Copyright MuTech Automation
 # SPDX-License-Identifier: Apache-2.0
 #
-# Builds mutech-iot-4.3.1.6-mutech3.deb from the official ThingsBoard 4.3.1.6 package by
-# replacing its user interface with the MuTech-IoT UI (ui-ngx-4.3.1.6-mutech3.jar) and adding the
+# Builds mutech-iot-4.3.1.6-mutech4.deb from the official ThingsBoard 4.3.1.6 package by
+# replacing its user interface with the MuTech-IoT UI (ui-ngx-4.3.1.6-mutech4.jar) and adding the
 # MuTech-IoT server add-on (white labeling API, mutech-server-addon-4.3.1.6.jar; source in
 # application/src/main/java/org/thingsboard/server/controller/MutechBrandingController.java).
 #
-#   ./build-mutech-deb.sh [--ui-jar ui-ngx-4.3.1.6-mutech3.jar] [--official-deb thingsboard-4.3.1.6.deb]
+#   ./build-mutech-deb.sh [--ui-jar ui-ngx-4.3.1.6-mutech4.jar] [--official-deb thingsboard-4.3.1.6.deb]
 #
 # Needs: curl, dpkg-deb, python3, zip, sha256sum, md5sum.
 #
@@ -16,15 +16,15 @@ set -euo pipefail
 
 OFFICIAL_URL=https://github.com/thingsboard/thingsboard/releases/download/v4.3.1.6/thingsboard-4.3.1.6.deb
 OFFICIAL_SHA256=0f252b842f0dfacae2c26bf49a5717c30682cafbfb81eaf4b52d8b03c16d5c4b
-ADDON_JAR_SHA256=f5ef43984e3ff9abeb95998141c4ee14a29daf2a06c22019259c1850fc1a6fb6
-UI_JAR_SHA256=cefca75a84ac6862af3370f64af8806d3e2e0fbefba555bf04cb4349a30d8980
+ADDON_JAR_SHA256=3425c9cf979e7464639a5c60e4f9217ec7a6c6b7f7f2f41c8ccfa53ee82baefc
+UI_JAR_SHA256=6f094ece201021b67131616455fe01181b3ae3936dbfa6b1800ff2fb598b6191
 # thingsboard.jar produced from the inputs above (the build that was tested).
-EXPECTED_JAR_MD5=c59d1a3a9b1f2b1be8693ed557f892b0
-VERSION=4.3.1.6-1+mutech3
-OUT=mutech-iot-4.3.1.6-mutech3.deb
+EXPECTED_JAR_MD5=289d048419171a138b2115042a952a59
+VERSION=4.3.1.6-1+mutech4
+OUT=mutech-iot-4.3.1.6-mutech4.deb
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-UI_JAR="$HERE/ui-ngx-4.3.1.6-mutech3.jar"
+UI_JAR="$HERE/ui-ngx-4.3.1.6-mutech4.jar"
 ADDON_JAR="$HERE/mutech-server-addon-4.3.1.6.jar"
 OFFICIAL_DEB=""
 

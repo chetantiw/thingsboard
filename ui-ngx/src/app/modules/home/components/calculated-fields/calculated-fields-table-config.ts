@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import {
   DateEntityTableColumn,
   EntityLinkTableColumn,
@@ -132,12 +133,6 @@ export class CalculatedFieldsTableConfig extends EntityTableConfig<CalculatedFie
         icon: 'file_upload',
         isEnabled: () => true,
         onAction: () => this.importCalculatedField()
-      },
-      {
-        name: this.translate.instant('iot-hub.add-from-iot-hub'),
-        icon: 'hub',
-        isEnabled: () => true,
-        onAction: () => this.addCalculatedFieldFromIotHub()
       }
     ];
 

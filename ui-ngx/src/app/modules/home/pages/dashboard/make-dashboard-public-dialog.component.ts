@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
-import { Component, Inject, OnInit } from '@angular/core';
+// SPDX-FileContributor: Modified by MuTech Automation
+import { BrandingService } from '@core/services/branding.service';
+import { Component, Inject, inject, OnInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
@@ -27,6 +29,9 @@ export class MakeDashboardPublicDialogComponent extends DialogComponent<MakeDash
   dashboard: DashboardInfo;
 
   publicLink: string;
+
+  // Shared dashboards mention the brand, not ThingsBoard.
+  readonly appTitle = inject(BrandingService).appTitle;
 
   constructor(protected store: Store<AppState>,
               protected router: Router,

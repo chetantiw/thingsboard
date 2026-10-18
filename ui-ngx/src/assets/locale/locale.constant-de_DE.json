@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "Möchten Sie das Dashboard '{{dashboardTitle}}' wirklich privat machen?",
     "make-private-dashboard-text": "Nach der Bestätigung wird das Dashboard privat und ist für andere nicht mehr zugänglich.",
     "make-private-dashboard": "Dashboard privat machen",
-    "socialshare-text": "'{{dashboardTitle}}' bereitgestellt von ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' bereitgestellt von ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' bereitgestellt von {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' bereitgestellt von {{appTitle}}",
     "select-dashboard": "Dashboard auswählen",
     "no-dashboards-matching": "Keine Dashboards gefunden, die mit '{{entity}}' übereinstimmen.",
     "dashboard-required": "Dashboard ist erforderlich.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Mieter ist erforderlich",
     "search": "Mieter suchen",
     "selected-tenants": "{ count, plural, =1 {1 Mieter} other {# Mieter} } ausgewählt",
-    "isolated-tb-rule-engine": "Isolierte ThingsBoard Rule Engine-Warteschlangen verwenden",
+    "isolated-tb-rule-engine": "Isolierte Rule Engine-Warteschlangen verwenden",
     "isolated-tb-rule-engine-details": "Jeder Mieter erhält dedizierte Rule Engine-Warteschlangen"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Copyright-Zeile",
     "wl-powered-by": "Text am unteren Rand von Dashboards",
     "wl-hide-powered-by": "Text am unteren Rand von Dashboards ausblenden",
-    "wl-hide-help": "Links zur Online-Dokumentation ausblenden",
+    "wl-show-help": "Links zur ThingsBoard-Dokumentation anzeigen",
     "wl-legal-hint": "Der Link zu den Open-Source-Hinweisen bleibt immer verfügbar.",
     "wl-reset": "Auf geerbte Werte zurücksetzen",
     "white-labeling-reset-title": "Diese Marke zurücksetzen?",

@@ -56,7 +56,8 @@ public class MutechBrandingController extends BaseController {
     private static final Set<String> TEXT_FIELDS = Set.of("appTitle", "loginHeadline", "loginSubtitle", "footerText", "poweredByText");
     private static final Set<String> IMAGE_FIELDS = Set.of("logoUrl", "emblemUrl", "faviconUrl", "loginLogoUrl", "loginBackgroundUrl");
     private static final Set<String> COLOR_FIELDS = Set.of("primaryColor", "accentColor");
-    private static final Set<String> FLAG_FIELDS = Set.of("hidePoweredBy", "hideHelpLinks");
+    // hideHelpLinks is kept for brands saved before showHelpLinks (documentation links are hidden by default).
+    private static final Set<String> FLAG_FIELDS = Set.of("hidePoweredBy", "hideHelpLinks", "showHelpLinks");
     private static final String DOMAINS_FIELD = "domains";
 
     private static final int MAX_TEXT_LENGTH = 500;

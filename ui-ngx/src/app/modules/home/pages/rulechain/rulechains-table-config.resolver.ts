@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileContributor: Modified by MuTech Automation
 import { Injectable } from '@angular/core';
 
 import { ActivatedRouteSnapshot, Router } from '@angular/router';
@@ -157,12 +158,6 @@ export class RuleChainsTableConfigResolver  {
           icon: 'file_upload',
           isEnabled: () => true,
           onAction: ($event) => this.importRuleChain($event)
-        },
-        {
-          name: this.translate.instant('iot-hub.add-from-iot-hub'),
-          icon: 'hub',
-          isEnabled: () => true,
-          onAction: (_$event) => this.addRuleChainFromIotHub()
         }
       );
     }

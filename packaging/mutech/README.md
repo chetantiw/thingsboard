@@ -1,6 +1,6 @@
 # Deploying MuTech-IoT on a ThingsBoard .deb server
 
-`mutech-iot-4.3.1.6-mutech3.deb` is the official ThingsBoard CE 4.3.1.6 package with the
+`mutech-iot-4.3.1.6-mutech4.deb` is the official ThingsBoard CE 4.3.1.6 package with the
 MuTech-IoT user interface and one small server add-on: the white labeling API
 (`MutechBrandingController`, source in `application/src/main/java/org/thingsboard/server/controller/`).
 The rest of the server (Java) part is unchanged upstream ThingsBoard.
@@ -35,7 +35,7 @@ Run these on the server (as a user with sudo):
 # 1. Get the MuTech-IoT files (UI, server add-on, build script, upgrade script)
 mkdir -p ~/mutech-iot && cd ~/mutech-iot
 BASE=https://raw.githubusercontent.com/chetantiw/thingsboard/mutech-v4.3.1.6-ui-redesign/packaging/mutech
-for f in ui-ngx-4.3.1.6-mutech3.jar mutech-server-addon-4.3.1.6.jar build-mutech-deb.sh upgrade-mutech-iot.sh; do wget -q "$BASE/$f"; done
+for f in ui-ngx-4.3.1.6-mutech4.jar mutech-server-addon-4.3.1.6.jar build-mutech-deb.sh upgrade-mutech-iot.sh; do wget -q "$BASE/$f"; done
 chmod +x build-mutech-deb.sh upgrade-mutech-iot.sh
 
 # 2. Build the MuTech-IoT package from the official ThingsBoard 4.3.1.6 package
@@ -44,7 +44,7 @@ sudo apt install -y python3 zip
 ./build-mutech-deb.sh
 
 # 3. Upgrade (shows the plan and asks before stopping anything)
-sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech3.deb
+sudo ./upgrade-mutech-iot.sh --deb ./mutech-iot-4.3.1.6-mutech4.deb
 ```
 
 `build-mutech-deb.sh` verifies the result against the build that was tested, so the
@@ -73,7 +73,7 @@ folder and add `--packages <folder>`.
 
 ## Updating an earlier MuTech-IoT build
 
-Servers that already run MuTech-IoT 4.3.1.6 (for example `4.3.1.6-1+mutech1` or `mutech2`) are updated with
+Servers that already run MuTech-IoT 4.3.1.6 (for example `4.3.1.6-1+mutech1`, `mutech2` or `mutech3`) are updated with
 the same three steps. The database is already on 4.3, so the script backs it up, installs the
 new package and restarts the service without migrating anything (about a minute).
 
@@ -88,6 +88,14 @@ Settings → **White labeling** (system administrator and tenant administrators)
   domains (DNS, and the reverse proxy or certificate if you use one) at this server: the login page
   served on a listed domain shows that brand. After sign-in, users always see the brand of their
   own customer or tenant.
+
+Links to the ThingsBoard online documentation (help buttons, "View docs", guide buttons) are
+hidden by default; switch on **Show links to the ThingsBoard documentation** in a brand to show
+them to that platform, tenant or customer.
+
+The ThingsBoard IoT Hub marketplace is not offered in MuTech-IoT: its menu item, home page card,
+"Add from IoT Hub" actions and widget-library tab are removed, and its pages open Home. The home
+page no longer advertises the ThingsBoard mobile app either.
 
 Brands are stored in ThingsBoard's own settings table, so no database change is needed, and a
 rollback simply ignores them.

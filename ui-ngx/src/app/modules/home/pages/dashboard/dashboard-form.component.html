@@ -2,6 +2,7 @@
 
     SPDX-FileCopyrightText: Copyright The Thingsboard Authors
     SPDX-License-Identifier: Apache-2.0
+    SPDX-FileContributor: Modified by MuTech Automation
 
 -->
 <div class="tb-details-buttons xs:flex xs:flex-col">
@@ -81,8 +82,8 @@
   <div class="flex flex-col" [class.!hidden]="isEdit || !(dashboardScope === 'tenant' && isPublic(entity)
                                 || dashboardScope === 'customer' && isCurrentPublicCustomer(entity))">
     <tb-social-share-panel style="padding-bottom: 1.25em;"
-                           shareTitle="{{ 'dashboard.socialshare-title' | translate:{dashboardTitle: entity?.title} }}"
-                           shareText="{{ 'dashboard.socialshare-text' | translate:{dashboardTitle: entity?.title} }}"
+                           shareTitle="{{ 'dashboard.socialshare-title' | translate:{dashboardTitle: entity?.title, appTitle: appTitle} }}"
+                           shareText="{{ 'dashboard.socialshare-text' | translate:{dashboardTitle: entity?.title, appTitle: appTitle} }}"
                            shareLink="{{ publicLink }}"
                            shareHashTags="thingsboard, iot">
     </tb-social-share-panel>

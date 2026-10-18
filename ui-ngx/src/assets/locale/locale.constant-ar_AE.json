@@ -1262,8 +1262,8 @@
         "make-private-dashboard-title": "هل أنت متأكد أنك تريد جعل لوحة المعلومات '{{dashboardTitle}}' خاصة؟",
         "make-private-dashboard-text": "بعد التأكيد ستصبح لوحة المعلومات خاصة ولن تكون متاحة للآخرين.",
         "make-private-dashboard": "جعل لوحة المعلومات خاصة",
-        "socialshare-text": "'{{dashboardTitle}}' بدعم من ThingsBoard",
-        "socialshare-title": "'{{dashboardTitle}}' بدعم من ThingsBoard",
+        "socialshare-text": "'{{dashboardTitle}}' بدعم من {{appTitle}}",
+        "socialshare-title": "'{{dashboardTitle}}' بدعم من {{appTitle}}",
         "select-dashboard": "اختر لوحة المعلومات",
         "no-dashboards-matching": "لم يتم العثور على لوحات معلومات تطابق '{{entity}}'.",
         "dashboard-required": "لوحة المعلومات مطلوبة.",
@@ -5077,7 +5077,7 @@
         "allow-customer-white-labeling": "السماح بالتسمية البيضاء للعميل",
         "search": "البحث عن المستأجرين",
         "selected-tenants": "{ count, plural, =1 {1 مستأجر} other {# مستأجرون} } تم تحديدها",
-        "isolated-tb-rule-engine": "استخدام طوابور محرك قواعد ThingsBoard المعزولة",
+        "isolated-tb-rule-engine": "استخدام طوابور محرك قواعد المعزولة",
         "isolated-tb-rule-engine-details": "سيكون لكل مستأجر طوابور محرك قواعد مخصصة"
     },
     "tenant-profile": {
@@ -8089,7 +8089,7 @@
         "wl-footer-text": "سطر حقوق النشر",
         "wl-powered-by": "النص أسفل لوحات المعلومات",
         "wl-hide-powered-by": "إخفاء النص أسفل لوحات المعلومات",
-        "wl-hide-help": "إخفاء روابط الوثائق عبر الإنترنت",
+        "wl-show-help": "إظهار روابط وثائق ThingsBoard",
         "wl-legal-hint": "يبقى رابط إشعارات البرمجيات مفتوحة المصدر متاحًا دائمًا.",
         "wl-reset": "إعادة التعيين إلى القيم الموروثة",
         "white-labeling-reset-title": "هل تريد إعادة تعيين هذه العلامة التجارية؟",

@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
-import { ChangeDetectorRef, Component, Inject } from '@angular/core';
+// SPDX-FileContributor: Modified by MuTech Automation
+import { BrandingService } from '@core/services/branding.service';
+import { ChangeDetectorRef, Component, Inject, inject } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
 import { EntityComponent } from '../../components/entity/entity.component';
@@ -33,6 +35,9 @@ export class DashboardFormComponent extends EntityComponent<Dashboard, PageLink,
   publicLink: string;
   assignedCustomersText: string;
   entityType = EntityType;
+
+  // Shared dashboards mention the brand, not ThingsBoard.
+  readonly appTitle = inject(BrandingService).appTitle;
 
   constructor(protected store: Store<AppState>,
               protected translate: TranslateService,

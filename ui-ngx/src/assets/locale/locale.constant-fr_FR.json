@@ -1871,8 +1871,8 @@
     "make-private-dashboard-title": "Êtes-vous sûr de vouloir rendre le tableau de bord '{{dashboardTitle}}' privé ?",
     "make-private-dashboard-text": "Après confirmation, le tableau de bord sera rendu privé et ne sera plus accessible par d'autres.",
     "make-private-dashboard": "Rendre privé le tableau de bord",
-    "socialshare-text": "'{{dashboardTitle}}' propulsé par ThingsBoard",
-    "socialshare-title": "'{{dashboardTitle}}' propulsé par ThingsBoard",
+    "socialshare-text": "'{{dashboardTitle}}' propulsé par {{appTitle}}",
+    "socialshare-title": "'{{dashboardTitle}}' propulsé par {{appTitle}}",
     "select-dashboard": "Sélectionner un tableau de bord",
     "no-dashboards-matching": "Aucun tableau de bord correspondant à '{{entity}}' trouvé.",
     "dashboard-required": "Le tableau de bord est requis.",
@@ -6178,7 +6178,7 @@
     "tenant-required": "Le locataire est requis",
     "search": "Rechercher des locataires",
     "selected-tenants": "{ count, plural, =1 {1 locataire} other {# locataires} } sélectionné(s)",
-    "isolated-tb-rule-engine": "Utiliser des files d’attente isolées pour le moteur de règles ThingsBoard",
+    "isolated-tb-rule-engine": "Utiliser des files d’attente isolées pour le moteur de règles",
     "isolated-tb-rule-engine-details": "Chaque locataire aura des files d’attente dédiées pour le moteur de règles"
   },
   "tenant-profile": {
@@ -10271,7 +10271,7 @@
     "wl-footer-text": "Ligne de copyright",
     "wl-powered-by": "Texte en bas des tableaux de bord",
     "wl-hide-powered-by": "Masquer le texte en bas des tableaux de bord",
-    "wl-hide-help": "Masquer les liens vers la documentation en ligne",
+    "wl-show-help": "Afficher les liens vers la documentation ThingsBoard",
     "wl-legal-hint": "Le lien Mentions open source reste toujours disponible.",
     "wl-reset": "Rétablir les valeurs héritées",
     "white-labeling-reset-title": "Réinitialiser cette marque ?",

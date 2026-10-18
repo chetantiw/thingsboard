@@ -17,7 +17,8 @@ export interface Branding {
   footerText?: string;
   poweredByText?: string;
   hidePoweredBy?: boolean;
-  hideHelpLinks?: boolean;
+  // Links to the ThingsBoard online documentation are hidden unless a brand shows them.
+  showHelpLinks?: boolean;
   domains?: string[];
 }
 

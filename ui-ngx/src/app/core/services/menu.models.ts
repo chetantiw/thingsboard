@@ -859,7 +859,6 @@ const defaultUserMenuMap = new Map<Authority, MenuReference[]>([
         ]
       },
       {id: MenuId.dashboards},
-      {id: MenuId.iot_hub},
       {
         id: MenuId.entities,
         pages: [

@@ -726,8 +726,8 @@
         "make-private-dashboard-title": "Jste si jisti, že chcete dashboard '{{dashboardTitle}}' zneveřejnit?",
         "make-private-dashboard-text": "Po potvrzení bude dashboard neveřejný a nebude pro ostatní dostupný.",
         "make-private-dashboard": "Učinit dashboard neveřejným",
-        "socialshare-text": "'{{dashboardTitle}}' powered by ThingsBoard",
-        "socialshare-title": "'{{dashboardTitle}}' powered by ThingsBoard",
+        "socialshare-text": "'{{dashboardTitle}}' powered by {{appTitle}}",
+        "socialshare-title": "'{{dashboardTitle}}' powered by {{appTitle}}",
         "select-dashboard": "Vybrat dashboard",
         "no-dashboards-matching": "Žádné dashboardy odpovídající '{{entity}}' nebyly nalezeny.",
         "dashboard-required": "Dashboard je povinný.",
@@ -2466,7 +2466,7 @@
         "tenant-required": "Tenant je povinný",
         "search": "Vyhledat tenanty",
         "selected-tenants": "Vybráno { count, plural, =1 {1 tenantů} other {# tenantů} }",
-        "isolated-tb-rule-engine": "Zpracování v izolovaném kontejneru ThingsBoard Rule Engine",
+        "isolated-tb-rule-engine": "Zpracování v izolovaném kontejneru Rule Engine",
         "isolated-tb-rule-engine-details": "Vyžaduje samostatnou mikroslužbu(y) pro každého izolovaného tenanta"
     },
     "tenant-profile": {
@@ -3092,7 +3092,7 @@
         "wl-footer-text": "Řádek s copyrightem",
         "wl-powered-by": "Text v dolní části dashboardů",
         "wl-hide-powered-by": "Skrýt text v dolní části dashboardů",
-        "wl-hide-help": "Skrýt odkazy na online dokumentaci",
+        "wl-show-help": "Zobrazit odkazy na dokumentaci ThingsBoard",
         "wl-legal-hint": "Odkaz Upozornění k open source zůstává vždy dostupný.",
         "wl-reset": "Obnovit zděděné",
         "white-labeling-reset-title": "Obnovit tuto značku?",
