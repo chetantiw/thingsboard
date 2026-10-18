@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { mtThemedCss } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -136,7 +137,7 @@ export class WidgetContainerComponent extends PageComponent implements OnInit, O
 
   ngOnInit(): void {
     this.widget.widgetContext.containerChangeDetector = this.cd;
-    const cssString = this.widget.widget.config.widgetCss;
+    const cssString = mtThemedCss(this.widget.widget.config.widgetCss);
     if (isNotEmptyStr(cssString)) {
       this.cssClass = this.utils.applyCssToElement(this.renderer, this.gridsterItem.el, 'tb-widget-css', cssString, true);
       this.widget.widgetContext.widgetCssClass = this.cssClass;

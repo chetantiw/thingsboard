@@ -4,7 +4,7 @@
     SPDX-License-Identifier: Apache-2.0
 
 -->
-<div class="tb-dashboard-page mat-content flex-1" [class.mobile-app]="isMobileApp && !isEdit" [class.dark]="mtDark()" tb-toast
+<div class="tb-dashboard-page mat-content flex-1" [class.mobile-app]="isMobileApp && !isEdit" [class.dark]="mtDark()" [class.mt-editing]="isEdit" tb-toast
      tb-fullscreen [fullscreenElement]="elRef.nativeElement" [fullscreen]="widgetEditMode || iframeMode || forceFullscreen || isFullscreen">
   <tb-hotkeys-cheatsheet #cheatSheetComponent></tb-hotkeys-cheatsheet>
   <section class="tb-dashboard-toolbar"
@@ -101,11 +101,11 @@
               <mat-icon>edit</mat-icon>{{'dashboard.edit-mode' | translate}}</button>
           </ng-container>
           <ng-container *ngIf="isEdit">
-            <button class="gt-md:!hidden" mat-icon-button (click)="saveDashboard()" [disabled]="isLoading$ | async"
+            <button class="gt-md:!hidden mt-save-action" mat-icon-button color="primary" (click)="saveDashboard()" [disabled]="isLoading$ | async"
                     matTooltip="{{'action.save' | translate}}"
                     matTooltipPosition="below">
               <mat-icon>done</mat-icon></button>
-            <button class="lt-lg:!hidden" mat-stroked-button [disabled]="isLoading$ | async" (click)="saveDashboard()">
+            <button class="lt-lg:!hidden mt-save-action" mat-flat-button color="primary" [disabled]="isLoading$ | async" (click)="saveDashboard()">
               <mat-icon>done</mat-icon>{{ 'action.save' | translate }}</button>
             <button class="gt-md:!hidden" mat-icon-button (click)="toggleDashboardEditMode()"
                     matTooltip="{{'action.cancel' | translate}}"
@@ -358,8 +358,9 @@
                   matTooltipPosition="below">
             <mat-icon>close</mat-icon></button>
         </section>
-        <section *ngIf="!embedded" data-html2canvas-ignore class="tb-powered-by-footer" [style.color]="dashboard.configuration.settings.titleColor">
-          <span>Powered by MuTech-IoT v.{{ thingsboardVersion }}</span>
+        @let brand = branding$ | async;
+        <section *ngIf="!embedded && !brand?.hidePoweredBy" data-html2canvas-ignore class="tb-powered-by-footer" [style.color]="dashboard.configuration.settings.titleColor">
+          <span>{{ brand?.poweredByText || ('mutech.powered-by' | translate: {version: thingsboardVersion}) }}</span>
         </section>
       </mat-drawer-content>
       <mat-drawer class="tb-details-drawer"

@@ -9,10 +9,13 @@
   .tb-login-content {
     min-height: 100%;
     flex-wrap: wrap;
-    background-color: #0F0D3A;
+    background-color: var(--mt-rail-header, #0F0D3A);
+    // The tint follows the theme (or brand) navigation colors; the image can be replaced by white labeling.
     background-image:
-      linear-gradient(160deg, rgba(15, 13, 58, 0.92) 0%, rgba(27, 25, 97, 0.78) 55%, rgba(19, 181, 201, 0.35) 100%),
-      url('/assets/login_background.jpg');
+      linear-gradient(160deg, color-mix(in srgb, var(--mt-rail-header, #0F0D3A) 92%, transparent) 0%,
+        color-mix(in srgb, var(--mt-rail, #1B1961) 78%, transparent) 55%,
+        color-mix(in srgb, var(--mt-indicator, #13B5C9) 35%, transparent) 100%),
+      var(--mt-login-image, url('/assets/login_background.jpg'));
     background-size: cover;
     background-position: center;
     overflow-y: auto;
@@ -71,8 +74,21 @@
         }
       }
       .mt-login-copyright {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
         font-size: 13px;
         color: #B9B8DD;
+        .mt-legal-link {
+          color: inherit;
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+          opacity: 0.85;
+          &:hover {
+            opacity: 1;
+          }
+        }
       }
     }
 

@@ -1,5 +1,9 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { MatDialog } from '@angular/material/dialog';
+import { BrandingService } from '@core/services/branding.service';
+import { Branding } from '@shared/models/branding.models';
+import { LegalNoticesDialogComponent } from '@shared/components/legal-notices-dialog.component';
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '@core/auth/auth.service';
 import { UntypedFormBuilder, Validators } from '@angular/forms';
@@ -29,10 +33,22 @@ export class LoginComponent extends PageComponent implements OnInit {
   });
   oauth2Clients: Array<OAuth2ClientLoginInfo> = null;
 
+  branding$ = this.brandingService.branding$;
+
   constructor(private authService: AuthService,
               public fb: UntypedFormBuilder,
-              private router: Router) {
+              private router: Router,
+              private brandingService: BrandingService,
+              private dialog: MatDialog) {
     super();
+  }
+
+  loginImage(branding: Branding): string | null {
+    return branding?.loginBackgroundUrl ? `url("${branding.loginBackgroundUrl.replace(/["\\]/g, '')}")` : null;
+  }
+
+  openLegalNotices() {
+    this.dialog.open(LegalNoticesDialogComponent, {panelClass: ['tb-dialog'], autoFocus: false});
   }
 
   ngOnInit() {

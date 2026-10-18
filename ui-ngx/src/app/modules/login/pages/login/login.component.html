@@ -4,19 +4,23 @@
     SPDX-License-Identifier: Apache-2.0
 
 -->
-<div class="tb-login-content mt-login flex flex-1">
+@let brand = branding$ | async;
+<div class="tb-login-content mt-login flex flex-1" [style.--mt-login-image]="loginImage(brand)">
   <section class="mt-login-hero">
-    <img class="mt-login-logo" src="assets/logo_title_white.svg" alt="MuTech Automation">
+    <img class="mt-login-logo" [src]="brand?.loginLogoUrl || brand?.logoUrl || 'assets/logo_title_white.svg'" [alt]="brand?.appTitle || 'MuTech-IoT'">
     <div class="mt-login-message">
-      <h1>{{ 'mutech.hero-title' | translate }}</h1>
-      <p>{{ 'mutech.hero-subtitle' | translate }}</p>
+      <h1>{{ brand?.loginHeadline || ('mutech.hero-title' | translate) }}</h1>
+      <p>{{ brand?.loginSubtitle || ('mutech.hero-subtitle' | translate) }}</p>
       <div class="mt-login-chips">
         <span>{{ 'mutech.hero-telemetry' | translate }}</span>
         <span>{{ 'mutech.hero-alarms' | translate }}</span>
         <span>{{ 'mutech.hero-dashboards' | translate }}</span>
       </div>
     </div>
-    <span class="mt-login-copyright">{{ 'mutech.copyright' | translate: {year: year} }}</span>
+    <span class="mt-login-copyright">
+      {{ brand?.footerText || ('mutech.copyright' | translate: {year: year}) }}
+      <a class="mt-legal-link" (click)="openLegalNotices()">{{ 'mutech.open-source-notices' | translate }}</a>
+    </span>
   </section>
   <section class="mt-login-panel flex flex-1 items-center justify-center">
     <mat-card appearance="raised" class="mt-login-card">
@@ -24,7 +28,7 @@
         <form class="tb-login-form flex flex-col" [formGroup]="loginFormGroup" (ngSubmit)="login()">
           <div class="mt-login-heading">
             <h2>{{ 'mutech.sign-in-title' | translate }}</h2>
-            <p>{{ 'mutech.sign-in-subtitle' | translate }}</p>
+            <p>{{ 'mutech.sign-in-subtitle' | translate: {name: brand?.appTitle || 'MuTech-IoT'} }}</p>
           </div>
           <mat-progress-bar color="warn" mode="indeterminate" *ngIf="isLoading || (isLoading$ | async)">
           </mat-progress-bar>

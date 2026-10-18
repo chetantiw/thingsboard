@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { BrandingService } from '@core/services/branding.service';
 import { AfterViewInit, Component, ElementRef, HostListener, Inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { skip, startWith, Subject } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
 
 import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
 import { PageComponent } from '@shared/components/page.component';
@@ -22,7 +23,6 @@ import { ActivatedRoute } from '@angular/router';
 import { isDefined, isDefinedAndNotNull } from '@core/utils';
 import { MatDialog } from '@angular/material/dialog';
 import { AppearanceService } from '@core/services/appearance.service';
-import { environment as env } from '@env/environment';
 import { CommandPaletteDialogComponent } from '@home/components/mutech/command-palette-dialog.component';
 import { AppearanceDialogComponent } from '@home/components/mutech/appearance-dialog.component';
 
@@ -44,8 +44,9 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
   sidenavMode: 'over' | 'push' | 'side' = 'side';
   sidenavOpened = true;
 
-  logo = 'assets/logo_title_white.svg';
-  appTitle = env.appTitle;
+  logo$ = this.brandingService.branding$.pipe(map(branding => branding.logoUrl || 'assets/logo_title_white.svg'));
+  emblem$ = this.brandingService.branding$.pipe(map(branding => branding.emblemUrl || branding.logoUrl || 'assets/mutech-emblem.png'));
+  appTitle$ = this.brandingService.appTitle$;
 
   compactNav$ = this.appearanceService.compactNavigation$;
 
@@ -72,6 +73,7 @@ export class HomeComponent extends PageComponent implements AfterViewInit, OnIni
               private fb: FormBuilder,
               private dialog: MatDialog,
               private appearanceService: AppearanceService,
+              private brandingService: BrandingService,
               public breakpointObserver: BreakpointObserver) {
     super(store);
   }

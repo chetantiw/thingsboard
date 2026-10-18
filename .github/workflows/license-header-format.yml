@@ -14,6 +14,9 @@ on:
 
 jobs:
   license-format:
+    # Upstream housekeeping: it rewrites file headers to "The Thingsboard Authors", which would
+    # misattribute files added by MuTech Automation, so it only runs in the ThingsBoard repository.
+    if: github.repository == 'thingsboard/thingsboard'
     runs-on: ubuntu-latest
 
     steps:

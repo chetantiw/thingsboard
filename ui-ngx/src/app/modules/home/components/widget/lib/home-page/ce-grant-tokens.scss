@@ -6,10 +6,10 @@
   --tb-brand-tint: #e2f1ec;
   --tb-brand-ink: #0e5a4e;
 
-  --tb-ink: rgba(0, 0, 0, 0.87);
-  --tb-ink-2: rgba(0, 0, 0, 0.6);
-  --tb-ink-3: rgba(0, 0, 0, 0.38);
-  --tb-line: rgba(0, 0, 0, 0.12);
+  --tb-ink: var(--mt-text);
+  --tb-ink-2: var(--mt-muted);
+  --tb-ink-3: color-mix(in srgb, var(--mt-text) 38%, transparent);
+  --tb-line: var(--mt-border);
 
   --tb-warn: #f44336;
 
@@ -20,9 +20,9 @@
 
   --tb-font-mono: "Roboto Mono", ui-monospace, monospace;
 
-  --tb-detail-bg: #f6f8f9;
-  --tb-note-bg: rgba(0, 0, 0, 0.03);
-  --tb-code-bg: rgba(0, 0, 0, 0.03);
+  --tb-detail-bg: var(--mt-surface-2);
+  --tb-note-bg: color-mix(in srgb, var(--mt-text) 4%, transparent);
+  --tb-code-bg: color-mix(in srgb, var(--mt-text) 4%, transparent);
 }
 
 :host {

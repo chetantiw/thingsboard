@@ -98,7 +98,8 @@ export enum MenuId {
   trendz_settings = 'trendz_settings',
   ai_models = 'ai_models',
   iot_hub = 'iot_hub',
-  plant_overview = 'plant_overview'
+  plant_overview = 'plant_overview',
+  white_labeling = 'white_labeling'
 }
 
 declare type MenuFilter = (authState: AuthState) => boolean;
@@ -369,6 +370,17 @@ export const menuSectionMap = new Map<MenuId, MenuSection>([
       type: 'link',
       path: '/settings/outgoing-mail',
       icon: 'mail'
+    }
+  ],
+  [
+    MenuId.white_labeling,
+    {
+      id: MenuId.white_labeling,
+      name: 'mutech.white-labeling',
+      fullName: 'mutech.white-labeling',
+      type: 'link',
+      path: '/settings/white-labeling',
+      icon: 'format_paint'
     }
   ],
   [
@@ -810,6 +822,7 @@ const defaultUserMenuMap = new Map<Authority, MenuReference[]>([
         id: MenuId.settings,
         pages: [
           {id: MenuId.general},
+          {id: MenuId.white_labeling},
           {id: MenuId.mail_server},
           {id: MenuId.notification_settings},
           {id: MenuId.queues}
@@ -917,6 +930,7 @@ const defaultUserMenuMap = new Map<Authority, MenuReference[]>([
         id: MenuId.settings,
         pages: [
           {id: MenuId.home_settings},
+          {id: MenuId.white_labeling},
           {id: MenuId.notification_settings},
           {id: MenuId.repository_settings},
           {id: MenuId.auto_commit_settings},
@@ -978,7 +992,7 @@ const defaultHomeSectionMap = new Map<Authority, HomeSectionReference[]>([
       },
       {
         name: 'admin.system-settings',
-        places: [MenuId.general, MenuId.mail_server,
+        places: [MenuId.general, MenuId.white_labeling, MenuId.mail_server,
           MenuId.notification_settings, MenuId.security_settings, MenuId.oauth2, MenuId.domains,
           MenuId.clients, MenuId.two_fa, MenuId.resources_library, MenuId.queues]
       }

@@ -318,3 +318,8 @@
     --mat-progress-spinner-active-indicator-color: var(--mt-accent);
   }
 }
+
+// White labeling: "hide help links" removes the buttons that open the online documentation.
+body.mt-hide-help [tb-help] {
+  display: none !important;
+}

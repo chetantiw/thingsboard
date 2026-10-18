@@ -139,10 +139,19 @@ export const notifyMtWidgetThemeChanged = (): void => themeChangedSubject.next()
 const colorValuePattern = /^\s*(#[0-9a-f]{3,8}|rgba?\([^)]*\)|white|black)\s*$/i;
 const themedSettingsCache = new WeakMap<object, {key: string; value: any}>();
 
+const cssColorPattern = /rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}\b/g;
+
+// Stock colors written inside CSS text (Markdown/HTML card styles) are themed too.
+export const mtThemedCss = (css: string): string =>
+  css && refresh() ? css.replace(cssColorPattern, color => mtColor(color)) : css;
+
 const themeValue = (value: any, key?: string): any => {
   if (typeof value === 'string') {
     if (key === 'family') {
       return mtFontFamily(value);
+    }
+    if (key && /css$/i.test(key)) {
+      return mtThemedCss(value);
     }
     if (!colorValuePattern.test(value)) {
       return value;

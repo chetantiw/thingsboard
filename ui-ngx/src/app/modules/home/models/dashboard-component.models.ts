@@ -595,7 +595,7 @@ export class DashboardWidget implements GridsterItem, IDashboardWidget {
       && this.widgetContext.widgetTitleTooltip.length ? this.widgetContext.widgetTitleTooltip : this.widget.config.titleTooltip;
     this.titleTooltip = this.dashboard.utils.customTranslation(this.titleTooltip, this.titleTooltip);
     this.showTitle = isDefined(this.widget.config.showTitle) ? this.widget.config.showTitle : true;
-    this.titleStyle = {...(this.widget.config.titleStyle || {}), ...textStyle(this.widget.config.titleFont)};
+    this.titleStyle = {...(mtThemedSettings(this.widget.config.titleStyle) || {}), ...textStyle(this.widget.config.titleFont)};
     if (this.widget.config.titleColor) {
       this.titleStyle.color = mtColor(this.widget.config.titleColor);
     }

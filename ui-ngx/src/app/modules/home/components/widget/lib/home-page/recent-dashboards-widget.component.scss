@@ -34,7 +34,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: #305680;
+      background: var(--mt-primary);
       -webkit-mask-image: url(/assets/home/no_data_bg.svg);
       -webkit-mask-repeat: no-repeat;
       mask-image: url(/assets/home/no_data_bg.svg);
@@ -46,7 +46,7 @@
     font-size: 14px;
     line-height: 20px;
     letter-spacing: 0.25px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 
   .tb-starred-dashboard-row {
@@ -135,7 +135,7 @@
     font-size: 12px;
     line-height: 16px;
     letter-spacing: 0.25px;
-    color: rgba(0, 0, 0, 0.38);
+    color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     @media #{$mat-md-lg} {
       font-size: 11px;
     }
@@ -157,7 +157,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       a {
-        color: rgba(0, 0, 0, 0.87);
+        color: var(--mt-text);
         border-bottom: none;
         &:hover, &:focus {
           border-bottom: none;
@@ -166,14 +166,14 @@
     }
     &.last-visited {
       cursor: default;
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
     }
     .star {
       cursor: pointer;
       vertical-align: middle;
-      color: rgba(0, 0, 0, 0.12);
+      color: color-mix(in srgb, var(--mt-text) 12%, transparent);
       &:hover {
-        color: rgba(0, 0, 0, 0.18);
+        color: color-mix(in srgb, var(--mt-text) 18%, transparent);
       }
       &.starred {
         color: #FAE205;
@@ -189,7 +189,7 @@
       font-size: 14px;
       line-height: 20px;
       letter-spacing: 0.2px;
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
       @media #{$mat-md-lg} {
         font-size: 11px;
         line-height: 16px;

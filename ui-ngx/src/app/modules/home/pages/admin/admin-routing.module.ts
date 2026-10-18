@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
+import { WhiteLabelingComponent } from '@home/pages/admin/white-labeling.component';
 import { inject, NgModule } from '@angular/core';
 import { ActivatedRouteSnapshot, ResolveFn, Router, RouterModule, RouterStateSnapshot, Routes } from '@angular/router';
 
@@ -300,6 +301,18 @@ const routes: Routes = [
             }
           }
         ]
+      },
+      {
+        path: 'white-labeling',
+        component: WhiteLabelingComponent,
+        canDeactivate: [ConfirmOnExitGuard],
+        data: {
+          auth: [Authority.SYS_ADMIN, Authority.TENANT_ADMIN],
+          title: 'mutech.white-labeling',
+          breadcrumb: {
+            menuId: MenuId.white_labeling
+          }
+        }
       },
       {
         path: 'home',

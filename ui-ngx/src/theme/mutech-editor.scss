@@ -1,0 +1,208 @@
+// SPDX-FileCopyrightText: Copyright MuTech Automation
+// SPDX-License-Identifier: Apache-2.0
+//
+// MuTech-IoT edit screens: settings forms, the widget editor, details panels and dashboard edit mode.
+// Colors come from the tokens in mutech-tokens.scss.
+
+body.tb-default {
+
+  // Segmented controls (Basic/Advanced, Data/Appearance/Widget card, Device/Entity alias, ...):
+  // a neutral track with the selected option raised on the surface.
+  .mat-button-toggle-group.mat-button-toggle-group-appearance-standard.tb-toggle-header {
+    height: 34px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--mt-surface-2);
+    box-shadow: inset 0 0 0 1px var(--mt-border);
+
+    .mat-button-toggle.mat-button-toggle-appearance-standard {
+      color: var(--mt-muted);
+
+      .mat-button-toggle-focus-overlay, .mat-button-toggle-ripple {
+        border-radius: 8px;
+      }
+      .mat-button-toggle-button {
+        height: 28px;
+        border-radius: 8px;
+        .mat-button-toggle-label-content {
+          font-weight: 500;
+          font-size: 13px;
+        }
+      }
+      &:hover:not(.mat-button-toggle-checked) {
+        color: var(--mt-text);
+      }
+      &.mat-button-toggle-checked .mat-button-toggle-button {
+        background: var(--mt-surface);
+        color: var(--mt-text);
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(15, 13, 40, 0.10), 0 0 0 1px var(--mt-border);
+        .mat-button-toggle-label-content {
+          font-weight: 650;
+          line-height: 28px;
+        }
+      }
+    }
+
+    &.tb-fill, &.tb-fill.tb-invert {
+      .mat-button-toggle.mat-button-toggle-appearance-standard {
+        color: var(--mt-muted);
+        &.mat-button-toggle-checked .mat-button-toggle-button {
+          background: var(--mt-surface);
+          color: var(--mt-text);
+        }
+      }
+    }
+
+    &.tb-disabled {
+      opacity: 0.6;
+    }
+  }
+
+  // Details panels (entity details, widget editor): a calm surface header instead of the primary bar.
+  tb-details-panel .details-toolbar.mat-toolbar {
+    --mat-toolbar-container-background-color: var(--mt-surface);
+    --mat-toolbar-container-text-color: var(--mt-text);
+    background: var(--mt-surface);
+    color: var(--mt-text);
+    border-bottom: 1px solid var(--mt-border);
+
+    .tb-details-title-text {
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .tb-details-subtitle {
+      color: var(--mt-muted);
+      opacity: 1;
+    }
+    .mat-mdc-icon-button .mat-icon {
+      color: var(--mt-muted);
+    }
+    .mat-mdc-icon-button:hover .mat-icon {
+      color: var(--mt-text);
+    }
+  }
+
+  // Settings forms used by the widget editor and many dialogs.
+  .tb-form-panel {
+    background: var(--mt-surface);
+    border-radius: var(--mt-radius-lg);
+    box-shadow: 0 0 0 1px var(--mt-border);
+
+    &.stroked {
+      box-shadow: none;
+      border: 1px solid var(--mt-border);
+      border-radius: var(--mt-radius);
+    }
+    &.no-border {
+      box-shadow: none;
+      border-radius: 0;
+    }
+  }
+  .tb-form-panel-title {
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+  }
+  .tb-form-panel-hint, .tb-form-hint {
+    color: var(--mt-muted);
+  }
+  .tb-form-hint.tb-primary-fill {
+    background: var(--mt-primary-soft);
+    color: var(--mt-text);
+  }
+
+  // Rows are tinted tiles; the border only appears on hover, so a panel reads as one list.
+  .tb-form-row {
+    border-color: transparent;
+    border-radius: var(--mt-radius);
+    background: var(--mt-surface-2);
+    transition: border-color .15s ease, background-color .15s ease;
+    &:hover {
+      border-color: var(--mt-border);
+    }
+    &.no-border {
+      background: transparent;
+    }
+    .fixed-title-width {
+      font-weight: 500;
+    }
+  }
+  .tb-form-row:not(.tb-standard-fields) .mat-mdc-form-field:not(.tb-not-inline-field) .mat-mdc-text-field-wrapper,
+  .mat-mdc-form-field.tb-inline-field .mat-mdc-text-field-wrapper {
+    background: var(--mt-surface);
+    border-radius: var(--mt-radius-sm);
+  }
+  .tb-form-panel .mat-expansion-panel.tb-settings {
+    background: transparent;
+  }
+  .tb-form-table {
+    border-color: var(--mt-border);
+    border-radius: var(--mt-radius);
+  }
+
+  // Widget editor.
+  .tb-details-drawer {
+    .tb-widget-config {
+      background: var(--mt-bg);
+    }
+    .tb-widget-config-header {
+      background: var(--mt-surface);
+      border-bottom: 1px solid var(--mt-border);
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+    .tb-widget-config-content {
+      background: var(--mt-bg);
+      .mat-content {
+        gap: 16px;
+      }
+    }
+  }
+
+  // Dashboard edit mode.
+  .tb-dashboard-page.mt-editing {
+    .mt-save-action.mat-mdc-unelevated-button {
+      padding: 0 18px;
+      font-weight: 650;
+    }
+    // A dotted layout grid behind the widgets.
+    #gridster-background {
+      background-image: radial-gradient(color-mix(in srgb, var(--mt-text) 18%, transparent) 1px, transparent 1.5px) !important;
+      background-size: 20px 20px !important;
+      background-repeat: repeat !important;
+    }
+    .tb-widget.tb-edit {
+      &:not(.tb-highlighted) {
+        box-shadow: 0 0 0 1px var(--mt-border), var(--mt-shadow);
+      }
+      &.tb-hover:not(.tb-highlighted) {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--mt-accent) 55%, transparent), var(--mt-shadow);
+      }
+      &.tb-highlighted {
+        box-shadow: 0 0 0 2px var(--mt-accent), 0 8px 28px color-mix(in srgb, var(--mt-accent) 25%, transparent);
+      }
+    }
+  }
+
+  // Floating edit/copy/remove actions of a widget in edit mode.
+  .tooltipster-sidetip.tb-widget-edit-actions-tooltip {
+    .tooltipster-box {
+      background: var(--mt-surface);
+      border: 1px solid var(--mt-border);
+      border-radius: 999px;
+      box-shadow: 0 6px 20px rgba(15, 13, 40, 0.18);
+      padding: 0 4px;
+    }
+    .tooltipster-arrow {
+      display: none;
+    }
+    .mat-mdc-icon-button .mat-icon, .mat-mdc-icon-button tb-icon {
+      color: var(--mt-muted);
+    }
+    .mat-mdc-icon-button:hover .mat-icon, .mat-mdc-icon-button:hover tb-icon {
+      color: var(--mt-accent);
+    }
+  }
+}

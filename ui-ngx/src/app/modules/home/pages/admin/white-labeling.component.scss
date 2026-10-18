@@ -1,0 +1,294 @@
+// SPDX-FileCopyrightText: Copyright MuTech Automation
+// SPDX-License-Identifier: Apache-2.0
+@import "../../../../../scss/constants";
+
+:host {
+  display: block;
+}
+
+.mt-wl {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  max-width: 1280px;
+  @media #{$mat-xs} {
+    padding: 16px;
+  }
+}
+
+.mt-wl-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  h1 {
+    margin: 0 0 4px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--mt-text);
+  }
+  p {
+    margin: 0;
+    max-width: 640px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--mt-muted);
+  }
+}
+
+.mt-wl-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  .mt-wl-target {
+    min-width: 280px;
+  }
+}
+
+.mt-wl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 16px;
+  border: 1px dashed var(--mt-border);
+  border-radius: var(--mt-radius-lg);
+  color: var(--mt-muted);
+  .mat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 40px;
+  }
+}
+
+.mt-wl-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 24px;
+  align-items: start;
+  @media #{$mat-lt-md} {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mt-wl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.mt-wl-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.mt-wl-swatch {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--mt-border);
+  border-radius: var(--mt-radius-sm);
+  background: none;
+  cursor: pointer;
+}
+
+.mt-wl-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0;
+  background: linear-gradient(to top, var(--mt-bg) 70%, transparent);
+}
+
+// Live preview, drawn with the brand colors only.
+.mt-wl-preview {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--mt-border);
+  border-radius: var(--mt-radius-lg);
+  background: var(--mt-surface);
+  .mt-wl-preview-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mt-muted);
+  }
+}
+
+.mt-wl-app-button {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--wl-primary);
+  color: var(--wl-on-primary);
+}
+
+.mt-wl-app {
+  display: flex;
+  height: 190px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--mt-border);
+  background: #F4F5FA;
+  .mt-wl-app-rail {
+    width: 96px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    background: var(--wl-rail);
+    img {
+      max-width: 100%;
+      max-height: 26px;
+      object-fit: contain;
+      align-self: flex-start;
+      margin-bottom: 6px;
+    }
+    .mt-wl-app-nav {
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.22);
+      &.active {
+        background: #fff;
+        box-shadow: inset 3px 0 0 var(--wl-accent);
+      }
+    }
+  }
+  .mt-wl-app-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    color: #15142B;
+  }
+  .mt-wl-app-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    .mt-wl-favicon {
+      width: 14px;
+      height: 14px;
+      object-fit: contain;
+    }
+  }
+  .mt-wl-app-cards {
+    display: flex;
+    gap: 8px;
+  }
+  .mt-wl-app-card {
+    flex: 1;
+    height: 48px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #E3E4EF;
+    padding: 8px;
+    i {
+      display: block;
+      height: 6px;
+      width: 60%;
+      border-radius: 3px;
+      background: var(--wl-accent);
+    }
+  }
+  .mt-wl-app-powered {
+    margin-top: auto;
+    font-size: 9px;
+    color: #5F5E7A;
+    text-align: right;
+  }
+}
+
+.mt-wl-login {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  height: 170px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--wl-rail);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--wl-rail) 90%, transparent),
+      color-mix(in srgb, var(--wl-accent) 35%, transparent));
+  }
+  > * {
+    position: relative;
+  }
+  .mt-wl-login-hero {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #fff;
+    img {
+      max-height: 22px;
+      max-width: 120px;
+      object-fit: contain;
+      align-self: flex-start;
+    }
+    strong {
+      font-size: 13px;
+      line-height: 1.2;
+    }
+    span {
+      font-size: 10px;
+      opacity: 0.8;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    small {
+      margin-top: auto;
+      font-size: 9px;
+      opacity: 0.7;
+    }
+  }
+  .mt-wl-login-card {
+    width: 110px;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 10px;
+    border-radius: 10px;
+    background: #fff;
+    i {
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid #E3E4EF;
+    }
+    .mt-wl-app-button {
+      align-self: stretch;
+      text-align: center;
+    }
+  }
+}

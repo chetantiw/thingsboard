@@ -23,7 +23,7 @@
     .tb-title {
       font-size: 16px;
       font-weight: 500;
-      color: rgba(0, 0, 0, 0.87);
+      color: var(--mt-text);
       @media #{$mat-md-lg} {
         font-size: 12px;
       }
@@ -34,7 +34,7 @@
     font-size: 13.5px;
     border-bottom-color: transparent;
     &:hover, &:focus {
-      border-bottom-color: #4054b2;
+      border-bottom-color: var(--mt-accent);
     }
     @media #{$mat-md-lg} {
       font-size: 12px;
@@ -45,7 +45,7 @@
     display: flex;
     gap: 8px;
     align-items: center;
-    border: 1px solid rgba(0, 0, 0, 0.12);
+    border: 1px solid color-mix(in srgb, var(--mt-text) 12%, transparent);
     border-radius: 8px;
     padding: 12px 14px;
     white-space: nowrap;
@@ -68,14 +68,14 @@
     font-size: 14px;
     line-height: 1.55;
     letter-spacing: normal;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--mt-muted);
     position: relative;
     border-bottom: none;
     &:hover, &:focus {
       border-bottom: none;
     }
     b {
-      color: rgba(0, 0, 0, 0.87);
+      color: var(--mt-text);
     }
     &::after {
       content: 'arrow_forward';
@@ -85,7 +85,7 @@
       font-weight: normal;
       font-style: normal;
       font-size: 18px;
-      color: rgba(0, 0, 0, 0.12);
+      color: color-mix(in srgb, var(--mt-text) 12%, transparent);
       vertical-align: bottom;
       margin-left: -4px;
     }
@@ -241,7 +241,7 @@
     font-size: 14px;
     line-height: 1.55;
     letter-spacing: normal;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--mt-muted);
     @media #{$mat-md-lg} {
       font-size: 11px;
       line-height: 16px;

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright The Thingsboard Authors
 // SPDX-License-Identifier: Apache-2.0
-import { mtDarkTheme } from '@shared/models/mutech-widget-theme';
+import { BrandingService } from '@core/services/branding.service';
+import { mtDarkTheme, mtThemedCss, mtWidgetThemeChanged$ } from '@shared/models/mutech-widget-theme';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -9,6 +10,7 @@ import {
   ElementRef,
   EventEmitter,
   HostBinding,
+  inject,
   Inject,
   Injector,
   Input,
@@ -168,6 +170,8 @@ export class DashboardPageComponent extends PageComponent implements IDashboardC
 
   // Charts switch to their dark palette when the page carries the 'dark' class.
   readonly mtDark = mtDarkTheme;
+
+  readonly branding$ = inject(BrandingService).branding$;
 
   @HostBinding('class')
   dashboardPageClass: string;
@@ -372,6 +376,12 @@ export class DashboardPageComponent extends PageComponent implements IDashboardC
   }
 
   ngOnInit() {
+    this.rxSubscriptions.push(mtWidgetThemeChanged$.subscribe(() => {
+      if (this.dashboardConfiguration) {
+        this.updateDashboardCss();
+        this.cd.markForCheck();
+      }
+    }));
     this.rxSubscriptions.push(this.route.data.subscribe(
       (data) => {
         let dashboardPageInitData: DashboardPageInitData;
@@ -524,7 +534,8 @@ export class DashboardPageComponent extends PageComponent implements IDashboardC
 
   private updateDashboardCss() {
     this.cleanupDashboardCss();
-    const cssString = this.dashboardConfiguration.settings.dashboardCss;
+    // Stock colors in the dashboard CSS follow the theme (see mutech-widget-theme).
+    const cssString = mtThemedCss(this.dashboardConfiguration.settings.dashboardCss);
     if (isNotEmptyStr(cssString)) {
       const cssParser = new cssjs();
       cssParser.testMode = false;

@@ -80,10 +80,10 @@
   }
 
   .tb-usage-item {
-    color: rgba(0, 0, 0, 0.38);
+    color: color-mix(in srgb, var(--mt-text) 38%, transparent);
   }
 
   .tb-usage-item-counts {
-    color: rgba(0, 0, 0, 0.76);
+    color: var(--mt-text);
   }
 }

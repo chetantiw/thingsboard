@@ -10,10 +10,10 @@
       padding: 0 24px;
     }
     h2 {
-      color: rgba(0, 0, 0, 0.76);
+      color: var(--mt-text);
     }
     .mat-icon {
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
     }
     .mat-mdc-dialog-content {
       padding: 24px 24px 8px 24px;
@@ -26,7 +26,7 @@
     height: 24px;
     margin-left: 12px;
     .mat-icon {
-      color: rgba(0, 0, 0, 0.38);
+      color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     }
   }
   .tb-add-link-button {
@@ -36,16 +36,16 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: #FFFFFF;
+    background: var(--mt-surface);
     padding: 8px;
-    border: 2px dashed rgba(0, 0, 0, 0.08);
+    border: 2px dashed color-mix(in srgb, var(--mt-text) 8%, transparent);
     border-radius: 10px;
     .tb-add-icon {
-      color: rgba(0, 0, 0, 0.12);
+      color: color-mix(in srgb, var(--mt-text) 12%, transparent);
     }
     &:hover {
       .tb-add-icon {
-        color: rgba(0, 0, 0, 0.38);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
       }
     }
   }

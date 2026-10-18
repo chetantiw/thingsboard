@@ -12,7 +12,7 @@
     font-size: 20px;
     line-height: 24px;
     letter-spacing: 0.1px;
-    color: rgba(0, 0, 0, 0.76);
+    color: var(--mt-text);
     padding-bottom: 24px;
     @media #{$mat-md-lg} {
       font-weight: 500;
@@ -37,7 +37,7 @@
   }
 
   .tb-get-started .mat-vertical-stepper-header[aria-selected="true"] {
-    background: rgba(0, 0, 0, 0.03);
+    background: color-mix(in srgb, var(--mt-text) 3%, transparent);
     border-bottom-right-radius: 0;
     border-bottom-left-radius: 0;
   }
@@ -46,7 +46,7 @@
     margin-left: 0;
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
-    background: rgba(0, 0, 0, 0.03);
+    background: color-mix(in srgb, var(--mt-text) 3%, transparent);
   }
 
   .tb-get-started .mat-stepper-vertical-line::before {
@@ -59,14 +59,14 @@
     font-weight: 400;
     font-size: 14px;
     line-height: 20px;
-    color: rgba(0, 0, 0, 0.76);
+    color: var(--mt-text);
   }
 
   .tb-get-started .mat-step-label.mat-step-label-selected {
     font-weight: 500;
     font-size: 16px;
     line-height: 24px;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
   }
 
   .tb-get-started .mat-vertical-content {
@@ -76,12 +76,12 @@
       font-size: 14px;
       line-height: 20px;
       letter-spacing: 0.2px;
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--mt-muted);
       em {
         font-style: normal;
         font-weight: 500;
         font-size: 13px;
-        color: rgba(0, 0, 0, 0.38);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
       }
     }
     ul {
@@ -91,7 +91,7 @@
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      border: 1px solid rgba(0, 0, 0, 0.05);
+      border: 1px solid color-mix(in srgb, var(--mt-text) 5%, transparent);
       border-radius: 8px;
       padding: 16px;
       p {
@@ -106,7 +106,7 @@
           pre[class*=language-] {
             margin: 0;
             padding: 9px 38px 9px 16px;
-            background: rgba(0, 0, 0, 0.03);
+            background: color-mix(in srgb, var(--mt-text) 3%, transparent);
             border-radius: 6px;
             border: none;
           }
@@ -117,12 +117,12 @@
             font-size: 12px;
             line-height: 16px;
             letter-spacing: 0.25px;
-            color: rgba(0, 0, 0, 0.38);
+            color: color-mix(in srgb, var(--mt-text) 38%, transparent);
             overflow: hidden;
             white-space: break-spaces;
             word-break: break-all;
             & * {
-              color: rgba(0, 0, 0, 0.38);
+              color: color-mix(in srgb, var(--mt-text) 38%, transparent);
               cursor: inherit;
               background: transparent;
             }
@@ -136,7 +136,7 @@
             p {
               margin: 0;
               padding: 6px 7px;
-              color: #305680;
+              color: var(--mt-accent);
             }
             div {
               top: 0;
@@ -152,7 +152,7 @@
                 display: block;
                 width: 18px;
                 height: 18px;
-                background: #305680;
+                background: var(--mt-primary);
                 -webkit-mask-image: url(/assets/copy-code-icon.svg);
                 -webkit-mask-repeat: no-repeat;
                 mask-image: url(/assets/copy-code-icon.svg);

@@ -74,6 +74,7 @@
     .mt-boot-mark img {
       width: 72px;
       height: 67px;
+      object-fit: contain;
       filter: drop-shadow(0 6px 14px rgba(15, 13, 58, 0.28));
       animation: mt-boot-breathe 2.2s ease-in-out infinite;
     }
@@ -162,6 +163,26 @@
       for (var i = 0; i < names.length; i++) {
         document.documentElement.style.setProperty('--mt-boot-' + names[i], colors[i]);
       }
+      // White labeling: the brand last seen in this browser (see BrandingService).
+      try {
+        var brand = JSON.parse(localStorage.getItem('mt_branding')) || {};
+        var hex = /^#[0-9a-fA-F]{6}$/;
+        if (brand.appTitle) {
+          document.title = brand.appTitle;
+          document.querySelector('.mt-boot-name').textContent = brand.appTitle;
+        }
+        if (brand.emblemUrl || brand.logoUrl) {
+          document.querySelector('.mt-boot-mark img').src = brand.emblemUrl || brand.logoUrl;
+        }
+        if (brand.faviconUrl) {
+          document.querySelector('link[rel="icon"]').href = brand.faviconUrl;
+        }
+        var accent = hex.test(brand.accentColor) ? brand.accentColor : (hex.test(brand.primaryColor) ? brand.primaryColor : null);
+        if (accent) {
+          document.documentElement.style.setProperty('--mt-boot-accent', accent);
+          document.documentElement.style.setProperty('--mt-boot-accent-2', accent);
+        }
+      } catch (e) {}
     })();
   </script>
 </body>

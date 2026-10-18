@@ -9,6 +9,8 @@ import { selectAuthUser, selectUserDetails } from '@core/auth/auth.selectors';
 import { map } from 'rxjs/operators';
 import { AuthService } from '@core/auth/auth.service';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { LegalNoticesDialogComponent } from '@shared/components/legal-notices-dialog.component';
 
 @Component({
     selector: 'tb-user-menu',
@@ -40,7 +42,12 @@ export class UserMenuComponent implements OnInit, OnDestroy {
 
   constructor(private store: Store<AppState>,
               private router: Router,
-              private authService: AuthService) {
+              private authService: AuthService,
+              private dialog: MatDialog) {
+  }
+
+  openLegalNotices() {
+    this.dialog.open(LegalNoticesDialogComponent, {panelClass: ['tb-dialog'], autoFocus: false});
   }
 
   ngOnInit(): void {

@@ -15,9 +15,9 @@
       <mat-toolbar class="tb-nav-header-toolbar">
         <div class="flex flex-auto">
           @if (compactNav$ | async) {
-            <img class="mt-emblem" src="assets/mutech-emblem.png" alt="{{ appTitle }}">
+            <img class="mt-emblem" [src]="emblem$ | async" alt="{{ appTitle$ | async }}">
           } @else {
-            <tb-logo [src]="logo" class="tb-logo-title"></tb-logo>
+            <tb-logo [src]="logo$ | async" class="tb-logo-title"></tb-logo>
           }
         </div>
       </mat-toolbar>

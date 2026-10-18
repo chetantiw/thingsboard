@@ -3,6 +3,7 @@
 import { NgModule, SecurityContext } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FooterComponent } from '@shared/components/footer.component';
+import { LegalNoticesDialogComponent } from '@shared/components/legal-notices-dialog.component';
 import { LogoComponent } from '@shared/components/logo.component';
 import { TbSnackBarComponent, ToastDirective } from '@shared/components/toast.directive';
 import { BreadcrumbComponent } from '@shared/components/breadcrumb.component';
@@ -302,6 +303,7 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
   ],
   declarations: [
     FooterComponent,
+    LegalNoticesDialogComponent,
     LogoComponent,
     FooterFabButtonsComponent,
     ToastDirective,
@@ -530,6 +532,7 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     DynamicMatDialogModule
   ],
   exports: [
+    LegalNoticesDialogComponent,
     FooterComponent,
     LogoComponent,
     FooterFabButtonsComponent,

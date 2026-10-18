@@ -16,7 +16,7 @@
     width: 70px;
     height: 70px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.05);
+    background: color-mix(in srgb, var(--mt-text) 5%, transparent);
   }
 
   .tb-done-icon {
@@ -27,7 +27,7 @@
     text-align: center;
     border-radius: 50%;
     border: 2px solid #305680;
-    background: #FFFFFF;
+    background: var(--mt-surface);
   }
 
   .tb-done-welcome-title {
@@ -35,7 +35,7 @@
     font-size: 20px;
     line-height: 24px;
     letter-spacing: 0.1px;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--mt-text);
     padding-bottom: 8px;
   }
 
@@ -44,6 +44,6 @@
     font-size: 16px;
     line-height: 24px;
     letter-spacing: 0.15px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--mt-muted);
   }
 }

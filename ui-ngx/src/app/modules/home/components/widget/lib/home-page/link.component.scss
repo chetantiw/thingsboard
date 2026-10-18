@@ -3,7 +3,7 @@
 :host {
   .tb-edit-link {
     padding: 16px;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid color-mix(in srgb, var(--mt-text) 5%, transparent);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.04);
     border-radius: 10px;
     &.edit-mode {
@@ -16,8 +16,8 @@
     flex-direction: column;
     justify-content: center;
     padding: 8px;
-    background: #FFFFFF;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--mt-surface);
+    border: 1px solid color-mix(in srgb, var(--mt-text) 5%, transparent);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.04);
     border-radius: 10px;
     .tb-link-container {
@@ -27,7 +27,7 @@
       .tb-link-icon-container {
         height: 40px;
         padding: 8px;
-        background: #F3F6FA;
+        background: var(--mt-surface-2);
         border-radius: 6px;
         margin-right: 8px;
       }
@@ -36,13 +36,13 @@
         font-size: 14px;
         line-height: 20px;
         letter-spacing: 0.2px;
-        color: rgba(0, 0, 0, 0.87);
+        color: var(--mt-text);
       }
     }
   }
   .tb-edit-buttons {
     .mat-icon {
-      color: rgba(0, 0, 0, 0.38);
+      color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     }
   }
 }

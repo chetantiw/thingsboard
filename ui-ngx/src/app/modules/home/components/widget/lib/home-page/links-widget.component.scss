@@ -11,7 +11,7 @@
   }
 
   .tb-title-icon {
-    color: rgba(0, 0, 0, 0.38);
+    color: color-mix(in srgb, var(--mt-text) 38%, transparent);
     width: 32px;
     height: 32px;
     padding: 4px;
@@ -32,8 +32,8 @@
     flex-direction: column;
     justify-content: center;
     padding: 8px;
-    background: #FFFFFF;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--mt-surface);
+    border: 1px solid color-mix(in srgb, var(--mt-text) 5%, transparent);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.04);
     border-radius: 10px;
     @media #{$mat-md-lg} {
@@ -41,7 +41,7 @@
       padding: 0 8px;
     }
     &:hover {
-      border: 1px solid rgba(0, 0, 0, 0.12);
+      border: 1px solid color-mix(in srgb, var(--mt-text) 12%, transparent);
       box-shadow: 0 4px 10px rgba(23, 33, 90, 0.08);
     }
     .tb-link-container {
@@ -51,7 +51,7 @@
       .tb-link-icon-container {
         height: 40px;
         padding: 8px;
-        background: #F3F6FA;
+        background: var(--mt-surface-2);
         border-radius: 6px;
         margin-right: 8px;
         @media #{$mat-md-lg} {
@@ -63,7 +63,7 @@
         font-size: 14px;
         line-height: 20px;
         letter-spacing: 0.2px;
-        color: rgba(0, 0, 0, 0.87);
+        color: var(--mt-text);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -82,9 +82,9 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: #FFFFFF;
+    background: var(--mt-surface);
     padding: 8px;
-    border: 2px dashed rgba(0, 0, 0, 0.08);
+    border: 2px dashed color-mix(in srgb, var(--mt-text) 8%, transparent);
     border-radius: 10px;
     @media #{$mat-md-lg} {
       height: 18px;
@@ -96,11 +96,11 @@
       }
     }
     .tb-add-icon {
-      color: rgba(0, 0, 0, 0.12);
+      color: color-mix(in srgb, var(--mt-text) 12%, transparent);
     }
     &:hover {
       .tb-add-icon {
-        color: rgba(0, 0, 0, 0.38);
+        color: color-mix(in srgb, var(--mt-text) 38%, transparent);
       }
     }
   }

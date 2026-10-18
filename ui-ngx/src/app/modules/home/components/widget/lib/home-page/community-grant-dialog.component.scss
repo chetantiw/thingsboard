@@ -147,7 +147,7 @@
     }
 
     &.tb-ce-grant-mark-info {
-      background: rgba(0, 0, 0, 0.55);
+      background: color-mix(in srgb, var(--mt-text) 55%, transparent);
       color: #fff;
     }
 
